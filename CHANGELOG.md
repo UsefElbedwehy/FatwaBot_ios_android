@@ -31,3 +31,10 @@ All notable changes to this project are documented here. Format loosely follows 
 - **CI:** paths-filtered workflows for all four platforms (activate when a GitHub remote is added).
 - M1 feature specs pre-written: config-sync, prayer.
 - **Blocked on credentials (Q8):** Supabase project (deploy `/v1/health` + migrations), Firebase, store accounts, GitHub remote for CI.
+
+### 2026-07-05 — Milestone 1 in progress (6 of 9 tasks complete)
+- **Backend auth (ADR-0004):** `/v1/auth/anonymous` (device-registered identity, HS256 access JWT + hashed single-use refresh tokens), `/v1/auth/refresh` rotation with replay rejection, `/v1/me` bearer probe; migration 0004; 16 deno tests green.
+- **iOS ConfigSync (ADR-0011 client half):** ConfigKit — snapshot store (atomic, app-group-ready), per-layer independent refresh, delta string packs, flag gating with `min_app_version`; 6 tests per spec.
+- **Prayer engines on both platforms:** settings (clamped adjustments, Hijri offset), day/timeline, next-prayer across midnight/Isha boundaries, Hijri dates; **high-latitude auto rule stated identically** (≥48° → seventh-of-the-night); iOS 11 + Android 11 tests green, both passing the 140-entry golden corpus.
+- **UI slices on both platforms:** server-layout Home renderer (native section catalog v1: header/hero/ask/quick-actions, unknown types skipped), gradient prayer hero with live countdown + 5-prayer strip, Ask section with the three intents + trust line, Prayer screen with day pager and Hijri header, manual-city fallback (12 bundled cities), iOS Qibla compass with calibration/interference states; Factory (iOS) and Hilt (Android) composition; both apps build green.
+- Remaining M1: local notification engines, widgets, Android ConfigSync port.
