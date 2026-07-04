@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_greeting">السلام عليكم</string>
+    <string name="home_next_prayer">الصلاة القادمة</string>
+    <string name="home_ask_title">اسأل</string>
+    <string name="home_ask_placeholder">ما حكم...؟</string>
+    <string name="home_ask_trust_line">البحث عن الإجابة على ضوء منهج أهل السنة والجماعة</string>
+    <string name="home_ask_intent_fatwa">ابحث عن فتوى</string>
+    <string name="home_ask_intent_hadith">استخراج الأحاديث</string>
+    <string name="home_ask_intent_general">سؤال ديني عام</string>
+    <string name="home_ask_coming_soon">قريباً إن شاء الله</string>
+</resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="prayer_fajr">الفجر</string>
+    <string name="prayer_sunrise">الشروق</string>
+    <string name="prayer_dhuhr">الظهر</string>
+    <string name="prayer_asr">العصر</string>
+    <string name="prayer_maghrib">المغرب</string>
+    <string name="prayer_isha">العشاء</string>
+    <string name="prayer_pick_city">اختر مدينتك</string>
+    <string name="city_makkah">مكة المكرمة</string>
+    <string name="city_madinah">المدينة المنورة</string>
+    <string name="city_riyadh">الرياض</string>
+    <string name="city_cairo">القاهرة</string>
+    <string name="city_dubai">دبي</string>
+    <string name="city_istanbul">إسطنبول</string>
+    <string name="city_london">لندن</string>
+    <string name="city_newyork">نيويورك</string>
+    <string name="city_jakarta">جاكرتا</string>
+    <string name="city_kualalumpur">كوالالمبور</string>
+    <string name="city_karachi">كراتشي</string>
+    <string name="city_casablanca">الدار البيضاء</string>
+</resources>
