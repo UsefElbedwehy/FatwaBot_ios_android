@@ -4,8 +4,23 @@ import Foundation
 
 public struct AppConfig: Codable, Equatable, Sendable {
     public struct Flag: Codable, Equatable, Sendable {
+        public struct Rollout: Codable, Equatable, Sendable {
+            public let minAppVersion: String?
+
+            enum CodingKeys: String, CodingKey {
+                case minAppVersion = "min_app_version"
+            }
+
+            public init(minAppVersion: String? = nil) { self.minAppVersion = minAppVersion }
+        }
+
         public let enabled: Bool
-        public init(enabled: Bool) { self.enabled = enabled }
+        public let rollout: Rollout?
+
+        public init(enabled: Bool, rollout: Rollout? = nil) {
+            self.enabled = enabled
+            self.rollout = rollout
+        }
     }
 
     public let config: [String: JSONValue]
