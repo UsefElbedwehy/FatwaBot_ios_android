@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Node / dashboard
+node_modules/
+dashboard/.next/
+dashboard/out/
+*.tsbuildinfo
+
+# iOS / Swift
+ios/**/.build/
+ios/**/xcuserdata/
+ios/**/*.xcresult
+ios/**/DerivedData/
+.swiftpm/
+
+# Android
+android/**/build/
+android/.gradle/
+android/local.properties
+android/**/*.iml
+
+# Supabase local
+backend/supabase/.temp/
+backend/supabase/.branches/
+
+# Test / coverage artifacts
+coverage/
+*.lcov
