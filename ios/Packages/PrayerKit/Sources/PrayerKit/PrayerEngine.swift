@@ -89,19 +89,13 @@ public struct PrayerEngine: Sendable {
         return PrayerDay(date: date, times: times)
     }
 
-    /// Spike policy (M0): explicit rule from config wins; above the threshold with
-    /// no explicit rule, apply the library's recommended rule — never its default.
+    /// Spike policy (M0): explicit rule from config wins; ≥48° with no explicit
+    /// rule → seventh-of-the-night — stated directly (not via the library's
+    /// `recommended`) so iOS and Android are identical by construction.
     static func effectiveHighLatitudeRule(settings: PrayerSettings, latitude: Double) -> String? {
         if let rule = settings.highLatitudeRule { return rule }
         guard abs(latitude) >= PrayerSettings.highLatitudeThreshold else { return nil }
-        let recommended = HighLatitudeRule.recommended(
-            for: Coordinates(latitude: latitude, longitude: 0)
-        )
-        switch recommended {
-        case .middleOfTheNight: return "middle_of_the_night"
-        case .seventhOfTheNight: return "seventh_of_the_night"
-        case .twilightAngle: return "twilight_angle"
-        }
+        return "seventh_of_the_night"
     }
 
     /// Timeline for scheduling/widgets: `days` consecutive days from `startDate`.
