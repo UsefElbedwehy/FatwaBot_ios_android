@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">فتوى بوت</string>
+    <string name="tab_home">الرئيسية</string>
+    <string name="tab_worship">العبادة</string>
+    <string name="tab_journey">المسيرة</string>
+    <string name="tab_settings">الإعدادات</string>
+</resources>
