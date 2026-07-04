@@ -37,3 +37,6 @@ backend/supabase/.branches/
 # Test / coverage artifacts
 coverage/
 *.lcov
+
+# XcodeGen output (regenerate: cd ios/App && xcodegen generate)
+ios/App/FatwaBot.xcodeproj/
