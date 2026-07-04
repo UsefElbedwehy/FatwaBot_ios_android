@@ -7,21 +7,33 @@ on:
     paths: ["ios/**", "content/test-fixtures/**", ".github/workflows/ios.yml"]
 
 jobs:
-  build-test:
+  package-tests:
+    runs-on: macos-15
+    strategy:
+      matrix:
+        package: [FatwaBotKit, PrayerKit]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+      - name: swift test
+        working-directory: ios/Packages/${{ matrix.package }}
+        run: swift test
+
+  app-build:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.4.app || sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
-      - name: Test Swift packages
-        working-directory: ios/Modules
+      - name: Select latest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: ios/App
+        run: xcodegen generate
+      - name: Build for simulator
+        working-directory: ios/App
         run: |
-          for pkg in */Package.swift; do
-            dir=$(dirname "$pkg")
-            echo "::group::$dir"
-            xcodebuild test \
-              -scheme "$dir" \
-              -destination 'platform=iOS Simulator,name=iPhone 16' \
-              -workspace "$dir" -skipPackagePluginValidation || exit 1
-            echo "::endgroup::"
-          done
+          xcodebuild -project FatwaBot.xcodeproj -scheme FatwaBot \
+            -destination 'generic/platform=iOS Simulator' \
+            build CODE_SIGNING_ALLOWED=NO
