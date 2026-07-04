@@ -2,7 +2,16 @@
 // All client traffic: /functions/v1/api/v1/... — see router.ts.
 import { route } from "./router.ts";
 import { supabaseClientFromEnv, SupabaseConfigRepo } from "./supabase_repo.ts";
+import { SupabaseIdentityRepo } from "./supabase_identity_repo.ts";
 
-const repo = new SupabaseConfigRepo(supabaseClientFromEnv());
+const client = supabaseClientFromEnv();
+const jwtSecret = Deno.env.get("API_JWT_SECRET");
+if (!jwtSecret) throw new Error("API_JWT_SECRET not set");
 
-Deno.serve((req) => route(req, { repo }));
+const deps = {
+  repo: new SupabaseConfigRepo(client),
+  identity: new SupabaseIdentityRepo(client),
+  jwtSecret,
+};
+
+Deno.serve((req) => route(req, deps));

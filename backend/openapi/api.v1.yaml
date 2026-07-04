@@ -27,6 +27,64 @@ paths:
                 properties:
                   status: { type: string, enum: [ok] }
                   version: { type: string }
+  /v1/auth/anonymous:
+    post:
+      summary: Create a zero-signup anonymous identity (ADR-0004)
+      operationId: createAnonymousIdentity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device]
+              properties:
+                device: { $ref: "#/components/schemas/DeviceRegistration" }
+      responses:
+        "200":
+          description: Tokens for the new identity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/ApiError" }
+  /v1/auth/refresh:
+    post:
+      summary: Rotate a refresh token (single-use)
+      operationId: refreshTokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: New token pair; the presented refresh token is consumed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /v1/me:
+    get:
+      summary: Validate the bearer token and return the caller's identity
+      operationId: getMe
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Caller identity
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_id, kind]
+                properties:
+                  user_id: { type: string, format: uuid }
+                  kind: { type: string, enum: [anonymous, account] }
+        "401": { $ref: "#/components/responses/ApiError" }
   /v1/config:
     get:
       summary: Remote config, feature flags, and enabled locales
@@ -119,6 +177,11 @@ paths:
               schema: { $ref: "#/components/schemas/PrayerDefaults" }
         "400": { $ref: "#/components/responses/ApiError" }
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     ClientPlatform:
       name: x-client-platform
@@ -184,3 +247,20 @@ components:
         country_code: { type: string }
         method: { type: string }
         params: { type: object, additionalProperties: true }
+    DeviceRegistration:
+      type: object
+      required: [platform, app_version, locale, timezone]
+      properties:
+        platform: { type: string, enum: [ios, android] }
+        app_version: { type: string }
+        locale: { type: string }
+        timezone: { type: string }
+    TokenResponse:
+      type: object
+      required: [user_id, kind, access_token, expires_in, refresh_token]
+      properties:
+        user_id: { type: string, format: uuid }
+        kind: { type: string, enum: [anonymous, account] }
+        access_token: { type: string }
+        expires_in: { type: integer, description: "Access token TTL in seconds" }
+        refresh_token: { type: string, description: "Opaque, single-use" }

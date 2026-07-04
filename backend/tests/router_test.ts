@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { apiPath, route } from "../functions/api/router.ts";
 import { InMemoryConfigRepo } from "./in_memory_repo.ts";
+import { InMemoryIdentityRepo } from "./in_memory_identity_repo.ts";
 
 const BASE = "https://x.supabase.co/functions/v1/api";
 
@@ -9,7 +10,11 @@ function get(path: string, headers: HeadersInit = {}): Request {
 }
 
 function deps() {
-  return { repo: new InMemoryConfigRepo() };
+  return {
+    repo: new InMemoryConfigRepo(),
+    identity: new InMemoryIdentityRepo(),
+    jwtSecret: "test-secret",
+  };
 }
 
 Deno.test("apiPath extracts /v1 suffix from function-prefixed paths", () => {
@@ -82,8 +87,10 @@ Deno.test("GET /v1/config/prayer-defaults falls back to global", async () => {
   assertEquals(bad.status, 400);
 });
 
-Deno.test("unknown route 404s; non-GET 405s", async () => {
+Deno.test("unknown routes 404; unsupported methods 405", async () => {
   assertEquals((await route(get("/v1/nope"), deps())).status, 404);
-  const res = await route(new Request(`${BASE}/v1/config`, { method: "POST" }), deps());
-  assertEquals(res.status, 405);
+  const postUnknown = await route(new Request(`${BASE}/v1/config`, { method: "POST" }), deps());
+  assertEquals(postUnknown.status, 404, "POST to a GET-only path is an unknown route");
+  const put = await route(new Request(`${BASE}/v1/config`, { method: "PUT" }), deps());
+  assertEquals(put.status, 405);
 });
