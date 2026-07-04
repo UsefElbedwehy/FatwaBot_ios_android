@@ -9,6 +9,10 @@ options:
 packages:
   FatwaBotKit:
     path: ../Packages/FatwaBotKit
+  PrayerKit:
+    path: ../Packages/PrayerKit
+  AppFeatures:
+    path: ../Packages/AppFeatures
 targets:
   FatwaBot:
     type: application
@@ -16,7 +20,11 @@ targets:
     sources: [Sources]
     dependencies:
       - package: FatwaBotKit
-        products: [CoreKit, NetworkingKit, DesignSystemKit]
+        products: [CoreKit, NetworkingKit, DesignSystemKit, ConfigKit]
+      - package: PrayerKit
+        products: [PrayerKit]
+      - package: AppFeatures
+        products: [PrayerFeature, HomeFeature]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app
@@ -24,6 +32,7 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "لعرض أوقات الصلاة واتجاه القبلة لموقعك"
         INFOPLIST_KEY_CFBundleDisplayName: "Fatwa Bot"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"

@@ -15,7 +15,7 @@ public struct ColorTokens: Equatable, Sendable {
     public var onPrimary: String
     public var outline: String
 
-    static let keyMap: [(WritableKeyPath<ColorTokens, String>, String)] = [
+    nonisolated(unsafe) static let keyMap: [(WritableKeyPath<ColorTokens, String>, String)] = [
         (\.primary, "color.primary"),
         (\.primaryContainer, "color.primary_container"),
         (\.accent, "color.accent"),
