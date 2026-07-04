@@ -1,0 +1,186 @@
+openapi: "3.1.0"
+info:
+  title: Fatwa Bot Platform API
+  version: "1.0.0-m0"
+  description: >
+    Versioned REST API for the mobile applications (ADR-0002). Milestone 0 surface:
+    health + config platform reads (ADR-0011). Clients send x-client-platform,
+    x-client-version, x-client-locale headers on every request.
+servers:
+  - url: https://{project}.supabase.co/functions/v1/api
+    variables:
+      project:
+        default: fatwabot
+paths:
+  /v1/health:
+    get:
+      summary: Liveness check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, version]
+                properties:
+                  status: { type: string, enum: [ok] }
+                  version: { type: string }
+  /v1/config:
+    get:
+      summary: Remote config, feature flags, and enabled locales
+      operationId: getConfig
+      parameters: [ $ref: "#/components/parameters/ClientPlatform" ]
+      responses:
+        "200":
+          description: Aggregated configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [config, flags, locales]
+                properties:
+                  config:
+                    type: object
+                    additionalProperties: true
+                  flags:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      required: [enabled]
+                      properties:
+                        enabled: { type: boolean }
+                        rollout: { type: object, additionalProperties: true }
+                  locales:
+                    type: array
+                    items: { $ref: "#/components/schemas/LocaleInfo" }
+  /v1/config/theme:
+    get:
+      summary: Published theme tokens (values over a fixed schema)
+      operationId: getTheme
+      responses:
+        "200":
+          description: Latest published theme
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Theme" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /v1/config/strings/{locale}:
+    get:
+      summary: Localized string pack (delta-aware)
+      operationId: getStringPack
+      parameters:
+        - name: locale
+          in: path
+          required: true
+          schema: { type: string }
+        - name: since_version
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Latest pack, or up_to_date marker
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StringPack"
+                  - type: object
+                    required: [up_to_date]
+                    properties:
+                      up_to_date: { type: boolean, enum: [true] }
+        "400": { $ref: "#/components/responses/ApiError" }
+  /v1/home:
+    get:
+      summary: Server-composed Home layout (native section catalog, ADR-0011)
+      operationId: getHomeLayout
+      parameters: [ $ref: "#/components/parameters/ClientPlatform" ]
+      responses:
+        "200":
+          description: Ordered sections; clients skip unknown types
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HomeLayout" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /v1/config/prayer-defaults:
+    get:
+      summary: Prayer calculation defaults for a country (ADR-0003 policy channel)
+      operationId: getPrayerDefaults
+      parameters:
+        - name: country
+          in: query
+          schema: { type: string, pattern: "^([A-Za-z]{2}|\\*)$", default: "*" }
+      responses:
+        "200":
+          description: Country defaults with global fallback
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrayerDefaults" }
+        "400": { $ref: "#/components/responses/ApiError" }
+components:
+  parameters:
+    ClientPlatform:
+      name: x-client-platform
+      in: header
+      schema: { type: string, enum: [ios, android] }
+  responses:
+    ApiError:
+      description: Structured error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: object
+                required: [code, message]
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+  schemas:
+    LocaleInfo:
+      type: object
+      required: [locale, display_name, direction, digits]
+      properties:
+        locale: { type: string }
+        display_name: { type: string }
+        direction: { type: string, enum: [ltr, rtl] }
+        digits: { type: string, enum: [western, eastern] }
+    Theme:
+      type: object
+      required: [version, tokens]
+      properties:
+        version: { type: integer }
+        tokens: { type: object, additionalProperties: true }
+    StringPack:
+      type: object
+      required: [locale, version, strings]
+      properties:
+        locale: { type: string }
+        version: { type: integer }
+        strings:
+          type: object
+          additionalProperties: { type: string }
+    HomeLayout:
+      type: object
+      required: [version, sections]
+      properties:
+        version: { type: integer }
+        sections:
+          type: array
+          items:
+            type: object
+            required: [id, type, props]
+            properties:
+              id: { type: string }
+              type: { type: string }
+              props: { type: object, additionalProperties: true }
+    PrayerDefaults:
+      type: object
+      required: [country_code, method, params]
+      properties:
+        country_code: { type: string }
+        method: { type: string }
+        params: { type: object, additionalProperties: true }

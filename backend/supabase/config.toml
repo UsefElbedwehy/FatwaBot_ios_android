@@ -1,0 +1,16 @@
+# Supabase project configuration (local dev + deploy metadata).
+project_id = "fatwabot"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "config", "identity"]
+
+[db]
+port = 54322
+major_version = 15
+
+[functions.api]
+# Client auth is handled by our own JWT middleware (M1); config surface is public-read.
+verify_jwt = false
+entrypoint = "../functions/api/index.ts"
