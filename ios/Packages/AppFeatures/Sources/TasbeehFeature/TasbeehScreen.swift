@@ -28,7 +28,7 @@ public struct TasbeehScreen: View {
         .padding()
         .background(Color(hexToken: tokens.surface))
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     showHistory = true
                 } label: {

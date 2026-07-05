@@ -1,4 +1,5 @@
 import ConfigKit
+import CoreKit
 import Factory
 import Foundation
 import NetworkingKit

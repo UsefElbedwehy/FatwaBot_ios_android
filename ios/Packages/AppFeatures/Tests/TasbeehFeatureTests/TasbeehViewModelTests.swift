@@ -1,4 +1,5 @@
 import XCTest
+import CoreKit
 @testable import TasbeehFeature
 
 final class TasbeehViewModelTests: XCTestCase {

@@ -69,19 +69,6 @@ public struct TasbeehStats: Equatable, Sendable {
     }
 }
 
-/// Haptic feedback boundary — abstracted so the ViewModel is unit-testable
-/// without CoreHaptics/UIKit.
-public protocol HapticsProviding: Sendable {
-    func tick()
-    func targetReached()
-}
-
-public struct NoopHaptics: HapticsProviding {
-    public init() {}
-    public func tick() {}
-    public func targetReached() {}
-}
-
 /// Persistence boundary for history (mirrors ConfigKit.ConfigStoring).
 public protocol TasbeehHistoryStoring: Sendable {
     func load() -> [TasbeehHistoryEntry]
