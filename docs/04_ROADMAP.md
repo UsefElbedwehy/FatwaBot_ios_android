@@ -25,7 +25,7 @@
 - Backend: `/v1/config/prayer-defaults` (per-country method defaults), device registration, anonymous identity (`/v1/auth/anonymous`), **Home layout endpoint `/v1/home` + native section catalog v1** (ADR-0011).
 - Settings v1: calculation method, madhab, adjustments, language, theme — rendered from the backend notification/config catalogs where applicable.
 
-**Exit criteria:** a user in any city gets correct offline prayer times, qibla, adhan notifications, and a working widget — with zero sign-up.
+**Exit criteria:** a user in any city gets correct offline prayer times, qibla, adhan notifications, and a working widget — with zero sign-up. ✅ **Met 2026-07-05** (iOS 41 / Android 26 / backend 16 tests green; both apps build; deploy pending credentials Q8).
 
 ## Milestone 2 — Azkar · Dua · Tasbeeh · Awrad · Hadith Collections (content & worship tools)
 
