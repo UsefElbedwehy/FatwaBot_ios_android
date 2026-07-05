@@ -7,6 +7,7 @@ import { resolveContext } from "./context.ts";
 import { verifyAccessToken } from "./auth/jwt.ts";
 import type { ConfigRepo } from "./types.ts";
 import type { IdentityRepo } from "./identity_types.ts";
+import type { ContentRepo } from "./content_types.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
 import {
   handleConfig,
@@ -15,10 +16,18 @@ import {
   handleStringPack,
   handleTheme,
 } from "./handlers/config.ts";
+import {
+  handleAzkarCollection,
+  handleDuaCollection,
+  handleHadithCollectionDetail,
+  handleHadithCollections,
+  handleWirdTemplates,
+} from "./handlers/content.ts";
 
 export interface Deps {
   repo: ConfigRepo;
   identity: IdentityRepo;
+  content: ContentRepo;
   jwtSecret: string;
 }
 
@@ -61,11 +70,24 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           return await handleHomeLayout(ctx, deps.repo);
         case "/v1/config/prayer-defaults":
           return await handlePrayerDefaults(ctx, deps.repo, url.searchParams.get("country") ?? "*");
+        case "/v1/content/azkar":
+          return await handleAzkarCollection(ctx, deps.content, url.searchParams.get("since_version"));
+        case "/v1/content/duas":
+          return await handleDuaCollection(ctx, deps.content, url.searchParams.get("since_version"));
+        case "/v1/content/hadith-collections":
+          return await handleHadithCollections(ctx, deps.content);
+        case "/v1/content/wird-templates":
+          return await handleWirdTemplates(ctx, deps.content, url.searchParams.get("since_version"));
       }
       const stringsMatch = path.match(/^\/v1\/config\/strings\/([A-Za-z0-9-]{2,20})$/);
       if (stringsMatch) {
         const since = url.searchParams.get("since_version");
         return await handleStringPack(ctx, deps.repo, stringsMatch[1], since ? Number(since) : null);
+      }
+      const hadithDetailMatch = path.match(/^\/v1\/content\/hadith-collections\/([A-Za-z0-9_-]{1,40})$/);
+      if (hadithDetailMatch) {
+        const since = url.searchParams.get("since_version");
+        return await handleHadithCollectionDetail(ctx, deps.content, hadithDetailMatch[1], since);
       }
       // --- authenticated reads ---
       if (path === "/v1/me") {

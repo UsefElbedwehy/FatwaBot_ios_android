@@ -3,12 +3,18 @@ import { route } from "../functions/api/router.ts";
 import { verifyAccessToken } from "../functions/api/auth/jwt.ts";
 import { InMemoryConfigRepo } from "./in_memory_repo.ts";
 import { InMemoryIdentityRepo } from "./in_memory_identity_repo.ts";
+import { InMemoryContentRepo } from "./in_memory_content_repo.ts";
 
 const BASE = "https://x.supabase.co/functions/v1/api";
 const SECRET = "test-secret-please-rotate";
 
 function deps() {
-  return { repo: new InMemoryConfigRepo(), identity: new InMemoryIdentityRepo(), jwtSecret: SECRET };
+  return {
+    repo: new InMemoryConfigRepo(),
+    identity: new InMemoryIdentityRepo(),
+    content: new InMemoryContentRepo(),
+    jwtSecret: SECRET,
+  };
 }
 
 function post(path: string, body: unknown): Request {

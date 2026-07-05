@@ -176,6 +176,87 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PrayerDefaults" }
         "400": { $ref: "#/components/responses/ApiError" }
+  /v1/content/azkar:
+    get:
+      summary: Azkar categories + items, locale-resolved, delta-aware (docs/features/content-pipeline.md)
+      operationId: getAzkarCollection
+      parameters: [ $ref: "#/components/parameters/SinceVersion" ]
+      responses:
+        "200":
+          description: Full collection or up_to_date marker
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AzkarCollection"
+                  - $ref: "#/components/schemas/UpToDate"
+        "400": { $ref: "#/components/responses/ApiError" }
+  /v1/content/duas:
+    get:
+      summary: Dua categories + duas, locale-resolved, delta-aware
+      operationId: getDuaCollection
+      parameters: [ $ref: "#/components/parameters/SinceVersion" ]
+      responses:
+        "200":
+          description: Full collection or up_to_date marker
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/DuaCollection"
+                  - $ref: "#/components/schemas/UpToDate"
+        "400": { $ref: "#/components/responses/ApiError" }
+  /v1/content/hadith-collections:
+    get:
+      summary: Hadith collection summaries (no entries — see the per-collection endpoint)
+      operationId: getHadithCollections
+      responses:
+        "200":
+          description: List of collection summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [collections]
+                properties:
+                  collections:
+                    type: array
+                    items: { $ref: "#/components/schemas/HadithCollectionSummary" }
+  /v1/content/hadith-collections/{slug}:
+    get:
+      summary: Full entries for one hadith collection, delta-aware
+      operationId: getHadithCollectionDetail
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/SinceVersion"
+      responses:
+        "200":
+          description: Collection detail or up_to_date marker
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/HadithCollectionDetail"
+                  - $ref: "#/components/schemas/UpToDate"
+        "404": { $ref: "#/components/responses/ApiError" }
+  /v1/content/wird-templates:
+    get:
+      summary: Guided wird-creation templates, delta-aware
+      operationId: getWirdTemplates
+      parameters: [ $ref: "#/components/parameters/SinceVersion" ]
+      responses:
+        "200":
+          description: Full template list or up_to_date marker
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/WirdTemplatesCollection"
+                  - $ref: "#/components/schemas/UpToDate"
+        "400": { $ref: "#/components/responses/ApiError" }
 components:
   securitySchemes:
     bearerAuth:
@@ -187,6 +268,10 @@ components:
       name: x-client-platform
       in: header
       schema: { type: string, enum: [ios, android] }
+    SinceVersion:
+      name: since_version
+      in: query
+      schema: { type: integer }
   responses:
     ApiError:
       description: Structured error
@@ -264,3 +349,119 @@ components:
         access_token: { type: string }
         expires_in: { type: integer, description: "Access token TTL in seconds" }
         refresh_token: { type: string, description: "Opaque, single-use" }
+    UpToDate:
+      type: object
+      required: [up_to_date]
+      properties:
+        up_to_date: { type: boolean, enum: [true] }
+    AzkarItem:
+      type: object
+      required: [id, sortOrder, arabicText, source, repeatCount]
+      properties:
+        id: { type: string, format: uuid }
+        sortOrder: { type: integer }
+        arabicText: { type: string }
+        transliteration: { type: [string, "null"] }
+        translation: { type: [string, "null"] }
+        virtueNote: { type: [string, "null"] }
+        source: { type: string }
+        repeatCount: { type: integer }
+    AzkarCategory:
+      type: object
+      required: [id, slug, name, sortOrder, items]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        sortOrder: { type: integer }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AzkarItem" }
+    AzkarCollection:
+      type: object
+      required: [version, categories]
+      properties:
+        version: { type: integer }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/AzkarCategory" }
+    Dua:
+      type: object
+      required: [id, sortOrder, title, arabicText, source]
+      properties:
+        id: { type: string, format: uuid }
+        sortOrder: { type: integer }
+        title: { type: string }
+        arabicText: { type: string }
+        transliteration: { type: [string, "null"] }
+        translation: { type: [string, "null"] }
+        source: { type: string }
+    DuaCategory:
+      type: object
+      required: [id, slug, name, sortOrder, duas]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        sortOrder: { type: integer }
+        duas:
+          type: array
+          items: { $ref: "#/components/schemas/Dua" }
+    DuaCollection:
+      type: object
+      required: [version, categories]
+      properties:
+        version: { type: integer }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/DuaCategory" }
+    HadithCollectionSummary:
+      type: object
+      required: [id, slug, name, description, entryCount]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: string }
+        entryCount: { type: integer }
+    HadithEntry:
+      type: object
+      required: [id, number, arabicText, grading, source]
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: integer }
+        arabicText: { type: string }
+        translation: { type: [string, "null"] }
+        grading: { type: string }
+        benefitNote: { type: [string, "null"] }
+        source: { type: string }
+    HadithCollectionDetail:
+      type: object
+      required: [version, slug, name, description, entries]
+      properties:
+        version: { type: integer }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: string }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/HadithEntry" }
+    WirdTemplate:
+      type: object
+      required: [id, name, description, type, defaultTarget, defaultUnit, defaultFrequency]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        type: { type: string }
+        defaultTarget: { type: integer }
+        defaultUnit: { type: string }
+        defaultFrequency: { type: string }
+    WirdTemplatesCollection:
+      type: object
+      required: [version, templates]
+      properties:
+        version: { type: integer }
+        templates:
+          type: array
+          items: { $ref: "#/components/schemas/WirdTemplate" }
