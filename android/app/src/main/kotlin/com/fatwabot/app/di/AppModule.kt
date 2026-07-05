@@ -1,12 +1,20 @@
 package com.fatwabot.app.di
 
+import android.content.Context
 import com.fatwabot.app.location.SystemLocationProvider
+import com.fatwabot.core.config.ConfigService
+import com.fatwabot.core.config.FileConfigStore
+import com.fatwabot.core.network.ApiClient
+import com.fatwabot.core.network.ApiClientProtocol
+import com.fatwabot.core.network.ClientContext
 import com.fatwabot.feature.prayer.LocationProviding
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import java.util.Locale
 import javax.inject.Singleton
 import kotlinx.datetime.Clock
 
@@ -20,5 +28,28 @@ abstract class AppModule {
     companion object {
         @Provides
         fun provideClock(): Clock = Clock.System
+
+        @Provides
+        @Singleton
+        fun provideApiClient(): ApiClientProtocol = ApiClient(
+            // Placeholder until the Supabase project exists (OPEN_QUESTIONS Q8);
+            // offline-first means the app is fully functional without it.
+            baseUrl = "https://api.invalid/functions/v1/api",
+            context = ClientContext(
+                appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
+                locale = Locale.getDefault().language,
+            ),
+        )
+
+        @Provides
+        @Singleton
+        fun provideConfigService(
+            @ApplicationContext context: Context,
+            client: ApiClientProtocol,
+        ): ConfigService = ConfigService(
+            store = FileConfigStore(context.filesDir),
+            client = client,
+            nowEpochSeconds = { System.currentTimeMillis() / 1000 },
+        )
     }
 }

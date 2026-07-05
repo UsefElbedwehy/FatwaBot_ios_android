@@ -24,8 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fatwabot.app.BuildConfig
 import com.fatwabot.feature.home.HomeHeroContent
 import com.fatwabot.feature.home.HomeScreen
+import com.fatwabot.feature.home.HomeViewModel
 import com.fatwabot.feature.prayer.CityPicker
 import com.fatwabot.feature.prayer.PrayerScreen
 import com.fatwabot.feature.prayer.PrayerViewModel
@@ -41,6 +43,8 @@ fun RootScaffold() {
     var selected by rememberSaveable { mutableStateOf(AppTab.HOME) }
     val prayerViewModel: PrayerViewModel = hiltViewModel()
     val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
+    val homeViewModel: HomeViewModel = hiltViewModel()
+    val homeState by homeViewModel.state.collectAsStateWithLifecycle()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -48,6 +52,7 @@ fun RootScaffold() {
 
     LaunchedEffect(Unit) {
         permissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+        homeViewModel.refresh(BuildConfig.VERSION_NAME, listOf("ar", "en"))
     }
 
     Scaffold(
@@ -67,7 +72,7 @@ fun RootScaffold() {
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selected) {
-                AppTab.HOME -> HomeTab(prayerViewModel, prayerState)
+                AppTab.HOME -> HomeTab(prayerViewModel, prayerState, homeState)
                 AppTab.WORSHIP -> PrayerScreen(prayerViewModel)
                 AppTab.JOURNEY, AppTab.SETTINGS -> ComingSoon(selected)
             }
@@ -76,7 +81,11 @@ fun RootScaffold() {
 }
 
 @Composable
-private fun HomeTab(viewModel: PrayerViewModel, state: PrayerViewModel.UiState) {
+private fun HomeTab(
+    viewModel: PrayerViewModel,
+    state: PrayerViewModel.UiState,
+    homeState: HomeViewModel.UiState,
+) {
     if (state.needsLocation) {
         CityPicker(onSelect = viewModel::selectCity)
         return
@@ -92,8 +101,8 @@ private fun HomeTab(viewModel: PrayerViewModel, state: PrayerViewModel.UiState) 
         }
     }
     HomeScreen(
-        layout = null, // server layout arrives with Android ConfigSync (follow-up in this milestone)
-        askEnabled = false,
+        layout = homeState.layout,
+        askEnabled = homeState.askEnabled,
         hero = hero,
         formatTime = ::formatTime,
         prayerTitle = { stringResource(it.titleRes()) },

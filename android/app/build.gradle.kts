@@ -34,6 +34,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -43,6 +44,8 @@ dependencies {
     implementation(project(":core:prayer"))
     implementation(project(":feature:home"))
     implementation(project(":feature:prayer"))
+    implementation(project(":core:config"))
+    implementation(project(":core:network"))
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)

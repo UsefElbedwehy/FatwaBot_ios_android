@@ -14,7 +14,12 @@ data class AppConfig(
     val locales: List<LocaleInfo>,
 ) {
     @Serializable
-    data class Flag(val enabled: Boolean, val rollout: JsonObject? = null)
+    data class Flag(val enabled: Boolean, val rollout: Rollout? = null) {
+        @Serializable
+        data class Rollout(
+            @SerialName("min_app_version") val minAppVersion: String? = null,
+        )
+    }
 
     fun isEnabled(flag: String): Boolean = flags[flag]?.enabled ?: false
 }
