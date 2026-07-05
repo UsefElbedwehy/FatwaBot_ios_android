@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "slug": "nawawi40",
+  "name": "The Forty Hadith of an-Nawawi",
+  "description": "Forty hadith on the foundations of the faith, compiled by Imam an-Nawawi",
+  "entries": [
+    {
+      "id": "00000000-0000-4000-a000-000000002001",
+      "number": 1,
+      "arabicText": "إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى، فَمَنْ كَانَتْ هِجْرَتُهُ إِلَى اللَّهِ وَرَسُولِهِ فَهِجْرَتُهُ إِلَى اللَّهِ وَرَسُولِهِ، وَمَنْ كَانَتْ هِجْرَتُهُ لِدُنْيَا يُصِيبُهَا أَوِ امْرَأَةٍ يَنْكِحُهَا فَهِجْرَتُهُ إِلَى مَا هَاجَرَ إِلَيْهِ",
+      "translation": "Actions are but by intentions, and every man shall have only that which he intended. Thus, he whose migration was for Allah and His Messenger, his migration was for Allah and His Messenger; and he whose migration was to achieve some worldly benefit or to take some woman in marriage, his migration was for that for which he migrated.",
+      "grading": "متفق عليه",
+      "benefitNote": "Deeds are not accepted or rewarded except with sincere intention for Allah alone; every person is judged by their intention, which is the spirit of worship.",
+      "source": "رواه البخاري ومسلم"
+    },
+    {
+      "id": "00000000-0000-4000-a000-000000002002",
+      "number": 3,
+      "arabicText": "بُنِيَ الإِسْلاَمُ عَلَى خَمْسٍ: شَهَادَةِ أَنْ لاَ إِلَهَ إِلاَّ اللَّهُ وَأَنَّ مُحَمَّدًا رَسُولُ اللَّهِ، وَإِقَامِ الصَّلاَةِ، وَإِيتَاءِ الزَّكَاةِ، وَحَجِّ الْبَيْتِ، وَصَوْمِ رَمَضَانَ",
+      "translation": "Islam is built upon five pillars: testifying that there is no god but Allah and that Muhammad is the Messenger of Allah, establishing prayer, paying zakah, making pilgrimage to the House, and fasting Ramadan.",
+      "grading": "متفق عليه",
+      "benefitNote": "These five pillars are the practical foundation of Islam; whoever upholds them has established their faith.",
+      "source": "رواه البخاري ومسلم"
+    },
+    {
+      "id": "00000000-0000-4000-a000-000000002003",
+      "number": 13,
+      "arabicText": "لاَ يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ",
+      "translation": "None of you truly believes until he loves for his brother what he loves for himself.",
+      "grading": "متفق عليه",
+      "benefitNote": "A great principle of brotherhood in faith, calling one to remove selfishness and envy from the heart.",
+      "source": "رواه البخاري ومسلم"
+    }
+  ]
+}

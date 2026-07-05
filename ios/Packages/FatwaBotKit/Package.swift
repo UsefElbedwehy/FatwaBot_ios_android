@@ -12,6 +12,7 @@ let package = Package(
         .library(name: "NetworkingKit", targets: ["NetworkingKit"]),
         .library(name: "DesignSystemKit", targets: ["DesignSystemKit"]),
         .library(name: "ConfigKit", targets: ["ConfigKit"]),
+        .library(name: "ContentKit", targets: ["ContentKit"]),
     ],
     targets: [
         .target(
@@ -33,7 +34,14 @@ let package = Package(
             dependencies: ["CoreKit", "NetworkingKit"],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
+        .target(
+            name: "ContentKit",
+            dependencies: ["CoreKit", "NetworkingKit"],
+            resources: [.copy("Resources")],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+        ),
         .testTarget(name: "ConfigKitTests", dependencies: ["ConfigKit"]),
+        .testTarget(name: "ContentKitTests", dependencies: ["ContentKit"]),
         .testTarget(name: "CoreKitTests", dependencies: ["CoreKit"]),
         .testTarget(name: "NetworkingKitTests", dependencies: ["NetworkingKit"]),
         .testTarget(name: "DesignSystemKitTests", dependencies: ["DesignSystemKit"]),

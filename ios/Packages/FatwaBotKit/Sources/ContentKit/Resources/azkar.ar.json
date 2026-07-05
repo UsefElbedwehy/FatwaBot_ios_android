@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "00000000-0000-4000-a000-000000000001",
+      "slug": "morning",
+      "sortOrder": 0,
+      "name": "أذكار الصباح",
+      "items": [
+        {
+          "id": "00000000-0000-4000-a000-000000000101",
+          "sortOrder": 0,
+          "arabicText": "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لاَ إِلَهَ إِلاَّ اللَّهُ وَحْدَهُ لاَ شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه مسلم",
+          "repeatCount": 1
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000102",
+          "sortOrder": 1,
+          "arabicText": "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ وَإِلَيْكَ النُّشُورُ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه الترمذي",
+          "repeatCount": 1
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000103",
+          "sortOrder": 2,
+          "arabicText": "سَيِّدُ الاِسْتِغْفَارِ: اللَّهُمَّ أَنْتَ رَبِّي لاَ إِلَهَ إِلاَّ أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي، فَإِنَّهُ لاَ يَغْفِرُ الذُّنُوبَ إِلاَّ أَنْتَ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه البخاري",
+          "repeatCount": 1
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000104",
+          "sortOrder": 3,
+          "arabicText": "حَسْبِيَ اللَّهُ لاَ إِلَهَ إِلاَّ هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه أبو داود",
+          "repeatCount": 7
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000105",
+          "sortOrder": 4,
+          "arabicText": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه مسلم",
+          "repeatCount": 100
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-a000-000000000002",
+      "slug": "evening",
+      "sortOrder": 1,
+      "name": "أذكار المساء",
+      "items": [
+        {
+          "id": "00000000-0000-4000-a000-000000000201",
+          "sortOrder": 0,
+          "arabicText": "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لاَ إِلَهَ إِلاَّ اللَّهُ وَحْدَهُ لاَ شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه مسلم",
+          "repeatCount": 1
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000202",
+          "sortOrder": 1,
+          "arabicText": "اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ وَإِلَيْكَ الْمَصِيرُ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه الترمذي",
+          "repeatCount": 1
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000203",
+          "sortOrder": 2,
+          "arabicText": "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه مسلم",
+          "repeatCount": 3
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-a000-000000000003",
+      "slug": "after_prayer",
+      "sortOrder": 2,
+      "name": "أذكار بعد الصلاة",
+      "items": [
+        {
+          "id": "00000000-0000-4000-a000-000000000301",
+          "sortOrder": 0,
+          "arabicText": "أَسْتَغْفِرُ اللَّهَ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه مسلم",
+          "repeatCount": 3
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000302",
+          "sortOrder": 1,
+          "arabicText": "اللَّهُمَّ أَنْتَ السَّلاَمُ وَمِنْكَ السَّلاَمُ، تَبَارَكْتَ يَا ذَا الْجَلاَلِ وَالإِكْرَامِ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه مسلم",
+          "repeatCount": 1
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000303",
+          "sortOrder": 2,
+          "arabicText": "سُبْحَانَ اللَّهِ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه البخاري ومسلم",
+          "repeatCount": 33
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000304",
+          "sortOrder": 3,
+          "arabicText": "الْحَمْدُ لِلَّهِ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه البخاري ومسلم",
+          "repeatCount": 33
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000305",
+          "sortOrder": 4,
+          "arabicText": "اللَّهُ أَكْبَرُ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه البخاري ومسلم",
+          "repeatCount": 33
+        },
+        {
+          "id": "00000000-0000-4000-a000-000000000306",
+          "sortOrder": 5,
+          "arabicText": "لاَ إِلَهَ إِلاَّ اللَّهُ وَحْدَهُ لاَ شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+          "transliteration": null,
+          "translation": null,
+          "virtueNote": null,
+          "source": "رواه البخاري ومسلم",
+          "repeatCount": 1
+        }
+      ]
+    }
+  ]
+}

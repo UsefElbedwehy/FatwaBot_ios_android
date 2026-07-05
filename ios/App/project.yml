@@ -20,7 +20,7 @@ targets:
     sources: [Sources]
     dependencies:
       - package: FatwaBotKit
-        products: [CoreKit, NetworkingKit, DesignSystemKit, ConfigKit]
+        products: [CoreKit, NetworkingKit, DesignSystemKit, ConfigKit, ContentKit]
       - package: PrayerKit
         products: [PrayerKit]
       - package: AppFeatures

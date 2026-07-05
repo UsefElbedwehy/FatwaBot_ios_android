@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "00000000-0000-4000-a000-000000003001",
+      "type": "salawat",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "Sending Blessings on the Prophet",
+      "description": "A daily wird of sending blessings upon the Prophet"
+    },
+    {
+      "id": "00000000-0000-4000-a000-000000003002",
+      "type": "quran_reading",
+      "defaultTarget": 5,
+      "defaultUnit": "pages",
+      "defaultFrequency": "daily",
+      "name": "Quran Recitation",
+      "description": "A daily wird of Quran reading"
+    },
+    {
+      "id": "00000000-0000-4000-a000-000000003003",
+      "type": "istighfar",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "Seeking Forgiveness",
+      "description": "A daily wird of seeking Allah's forgiveness"
+    }
+  ]
+}
