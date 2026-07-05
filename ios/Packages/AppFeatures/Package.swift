@@ -10,6 +10,7 @@ let package = Package(
     products: [
         .library(name: "PrayerFeature", targets: ["PrayerFeature"]),
         .library(name: "HomeFeature", targets: ["HomeFeature"]),
+        .library(name: "TasbeehFeature", targets: ["TasbeehFeature"]),
     ],
     dependencies: [
         .package(path: "../FatwaBotKit"),
@@ -39,7 +40,17 @@ let package = Package(
             ],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
+        .target(
+            name: "TasbeehFeature",
+            dependencies: [
+                .product(name: "CoreKit", package: "FatwaBotKit"),
+                .product(name: "DesignSystemKit", package: "FatwaBotKit"),
+                .product(name: "Factory", package: "Factory"),
+            ],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+        ),
         .testTarget(name: "PrayerFeatureTests", dependencies: ["PrayerFeature"]),
         .testTarget(name: "HomeFeatureTests", dependencies: ["HomeFeature"]),
+        .testTarget(name: "TasbeehFeatureTests", dependencies: ["TasbeehFeature"]),
     ]
 )

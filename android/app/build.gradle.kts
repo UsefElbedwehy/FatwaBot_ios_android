@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":core:config"))
     implementation(project(":core:network"))
     implementation(project(":widget"))
+    implementation(project(":feature:tasbeeh"))
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
@@ -56,6 +57,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization.json)

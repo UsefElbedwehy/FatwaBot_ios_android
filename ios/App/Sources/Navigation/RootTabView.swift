@@ -5,6 +5,7 @@ import HomeFeature
 import PrayerFeature
 import PrayerKit
 import SwiftUI
+import TasbeehFeature
 
 struct RootTabView: View {
     @Environment(ThemeStore.self) private var theme
@@ -107,9 +108,15 @@ struct WorshipTabView: View {
                     Label("worship.qibla", systemImage: "safari")
                 }
             }
+            NavigationLink {
+                TasbeehScreen(viewModel: Container.shared.tasbeehViewModel())
+                    .navigationTitle(Text("worship.tasbeeh"))
+                    .navigationBarTitleDisplayMode(.inline)
+            } label: {
+                Label("worship.tasbeeh", systemImage: "circle.grid.3x3")
+            }
             Section {
                 Label("worship.azkar", systemImage: "book.closed")
-                Label("worship.tasbeeh", systemImage: "circle.grid.3x3")
             } header: {
                 Text("common.coming_soon")
             }

@@ -29,7 +29,6 @@ import com.fatwabot.feature.home.HomeHeroContent
 import com.fatwabot.feature.home.HomeScreen
 import com.fatwabot.feature.home.HomeViewModel
 import com.fatwabot.feature.prayer.CityPicker
-import com.fatwabot.feature.prayer.PrayerScreen
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.formatTime
 import com.fatwabot.feature.prayer.titleRes
@@ -79,7 +78,7 @@ fun RootScaffold() {
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selected) {
                 AppTab.HOME -> HomeTab(prayerViewModel, prayerState, homeState)
-                AppTab.WORSHIP -> PrayerScreen(prayerViewModel)
+                AppTab.WORSHIP -> WorshipTab(prayerViewModel)
                 AppTab.JOURNEY, AppTab.SETTINGS -> ComingSoon(selected)
             }
         }

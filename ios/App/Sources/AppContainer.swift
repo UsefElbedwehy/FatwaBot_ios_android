@@ -4,6 +4,7 @@ import Foundation
 import NetworkingKit
 import PrayerFeature
 import PrayerKit
+import TasbeehFeature
 import WidgetKit
 
 /// Composition root (ADR-0006). Feature code receives dependencies; only this
@@ -63,6 +64,17 @@ extension Container {
                 scheduler: self.notificationScheduler(),
                 widgetStore: self.widgetStore(),
                 reloadWidgets: { WidgetCenter.shared.reloadAllTimelines() }
+            )
+        }
+        .singleton
+    }
+
+    @MainActor
+    var tasbeehViewModel: Factory<TasbeehViewModel> {
+        self { @MainActor in
+            TasbeehViewModel(
+                haptics: SystemHaptics(),
+                store: FileTasbeehHistoryStore(directory: AppEnvironment.sharedContainerURL)
             )
         }
         .singleton

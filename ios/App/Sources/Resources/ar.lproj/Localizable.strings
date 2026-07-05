@@ -56,3 +56,15 @@
 "notif.pre_adhan.title.maghrib" = "اقترب موعد أذان المغرب";
 "notif.pre_adhan.title.isha" = "اقترب موعد أذان العشاء";
 "notif.pre_adhan.body" = "استعدّ للصلاة";
+"tasbeeh.target %lld" = "الهدف: %lld";
+"tasbeeh.custom" = "مخصص";
+"tasbeeh.custom_placeholder" = "اكتب ذكرك الخاص";
+"tasbeeh.tap_target_a11y" = "عداد التسبيح، اضغط للعد";
+"tasbeeh.reset_confirm_title" = "هل تريد إعادة التعيين؟ سيتم فقدان العدد الحالي";
+"tasbeeh.reset_confirm_action" = "إعادة التعيين";
+"tasbeeh.complete_set" = "إنهاء الجولة";
+"tasbeeh.history_title" = "سجل التسبيح";
+"tasbeeh.stats.total" = "الإجمالي";
+"tasbeeh.stats.sets" = "الجولات المكتملة";
+"common.reset" = "إعادة";
+"common.done" = "تم";

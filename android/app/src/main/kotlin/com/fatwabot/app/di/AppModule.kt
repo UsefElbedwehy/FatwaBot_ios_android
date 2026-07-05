@@ -14,7 +14,11 @@ import com.fatwabot.core.prayer.WidgetSnapshotStore
 import com.fatwabot.feature.prayer.LocationProviding
 import com.fatwabot.feature.prayer.PrayerNotificationScheduler
 import com.fatwabot.feature.prayer.PrayerViewModel
+import com.fatwabot.app.tasbeeh.SystemHaptics
 import com.fatwabot.feature.prayer.notificationString
+import com.fatwabot.feature.tasbeeh.FileTasbeehHistoryStore
+import com.fatwabot.feature.tasbeeh.HapticsProviding
+import com.fatwabot.feature.tasbeeh.TasbeehHistoryStoring
 import com.fatwabot.widget.HijriDateWidget
 import com.fatwabot.widget.NextPrayerWidget
 import com.fatwabot.widget.WidgetSnapshotAccess
@@ -84,6 +88,15 @@ abstract class AppModule {
             context = context,
             stringProvider = { key -> notificationString(context, key) },
         )
+
+        @Provides
+        fun provideHaptics(@ApplicationContext context: Context): HapticsProviding = SystemHaptics(context)
+
+        @Provides
+        @Singleton
+        fun provideTasbeehHistoryStore(
+            @ApplicationContext context: Context,
+        ): TasbeehHistoryStoring = FileTasbeehHistoryStore(File(context.filesDir, "tasbeeh-history.json"))
 
         @Provides
         @Singleton

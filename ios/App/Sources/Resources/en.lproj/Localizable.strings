@@ -56,3 +56,15 @@
 "notif.pre_adhan.title.maghrib" = "Maghrib is approaching";
 "notif.pre_adhan.title.isha" = "Isha is approaching";
 "notif.pre_adhan.body" = "Prepare for prayer";
+"tasbeeh.target %lld" = "Target: %lld";
+"tasbeeh.custom" = "Custom";
+"tasbeeh.custom_placeholder" = "Type your own dhikr";
+"tasbeeh.tap_target_a11y" = "Tasbeeh counter, tap to count";
+"tasbeeh.reset_confirm_title" = "Reset? The current count will be lost";
+"tasbeeh.reset_confirm_action" = "Reset";
+"tasbeeh.complete_set" = "Finish Set";
+"tasbeeh.history_title" = "Tasbeeh History";
+"tasbeeh.stats.total" = "Total";
+"tasbeeh.stats.sets" = "Sets Completed";
+"common.reset" = "Reset";
+"common.done" = "Done";
