@@ -54,9 +54,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app.widgets
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: 1
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: "Fatwa Bot"
-        INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ../Widgets/Support/Info.plist
         SWIFT_VERSION: "5.10"
         TARGETED_DEVICE_FAMILY: "1,2"
         DEVELOPMENT_TEAM: ""
