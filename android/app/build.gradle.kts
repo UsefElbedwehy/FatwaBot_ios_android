@@ -46,6 +46,7 @@ dependencies {
     implementation(project(":feature:prayer"))
     implementation(project(":core:config"))
     implementation(project(":core:network"))
+    implementation(project(":widget"))
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
@@ -59,6 +60,7 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.datetime)
+    implementation(libs.glance.appwidget)
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)

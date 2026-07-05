@@ -24,6 +24,8 @@ public final class PrayerViewModel {
     private let locationProvider: LocationProviding
     private let scheduler: PrayerNotificationScheduling?
     private let notificationPreferences: PrayerNotificationPreferences
+    private let widgetStore: WidgetSnapshotStore?
+    private let reloadWidgets: (@Sendable () -> Void)?
     private let now: @Sendable () -> Date
     private let calendar: Calendar
 
@@ -32,6 +34,8 @@ public final class PrayerViewModel {
         locationProvider: LocationProviding,
         scheduler: PrayerNotificationScheduling? = nil,
         notificationPreferences: PrayerNotificationPreferences = PrayerNotificationPreferences(),
+        widgetStore: WidgetSnapshotStore? = nil,
+        reloadWidgets: (@Sendable () -> Void)? = nil,
         settings: PrayerSettings = PrayerSettings(),
         now: @escaping @Sendable () -> Date = { Date() },
         calendar: Calendar = .current
@@ -40,6 +44,8 @@ public final class PrayerViewModel {
         self.locationProvider = locationProvider
         self.scheduler = scheduler
         self.notificationPreferences = notificationPreferences
+        self.widgetStore = widgetStore
+        self.reloadWidgets = reloadWidgets
         self.settings = settings
         self.now = now
         self.calendar = calendar
@@ -114,5 +120,25 @@ public final class PrayerViewModel {
         tomorrow = days[1]
         nextPrayer = PrayerEngine.nextPrayer(now: currentDate, today: days[0], tomorrow: days[1])
         hijri = HijriDate(from: currentDate, offsetDays: settings.hijriOffsetDays)
+        writeWidgetSnapshot(location: location, from: todayComponents)
+    }
+
+    /// Precomputes a 48h widget snapshot into the app-group store so widget
+    /// processes render with zero network (docs/features/prayer.md).
+    private func writeWidgetSnapshot(location: UserLocation, from startComponents: DateComponents) {
+        guard let widgetStore else { return }
+        let currentDate = now()
+        guard let widgetTimeline = try? engine.timeline(
+            latitude: location.latitude, longitude: location.longitude,
+            startDate: startComponents, days: 3, settings: settings, calendar: calendar
+        ) else { return }
+        let snapshot = PrayerWidgetSnapshot.build(
+            timeline: widgetTimeline,
+            location: location.name,
+            hijri: HijriDate(from: currentDate, offsetDays: settings.hijriOffsetDays),
+            generatedAt: currentDate
+        )
+        widgetStore.write(snapshot)
+        reloadWidgets?()
     }
 }

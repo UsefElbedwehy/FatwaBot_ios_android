@@ -1,0 +1,14 @@
+"home.next_prayer" = "Next prayer";
+"prayer.fajr" = "Fajr";
+"prayer.sunrise" = "Sunrise";
+"prayer.dhuhr" = "Dhuhr";
+"prayer.asr" = "Asr";
+"prayer.maghrib" = "Maghrib";
+"prayer.isha" = "Isha";
+"widget.next_prayer.name" = "Next Prayer";
+"widget.next_prayer.desc" = "Time remaining until the next prayer";
+"widget.timeline.name" = "Prayer Times";
+"widget.timeline.desc" = "Today's prayer schedule";
+"widget.hijri.name" = "Hijri Date";
+"widget.hijri.desc" = "The current Hijri date";
+"widget.open_app" = "Open the app to see times";

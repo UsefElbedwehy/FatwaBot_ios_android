@@ -1,11 +1,10 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
-    namespace = "com.fatwabot.core.prayer"
+    namespace = "com.fatwabot.widget"
     compileSdk = 35
 
     defaultConfig {
@@ -21,8 +20,8 @@ android {
 }
 
 dependencies {
-    implementation(libs.adhan2)
+    implementation(project(":core:prayer"))
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
     implementation(libs.kotlinx.datetime)
-    implementation(libs.kotlinx.serialization.json)
-    testImplementation(libs.junit)
 }

@@ -4,6 +4,7 @@ import Foundation
 import NetworkingKit
 import PrayerFeature
 import PrayerKit
+import WidgetKit
 
 /// Composition root (ADR-0006). Feature code receives dependencies; only this
 /// file knows concrete wiring. Test overrides via Container scopes.
@@ -46,12 +47,22 @@ extension Container {
         .singleton
     }
 
+    var widgetStore: Factory<WidgetSnapshotStore?> {
+        self {
+            FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: "group.com.fatwabot.app")
+                .map { WidgetSnapshotStore(appGroupContainer: $0) }
+        }
+    }
+
     @MainActor
     var prayerViewModel: Factory<PrayerViewModel> {
         self { @MainActor in
             PrayerViewModel(
                 locationProvider: self.locationProvider(),
-                scheduler: self.notificationScheduler()
+                scheduler: self.notificationScheduler(),
+                widgetStore: self.widgetStore(),
+                reloadWidgets: { WidgetCenter.shared.reloadAllTimelines() }
             )
         }
         .singleton

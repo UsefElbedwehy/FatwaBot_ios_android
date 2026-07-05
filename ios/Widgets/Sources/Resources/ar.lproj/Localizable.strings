@@ -1,0 +1,14 @@
+"home.next_prayer" = "الصلاة القادمة";
+"prayer.fajr" = "الفجر";
+"prayer.sunrise" = "الشروق";
+"prayer.dhuhr" = "الظهر";
+"prayer.asr" = "العصر";
+"prayer.maghrib" = "المغرب";
+"prayer.isha" = "العشاء";
+"widget.next_prayer.name" = "الصلاة القادمة";
+"widget.next_prayer.desc" = "الوقت المتبقي للصلاة القادمة";
+"widget.timeline.name" = "أوقات الصلاة";
+"widget.timeline.desc" = "مواقيت صلوات اليوم";
+"widget.hijri.name" = "التاريخ الهجري";
+"widget.hijri.desc" = "التاريخ الهجري الحالي";
+"widget.open_app" = "افتح التطبيق لعرض الأوقات";

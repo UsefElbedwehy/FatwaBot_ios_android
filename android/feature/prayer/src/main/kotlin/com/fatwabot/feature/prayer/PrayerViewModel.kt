@@ -8,6 +8,8 @@ import com.fatwabot.core.prayer.PrayerDayUi
 import com.fatwabot.core.prayer.PrayerEngine
 import com.fatwabot.core.prayer.PrayerNotificationPreferences
 import com.fatwabot.core.prayer.PrayerSettings
+import com.fatwabot.core.prayer.PrayerWidgetSnapshot
+import com.fatwabot.core.prayer.WidgetSnapshotStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import java.time.ZoneId
@@ -26,7 +28,14 @@ class PrayerViewModel @Inject constructor(
     private val clock: Clock,
     private val scheduler: PrayerNotificationScheduler?,
     private val notificationPreferences: PrayerNotificationPreferences,
+    private val widgetStore: WidgetSnapshotStore?,
+    private val onWidgetSnapshotWritten: WidgetRefresh?,
 ) : ViewModel() {
+
+    /** App-supplied hook to trigger Glance updateAll after a new snapshot. */
+    fun interface WidgetRefresh {
+        fun refresh()
+    }
 
     data class UiState(
         val needsLocation: Boolean = false,
@@ -131,5 +140,26 @@ class PrayerViewModel @Inject constructor(
             nextPrayer = PrayerEngine.nextPrayer(clock.now(), days[0], days[1]),
             hijri = HijriDateUi.from(today, settings.clampedHijriOffset),
         )
+        writeWidgetSnapshot(location, today, settings)
+    }
+
+    /** Precomputes a 48h widget snapshot into the shared store (parity with iOS). */
+    private fun writeWidgetSnapshot(location: UserLocation, today: LocalDate, settings: PrayerSettings) {
+        val store = widgetStore ?: return
+        val timeline = runCatching {
+            engine.timeline(
+                location.latitude, location.longitude,
+                today.year, today.monthValue, today.dayOfMonth,
+                days = 3, settings = settings,
+            )
+        }.getOrNull() ?: return
+        val snapshot = PrayerWidgetSnapshot.build(
+            timeline = timeline,
+            location = location.name,
+            hijri = HijriDateUi.from(today, settings.clampedHijriOffset),
+            generatedAtEpochSeconds = clock.now().epochSeconds,
+        )
+        store.write(snapshot)
+        onWidgetSnapshotWritten?.refresh()
     }
 }

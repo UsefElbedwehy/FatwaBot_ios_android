@@ -7,11 +7,22 @@ import com.fatwabot.core.config.FileConfigStore
 import com.fatwabot.core.network.ApiClient
 import com.fatwabot.core.network.ApiClientProtocol
 import com.fatwabot.core.network.ClientContext
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.updateAll
 import com.fatwabot.core.prayer.PrayerNotificationPreferences
+import com.fatwabot.core.prayer.WidgetSnapshotStore
 import com.fatwabot.feature.prayer.LocationProviding
 import com.fatwabot.feature.prayer.PrayerNotificationScheduler
+import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.notificationString
+import com.fatwabot.widget.HijriDateWidget
+import com.fatwabot.widget.NextPrayerWidget
+import com.fatwabot.widget.WidgetSnapshotAccess
 import dagger.Binds
+import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -47,6 +58,23 @@ abstract class AppModule {
         @Provides
         fun provideNotificationPreferences(): PrayerNotificationPreferences =
             PrayerNotificationPreferences()
+
+        @Provides
+        @Singleton
+        fun provideWidgetStore(
+            @ApplicationContext context: Context,
+        ): WidgetSnapshotStore =
+            WidgetSnapshotStore(File(context.filesDir, WidgetSnapshotAccess.FILE_NAME))
+
+        @Provides
+        fun provideWidgetRefresh(
+            @ApplicationContext context: Context,
+        ): PrayerViewModel.WidgetRefresh = PrayerViewModel.WidgetRefresh {
+            CoroutineScope(Dispatchers.Default).launch {
+                NextPrayerWidget().updateAll(context)
+                HijriDateWidget().updateAll(context)
+            }
+        }
 
         @Provides
         @Singleton
