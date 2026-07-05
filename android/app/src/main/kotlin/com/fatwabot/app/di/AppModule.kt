@@ -7,7 +7,10 @@ import com.fatwabot.core.config.FileConfigStore
 import com.fatwabot.core.network.ApiClient
 import com.fatwabot.core.network.ApiClientProtocol
 import com.fatwabot.core.network.ClientContext
+import com.fatwabot.core.prayer.PrayerNotificationPreferences
 import com.fatwabot.feature.prayer.LocationProviding
+import com.fatwabot.feature.prayer.PrayerNotificationScheduler
+import com.fatwabot.feature.prayer.notificationString
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -39,6 +42,19 @@ abstract class AppModule {
                 appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
                 locale = Locale.getDefault().language,
             ),
+        )
+
+        @Provides
+        fun provideNotificationPreferences(): PrayerNotificationPreferences =
+            PrayerNotificationPreferences()
+
+        @Provides
+        @Singleton
+        fun provideNotificationScheduler(
+            @ApplicationContext context: Context,
+        ): PrayerNotificationScheduler = PrayerNotificationScheduler(
+            context = context,
+            stringProvider = { key -> notificationString(context, key) },
         )
 
         @Provides

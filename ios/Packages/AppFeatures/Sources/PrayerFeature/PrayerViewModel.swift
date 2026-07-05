@@ -22,18 +22,24 @@ public final class PrayerViewModel {
 
     private let engine: PrayerEngine
     private let locationProvider: LocationProviding
+    private let scheduler: PrayerNotificationScheduling?
+    private let notificationPreferences: PrayerNotificationPreferences
     private let now: @Sendable () -> Date
     private let calendar: Calendar
 
     public init(
         engine: PrayerEngine = PrayerEngine(),
         locationProvider: LocationProviding,
+        scheduler: PrayerNotificationScheduling? = nil,
+        notificationPreferences: PrayerNotificationPreferences = PrayerNotificationPreferences(),
         settings: PrayerSettings = PrayerSettings(),
         now: @escaping @Sendable () -> Date = { Date() },
         calendar: Calendar = .current
     ) {
         self.engine = engine
         self.locationProvider = locationProvider
+        self.scheduler = scheduler
+        self.notificationPreferences = notificationPreferences
         self.settings = settings
         self.now = now
         self.calendar = calendar
@@ -47,11 +53,23 @@ public final class PrayerViewModel {
         switch await locationProvider.resolve() {
         case .resolved(let location):
             apply(location: location)
+            await rescheduleNotifications()
         case .denied:
             if location == nil { status = .needsLocation }
         case .unknown:
             break
         }
+    }
+
+    /// Rebuilds the rolling notification window (docs/features/prayer.md triggers).
+    public func rescheduleNotifications() async {
+        guard let scheduler, let location else { return }
+        let start = calendar.dateComponents([.year, .month, .day], from: now())
+        guard let timeline = try? engine.timeline(
+            latitude: location.latitude, longitude: location.longitude,
+            startDate: start, days: 3, settings: settings, calendar: calendar
+        ) else { return }
+        await scheduler.reschedule(timeline: timeline, preferences: notificationPreferences, now: now())
     }
 
     public func select(city: ManualCity, displayName: String) {

@@ -6,6 +6,7 @@ import com.fatwabot.core.prayer.HijriDateUi
 import com.fatwabot.core.prayer.NextPrayerState
 import com.fatwabot.core.prayer.PrayerDayUi
 import com.fatwabot.core.prayer.PrayerEngine
+import com.fatwabot.core.prayer.PrayerNotificationPreferences
 import com.fatwabot.core.prayer.PrayerSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -23,6 +24,8 @@ import kotlinx.datetime.Instant
 class PrayerViewModel @Inject constructor(
     private val locationProvider: LocationProviding,
     private val clock: Clock,
+    private val scheduler: PrayerNotificationScheduler?,
+    private val notificationPreferences: PrayerNotificationPreferences,
 ) : ViewModel() {
 
     data class UiState(
@@ -46,7 +49,10 @@ class PrayerViewModel @Inject constructor(
     fun start() {
         viewModelScope.launch {
             when (val resolved = locationProvider.resolve()) {
-                is LocationState.Resolved -> apply(resolved.location)
+                is LocationState.Resolved -> {
+                    apply(resolved.location)
+                    rescheduleNotifications()
+                }
                 is LocationState.Denied ->
                     if (_state.value.location == null) {
                         _state.value = _state.value.copy(needsLocation = true)
@@ -54,6 +60,22 @@ class PrayerViewModel @Inject constructor(
                 LocationState.Unknown -> Unit
             }
         }
+    }
+
+    /** Rebuilds the rolling 3-day notification window (parity with iOS). */
+    private fun rescheduleNotifications() {
+        val scheduler = scheduler ?: return
+        val location = _state.value.location ?: return
+        val today = localToday()
+        val timeline = runCatching {
+            engine.timeline(
+                location.latitude, location.longitude,
+                today.year, today.monthValue, today.dayOfMonth,
+                days = 3, settings = _state.value.settings,
+            )
+        }.getOrNull() ?: return
+        scheduler.ensureChannel()
+        scheduler.reschedule(timeline, notificationPreferences, clock.now())
     }
 
     fun selectCity(city: ManualCity, displayName: String) {

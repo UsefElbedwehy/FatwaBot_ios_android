@@ -19,4 +19,17 @@
     <string name="city_kualalumpur">كوالالمبور</string>
     <string name="city_karachi">كراتشي</string>
     <string name="city_casablanca">الدار البيضاء</string>
+    <string name="notif_channel_prayer">تذكيرات الصلاة</string>
+    <string name="notif_adhan_title_fajr">حان الآن موعد أذان الفجر</string>
+    <string name="notif_adhan_title_dhuhr">حان الآن موعد أذان الظهر</string>
+    <string name="notif_adhan_title_asr">حان الآن موعد أذان العصر</string>
+    <string name="notif_adhan_title_maghrib">حان الآن موعد أذان المغرب</string>
+    <string name="notif_adhan_title_isha">حان الآن موعد أذان العشاء</string>
+    <string name="notif_adhan_body">حيَّ على الصلاة</string>
+    <string name="notif_pre_adhan_title_fajr">اقترب موعد أذان الفجر</string>
+    <string name="notif_pre_adhan_title_dhuhr">اقترب موعد أذان الظهر</string>
+    <string name="notif_pre_adhan_title_asr">اقترب موعد أذان العصر</string>
+    <string name="notif_pre_adhan_title_maghrib">اقترب موعد أذان المغرب</string>
+    <string name="notif_pre_adhan_title_isha">اقترب موعد أذان العشاء</string>
+    <string name="notif_pre_adhan_body">استعدّ للصلاة</string>
 </resources>

@@ -47,11 +47,17 @@ fun RootScaffold() {
     val homeState by homeViewModel.state.collectAsStateWithLifecycle()
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
+        ActivityResultContracts.RequestMultiplePermissions(),
     ) { prayerViewModel.start() }
 
     LaunchedEffect(Unit) {
-        permissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+        val permissions = buildList {
+            add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                add(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        permissionLauncher.launch(permissions.toTypedArray())
         homeViewModel.refresh(BuildConfig.VERSION_NAME, listOf("ar", "en"))
     }
 

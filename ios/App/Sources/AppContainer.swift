@@ -35,10 +35,24 @@ extension Container {
         self { SystemLocationProvider() }.singleton
     }
 
+    var notificationScheduler: Factory<PrayerNotificationScheduling> {
+        self {
+            // M1: bundled notification texts. Admin-editable template packs
+            // (ADR-0013) overlay here when the campaign engine ships in M3.
+            PrayerNotificationScheduler(stringProvider: { key in
+                NSLocalizedString(key, comment: "")
+            })
+        }
+        .singleton
+    }
+
     @MainActor
     var prayerViewModel: Factory<PrayerViewModel> {
         self { @MainActor in
-            PrayerViewModel(locationProvider: self.locationProvider())
+            PrayerViewModel(
+                locationProvider: self.locationProvider(),
+                scheduler: self.notificationScheduler()
+            )
         }
         .singleton
     }

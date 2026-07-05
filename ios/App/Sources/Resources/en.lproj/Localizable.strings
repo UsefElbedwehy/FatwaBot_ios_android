@@ -44,3 +44,15 @@
 "city.kualalumpur" = "Kuala Lumpur";
 "city.karachi" = "Karachi";
 "city.casablanca" = "Casablanca";
+"notif.adhan.title.fajr" = "It's time for Fajr";
+"notif.adhan.title.dhuhr" = "It's time for Dhuhr";
+"notif.adhan.title.asr" = "It's time for Asr";
+"notif.adhan.title.maghrib" = "It's time for Maghrib";
+"notif.adhan.title.isha" = "It's time for Isha";
+"notif.adhan.body" = "Hasten to prayer";
+"notif.pre_adhan.title.fajr" = "Fajr is approaching";
+"notif.pre_adhan.title.dhuhr" = "Dhuhr is approaching";
+"notif.pre_adhan.title.asr" = "Asr is approaching";
+"notif.pre_adhan.title.maghrib" = "Maghrib is approaching";
+"notif.pre_adhan.title.isha" = "Isha is approaching";
+"notif.pre_adhan.body" = "Prepare for prayer";

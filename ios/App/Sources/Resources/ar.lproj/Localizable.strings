@@ -44,3 +44,15 @@
 "city.kualalumpur" = "كوالالمبور";
 "city.karachi" = "كراتشي";
 "city.casablanca" = "الدار البيضاء";
+"notif.adhan.title.fajr" = "حان الآن موعد أذان الفجر";
+"notif.adhan.title.dhuhr" = "حان الآن موعد أذان الظهر";
+"notif.adhan.title.asr" = "حان الآن موعد أذان العصر";
+"notif.adhan.title.maghrib" = "حان الآن موعد أذان المغرب";
+"notif.adhan.title.isha" = "حان الآن موعد أذان العشاء";
+"notif.adhan.body" = "حيَّ على الصلاة";
+"notif.pre_adhan.title.fajr" = "اقترب موعد أذان الفجر";
+"notif.pre_adhan.title.dhuhr" = "اقترب موعد أذان الظهر";
+"notif.pre_adhan.title.asr" = "اقترب موعد أذان العصر";
+"notif.pre_adhan.title.maghrib" = "اقترب موعد أذان المغرب";
+"notif.pre_adhan.title.isha" = "اقترب موعد أذان العشاء";
+"notif.pre_adhan.body" = "استعدّ للصلاة";

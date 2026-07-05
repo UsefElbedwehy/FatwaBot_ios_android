@@ -19,4 +19,17 @@
     <string name="city_kualalumpur">Kuala Lumpur</string>
     <string name="city_karachi">Karachi</string>
     <string name="city_casablanca">Casablanca</string>
+    <string name="notif_channel_prayer">Prayer reminders</string>
+    <string name="notif_adhan_title_fajr">It\'s time for Fajr</string>
+    <string name="notif_adhan_title_dhuhr">It\'s time for Dhuhr</string>
+    <string name="notif_adhan_title_asr">It\'s time for Asr</string>
+    <string name="notif_adhan_title_maghrib">It\'s time for Maghrib</string>
+    <string name="notif_adhan_title_isha">It\'s time for Isha</string>
+    <string name="notif_adhan_body">Hasten to prayer</string>
+    <string name="notif_pre_adhan_title_fajr">Fajr is approaching</string>
+    <string name="notif_pre_adhan_title_dhuhr">Dhuhr is approaching</string>
+    <string name="notif_pre_adhan_title_asr">Asr is approaching</string>
+    <string name="notif_pre_adhan_title_maghrib">Maghrib is approaching</string>
+    <string name="notif_pre_adhan_title_isha">Isha is approaching</string>
+    <string name="notif_pre_adhan_body">Prepare for prayer</string>
 </resources>

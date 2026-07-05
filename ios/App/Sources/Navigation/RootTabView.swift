@@ -26,6 +26,7 @@ struct RootTabView: View {
                 .navigationTitle(Text("tabs.home"))
                 .navigationBarTitleDisplayMode(.inline)
                 .task {
+                    _ = await Container.shared.notificationScheduler().requestAuthorization()
                     await prayerViewModel.start()
                     await Container.shared.configService().refresh(locales: ["ar", "en"])
                 }
