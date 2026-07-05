@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "00000000-0000-4000-a000-000000003001",
+      "type": "salawat",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "الصلاة على النبي ﷺ",
+      "description": "وِرد يومي من الصلاة على النبي صلى الله عليه وسلم"
+    },
+    {
+      "id": "00000000-0000-4000-a000-000000003002",
+      "type": "quran_reading",
+      "defaultTarget": 5,
+      "defaultUnit": "pages",
+      "defaultFrequency": "daily",
+      "name": "تلاوة القرآن الكريم",
+      "description": "وِرد يومي من قراءة القرآن الكريم"
+    },
+    {
+      "id": "00000000-0000-4000-a000-000000003003",
+      "type": "istighfar",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "الاستغفار",
+      "description": "وِرد يومي من الاستغفار"
+    }
+  ]
+}
