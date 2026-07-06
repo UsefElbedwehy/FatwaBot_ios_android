@@ -11,21 +11,20 @@ The demo confirms the visual brand (FATWA BOT wordmark, mihrab-arch logo, maroon
 ## Q2b — Points/formula editing power (before M3 dashboard work)
 ADR-0012 proposes constrained declarative formulas (weighted counters, caps, decay) rather than free-form scripting for ranking/point rules. If you expect admins to need genuinely novel scoring logic per season, say so now — that changes the engine design (sandboxed evaluator, much more testing surface). Recommendation: constrained form.
 
-## Q2c — City leaderboards & location privacy (before M3)
-City-scope boards require storing user city (finer than the country granularity in the current privacy stance). Options: (a) opt-in city sharing only when joining a city board (recommended), (b) infer from IP server-side (less accurate, less consent-clear), (c) defer city boards. Please choose.
+## ~~Q2c — City leaderboards & location privacy~~ ✅ Resolved 2026-07-06
+Opt-in city sharing only: city is never collected by default; a user must explicitly opt in and confirm their city specifically to join a city-scope leaderboard.
 
-## Q2d — Notification frequency cap (before M3 campaigns)
-ADR-0013 gives admins broad sending power. Recommendation: a per-user daily cap on campaign (non-worship) notifications, configurable but defaulting to 2/day — uncapped promotional sends are the #1 uninstall driver. Confirm or adjust.
+## ~~Q2d — Notification frequency cap~~ ✅ Resolved 2026-07-06
+Default cap of 2 campaign (non-worship) notifications per user per day, admin-configurable per campaign type. Locally-computed worship reminders (adhan/azkar) are unaffected.
 
 ## Q3 — Anonymous-first onboarding (ADR-0004, before M1)
 Confirm: app fully usable with no sign-up; accounts only for leaderboards/display-name/sync. Alternative (sign-up wall) simplifies backend identity slightly but will hurt retention.
 
-## Q4 — Streak day-boundary & grace rules (before M3)
-- When does a "day" roll over — local midnight, or Maghrib (Islamically the new day)? Recommendation: **Fajr-to-Fajr window presented simply as "today"**, decided with a domain reviewer.
-- Grace mechanics: does a missed day break the overall streak, or is there a limited "mercy" allowance (traveler/sick)? Recommendation: limited grace, framed Islamically.
+## ~~Q4 — Streak day-boundary & grace rules~~ ✅ Resolved 2026-07-06
+Fajr-to-Fajr window presented simply as "today", with a limited grace/mercy allowance for missed days. **Additionally:** the day-boundary policy, grace count, and recovery window must be fully admin-editable data (`gamification.streak_defs`), not hardcoded defaults with override — the admin can change the rules at any time without an app release, consistent with ADR-0015's configurable-by-default principle.
 
-## Q5 — Prayer-log semantics (before M3)
-Do users *log* prayers (tap "prayed") for streak credit, or do streaks derive only from in-app actions (azkar sessions, tasbeeh)? Logging prayers is engaging but self-reported worship tracking is sensitive. Recommendation: streaks from verifiable in-app worship actions + optional private prayer journal that never feeds leaderboards.
+## ~~Q5 — Prayer-log semantics~~ ✅ Resolved 2026-07-06
+Streaks/leaderboards derive only from verifiable in-app worship actions (azkar sessions, tasbeeh, wird ticks) — never self-reported prayer logging. A private prayer journal may exist for personal tracking but never feeds gamification.
 
 ## Q6 — AI scholarly oversight (before M5)
 Fatwa-class AI answers carry real religious risk. Is there a scholar/domain expert who will review the source whitelist, refusal boundaries, and the evaluation set? Launching fatwa search without named scholarly oversight is not recommended.
