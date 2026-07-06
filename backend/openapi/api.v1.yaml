@@ -70,7 +70,7 @@ paths:
         "401": { $ref: "#/components/responses/ApiError" }
   /v1/me:
     get:
-      summary: Validate the bearer token and return the caller's identity
+      summary: Validate the bearer token and return the caller's identity + profile
       operationId: getMe
       security: [{ bearerAuth: [] }]
       responses:
@@ -80,11 +80,104 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [user_id, kind]
+                required: [user_id, kind, display_name, provider]
                 properties:
                   user_id: { type: string, format: uuid }
                   kind: { type: string, enum: [anonymous, account] }
+                  display_name: { type: [string, "null"] }
+                  provider: { type: string, enum: [anonymous, apple, google] }
         "401": { $ref: "#/components/responses/ApiError" }
+  /v1/me/profile:
+    patch:
+      summary: Set or clear the optional, self-chosen display name (docs/features/accounts.md)
+      operationId: updateProfile
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                display_name: { type: [string, "null"], minLength: 1, maxLength: 50 }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_id, display_name]
+                properties:
+                  user_id: { type: string, format: uuid }
+                  display_name: { type: [string, "null"] }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /v1/auth/apple:
+    post:
+      summary: Sign in (or reuse an existing account) via Apple identity token
+      operationId: signInWithApple
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderSignInRequest" }
+      responses:
+        "200":
+          description: Tokens for the (possibly newly created) account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /v1/auth/google:
+    post:
+      summary: Sign in (or reuse an existing account) via Google identity token
+      operationId: signInWithGoogle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderSignInRequest" }
+      responses:
+        "200":
+          description: Tokens for the (possibly newly created) account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /v1/auth/link:
+    post:
+      summary: Upgrade the authenticated (typically anonymous) user in place — preserves user_id
+      operationId: linkProvider
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, identity_token]
+              properties:
+                provider: { type: string, enum: [apple, google] }
+                identity_token: { type: string }
+      responses:
+        "200":
+          description: Linked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_id, provider, linked]
+                properties:
+                  user_id: { type: string, format: uuid }
+                  provider: { type: string, enum: [apple, google] }
+                  linked: { type: boolean, enum: [true] }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "409": { $ref: "#/components/responses/ApiError" }
   /v1/config:
     get:
       summary: Remote config, feature flags, and enabled locales
@@ -340,6 +433,18 @@ components:
         app_version: { type: string }
         locale: { type: string }
         timezone: { type: string }
+    ProviderSignInRequest:
+      type: object
+      required: [identity_token, device]
+      properties:
+        identity_token:
+          type: string
+          description: >
+            Provider-issued identity token. Verified via a pluggable
+            IdentityProviderVerifier (docs/features/accounts.md) — a dev-mode
+            stub today, swappable for real Apple/Google JWKS verification
+            once Q8's OAuth credentials are provisioned.
+        device: { $ref: "#/components/schemas/DeviceRegistration" }
     TokenResponse:
       type: object
       required: [user_id, kind, access_token, expires_in, refresh_token]

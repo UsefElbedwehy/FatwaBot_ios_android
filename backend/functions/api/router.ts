@@ -11,7 +11,9 @@ import type { ConfigRepo } from "./types.ts";
 import type { IdentityRepo } from "./identity_types.ts";
 import type { ContentRepo } from "./content_types.ts";
 import type { AdminAuthRepo, AdminContentRepo, AuditLogRepo } from "./admin_types.ts";
+import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
+import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile } from "./handlers/accounts.ts";
 import {
   handleConfig,
   handleHomeLayout,
@@ -43,6 +45,7 @@ export interface Deps {
   adminAuth: AdminAuthRepo;
   auditLog: AuditLogRepo;
   jwtSecret: string;
+  verifier: IdentityProviderVerifier;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".
@@ -113,7 +116,13 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
       if (path === "/v1/me") {
         const claims = await authenticate(req, deps.jwtSecret);
         if (!claims) return apiError(401, "unauthorized", "Valid bearer token required");
-        return json({ user_id: claims.sub, kind: claims.kind });
+        const profile = await deps.identity.getProfile(claims.sub);
+        return json({
+          user_id: claims.sub,
+          kind: claims.kind,
+          display_name: profile?.displayName ?? null,
+          provider: profile?.provider ?? "anonymous",
+        });
       }
       return notFound();
     }
@@ -125,8 +134,22 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           return await handleAnonymousAuth(ctx, deps, await readBody(req));
         case "/v1/auth/refresh":
           return await handleRefresh(ctx, deps, await readBody(req));
+        case "/v1/auth/apple":
+        case "/v1/auth/google":
+          return await handleProviderSignIn(
+            ctx,
+            deps,
+            path.slice("/v1/auth/".length) as ProviderKind,
+            await readBody(req),
+          );
+        case "/v1/auth/link":
+          return await handleLinkProvider(ctx, deps, req, await readBody(req));
       }
       return notFound();
+    }
+
+    if (method === "PATCH" && path === "/v1/me/profile") {
+      return await handleUpdateProfile(deps, req, await readBody(req));
     }
 
     return methodNotAllowed();

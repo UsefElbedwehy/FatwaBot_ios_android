@@ -9,12 +9,12 @@ import { apiError, json } from "../http.ts";
 import type { AppContext } from "../types.ts";
 import type { DeviceRegistration, IdentityRepo } from "../identity_types.ts";
 
-interface AuthDeps {
+export interface AuthDeps {
   identity: IdentityRepo;
   jwtSecret: string;
 }
 
-function isValidDevice(body: unknown): body is { device: DeviceRegistration } {
+export function isValidDevice(body: unknown): body is { device: DeviceRegistration } {
   if (typeof body !== "object" || body === null) return false;
   const device = (body as Record<string, unknown>).device;
   if (typeof device !== "object" || device === null) return false;
@@ -25,7 +25,7 @@ function isValidDevice(body: unknown): body is { device: DeviceRegistration } {
     typeof d.timezone === "string";
 }
 
-async function tokenResponse(
+export async function tokenResponse(
   deps: AuthDeps,
   ctx: AppContext,
   userId: string,

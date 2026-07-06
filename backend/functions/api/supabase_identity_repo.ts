@@ -1,6 +1,13 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { AppContext } from "./types.ts";
-import type { DeviceRegistration, IdentityRepo, RefreshTokenRecord } from "./identity_types.ts";
+import type {
+  DeviceRegistration,
+  IdentityRepo,
+  LinkProviderResult,
+  RefreshTokenRecord,
+  UserProfile,
+} from "./identity_types.ts";
+import type { ProviderKind } from "./auth/provider_verify.ts";
 
 export class SupabaseIdentityRepo implements IdentityRepo {
   constructor(private readonly db: SupabaseClient) {}
@@ -85,6 +92,98 @@ export class SupabaseIdentityRepo implements IdentityRepo {
       .schema("identity").from("refresh_tokens")
       .update({ revoked_at: new Date().toISOString() })
       .eq("id", id);
+    if (error) throw error;
+  }
+
+  async findOrCreateProviderUser(
+    ctx: AppContext,
+    provider: ProviderKind,
+    providerSubject: string,
+    device: DeviceRegistration,
+  ): Promise<{ userId: string; deviceId: string }> {
+    const { data: existing, error: findError } = await this.db
+      .schema("identity").from("users")
+      .select("id")
+      .eq("app_id", ctx.appId).eq("provider", provider).eq("provider_subject", providerSubject)
+      .maybeSingle();
+    if (findError) throw findError;
+
+    let userId: string;
+    if (existing) {
+      userId = existing.id;
+    } else {
+      const { data: created, error: createError } = await this.db
+        .schema("identity").from("users")
+        .insert({
+          app_id: ctx.appId,
+          kind: "account",
+          provider,
+          provider_subject: providerSubject,
+          linked_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (createError) throw createError;
+      userId = created.id;
+    }
+
+    const { data: dev, error: deviceError } = await this.db
+      .schema("identity").from("devices")
+      .insert({
+        user_id: userId,
+        platform: device.platform,
+        locale: device.locale,
+        timezone: device.timezone,
+        app_version: device.app_version,
+      })
+      .select("id")
+      .single();
+    if (deviceError) throw deviceError;
+    return { userId, deviceId: dev.id };
+  }
+
+  async linkProvider(
+    ctx: AppContext,
+    userId: string,
+    provider: ProviderKind,
+    providerSubject: string,
+  ): Promise<LinkProviderResult> {
+    const { data: existing, error: findError } = await this.db
+      .schema("identity").from("users")
+      .select("id")
+      .eq("app_id", ctx.appId).eq("provider", provider).eq("provider_subject", providerSubject)
+      .maybeSingle();
+    if (findError) throw findError;
+    if (existing && existing.id !== userId) return "already_linked_elsewhere";
+
+    const { error } = await this.db
+      .schema("identity").from("users")
+      .update({
+        kind: "account",
+        provider,
+        provider_subject: providerSubject,
+        linked_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+    if (error) throw error;
+    return "linked";
+  }
+
+  async getProfile(userId: string): Promise<UserProfile | null> {
+    const { data, error } = await this.db
+      .schema("identity").from("users")
+      .select("display_name,provider")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? { displayName: data.display_name, provider: data.provider } : null;
+  }
+
+  async updateDisplayName(userId: string, displayName: string | null): Promise<void> {
+    const { error } = await this.db
+      .schema("identity").from("users")
+      .update({ display_name: displayName })
+      .eq("id", userId);
     if (error) throw error;
   }
 }
