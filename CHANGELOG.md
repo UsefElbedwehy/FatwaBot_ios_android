@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## [Unreleased]
 
+### 2026-07-07 — Milestone 3 backend complete (accounts, gamification, leaderboards, search history, notifications)
+- **Specs first:** wrote all 5 M3 feature specs before code; resolved OPEN_QUESTIONS Q2c/Q2d/Q4/Q5 with the stakeholder (opt-in-only city leaderboards, 2/day notification cap, Fajr-to-Fajr admin-editable day boundary, in-app-actions-only streaks — never self-reported prayer logging).
+- **Accounts (ADR-0004 extension):** `/v1/auth/apple`, `/v1/auth/google` sign-in and `/v1/auth/link` anonymous→account upgrade, both behind a pluggable `IdentityProviderVerifier` (dev-stub today, real Apple/Google JWKS verification later with no contract change — blocked only by Q8 credentials). Linking preserves `user_id`, so no local/synced state is lost. Optional self-chosen `display_name` via `PATCH /v1/me/profile`.
+- **Gamification engine (ADR-0007/0012):** idempotent batched activity-event ingest; pure streak-folding logic (`gamification_engine.ts`) — day-boundary approximated as an admin-configurable fixed local time (real Fajr needs on-device location the backend doesn't have), grace tokens that preserve but don't extend a streak and replenish outside a rolling window. `GET /v1/gamification/profile` assembles streaks/missions/badges live from the event log + currently-published definitions — no separately-drifting cache.
+- **Leaderboard engine (ADR-0012):** weighted/capped point formulas, ranking with ordered tie-breakers, pseudonymous-by-default join/leave/membership (real name shown only if the board requires it or the member opts in), admin-triggered snapshot recompute standing in for `pg_cron` until Supabase is deployed.
+- **Search history:** per-user, paginated, source-filterable CRUD; reserved AI sources (`ai_fatwa`/`ai_hadith`/`ai_question`) unused until M5.
+- **Notifications:** admin-editable catalog + per-user preference overrides; pure cap-check logic (2/day default, admin-configurable, campaign-only — never applies to locally-computed worship/gamification reminders). Actual FCM dispatch is explicitly deferred (needs Firebase credentials + audience-segment querying beyond this milestone) — catalog, prefs, delivery-log schema, cap logic, and open-tracking are all real and tested, ready for a dispatch handler once those land.
+- **Key architectural continuity win:** every new definition table (streak_defs, missions, badges, leaderboard_defs, notification_types, templates, campaigns) reuses task 27's generic `/admin/v1/content` CRUD instead of a parallel bespoke API — extended `ADMIN_COLLECTIONS` to carry a `(schema, table)` pair per collection instead of an assumed single schema.
+- **Totals:** 93 backend tests (up from 76), all green; every migration (0007–0010) verified against a throwaway local Postgres; OpenAPI specs (mobile + admin) updated throughout; lint/fmt clean at every step.
+- **Remaining M3 work:** iOS/Android gamification + leaderboard + search-history UI, streak/challenge widgets, and dashboard CRUD for the new admin collections.
+
 ### 2026-07-04 — Planning phase
 - Transcribed the foundation PDF into canonical [prompts/00_PROJECT_FOUNDATION.md](prompts/00_PROJECT_FOUNDATION.md).
 - Added planning package: project analysis, architecture, architecture review, roadmap (M0–M7), design direction + Home screen spec, ADR-0001…0010 (all Proposed), open questions, future improvements, README.
