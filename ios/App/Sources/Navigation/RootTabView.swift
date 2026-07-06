@@ -1,3 +1,4 @@
+import AwradFeature
 import AzkarFeature
 import ConfigKit
 import DesignSystemKit
@@ -130,6 +131,13 @@ struct WorshipTabView: View {
                     .navigationBarTitleDisplayMode(.inline)
             } label: {
                 Label("worship.dua", systemImage: "hands.sparkles")
+            }
+            NavigationLink {
+                AwradBoardScreen(viewModel: Container.shared.awradViewModel())
+                    .navigationTitle(Text("worship.awrad"))
+                    .navigationBarTitleDisplayMode(.inline)
+            } label: {
+                Label("worship.awrad", systemImage: "leaf")
             }
         }
     }

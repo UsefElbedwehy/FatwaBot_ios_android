@@ -1,3 +1,4 @@
+import AwradFeature
 import AzkarFeature
 import ConfigKit
 import ContentKit
@@ -112,6 +113,17 @@ extension Container {
             DuaViewModel(
                 contentService: self.contentService(),
                 store: FileDuaStore(directory: AppEnvironment.sharedContainerURL)
+            )
+        }
+        .singleton
+    }
+
+    @MainActor
+    var awradViewModel: Factory<AwradViewModel> {
+        self { @MainActor in
+            AwradViewModel(
+                contentService: self.contentService(),
+                store: FileWirdStore(directory: AppEnvironment.sharedContainerURL)
             )
         }
         .singleton
