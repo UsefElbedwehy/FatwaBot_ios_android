@@ -21,6 +21,7 @@ public final class AzkarViewModel {
     private let contentService: ContentService?
     private let haptics: HapticsProviding
     private let store: AzkarStoring
+    private let activityEvents: ActivityEventRecording
     private let calendar: Calendar
     private let now: @Sendable () -> Date
 
@@ -28,12 +29,14 @@ public final class AzkarViewModel {
         contentService: ContentService? = nil,
         haptics: HapticsProviding = NoopHaptics(),
         store: AzkarStoring,
+        activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
         calendar: Calendar = .current,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.contentService = contentService
         self.haptics = haptics
         self.store = store
+        self.activityEvents = activityEvents
         self.calendar = calendar
         self.now = now
         let today = now()
@@ -114,6 +117,7 @@ public final class AzkarViewModel {
         store.saveSession(nil)
         store.recordCompletion(AzkarCompletionRecord(categoryId: categoryId, completedAt: now()))
         completedCategoryIdsToday.insert(categoryId)
+        activityEvents.record(eventType: "azkar_completed", metadata: ["category_id": categoryId])
     }
 
     private func persistState() {

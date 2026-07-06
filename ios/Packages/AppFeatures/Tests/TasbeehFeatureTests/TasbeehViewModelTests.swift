@@ -16,6 +16,11 @@ final class TasbeehViewModelTests: XCTestCase {
         func save(_ history: [TasbeehHistoryEntry]) { entries = history }
     }
 
+    final class SpyActivityEvents: ActivityEventRecording, @unchecked Sendable {
+        var recorded: [(eventType: String, metadata: [String: String])] = []
+        func record(eventType: String, metadata: [String: String]) { recorded.append((eventType, metadata)) }
+    }
+
     @MainActor
     func testIncrementPastTargetDoesNotResetOrBlock() {
         let viewModel = TasbeehViewModel(store: InMemoryStore())
@@ -87,6 +92,23 @@ final class TasbeehViewModelTests: XCTestCase {
         viewModel.increment()
         viewModel.select(preset: DhikrPreset.bundled[1])
         XCTAssertEqual(viewModel.count, 0, "switching dhikr should not carry over an in-progress count")
+    }
+
+    @MainActor
+    func testCompleteSetRecordsAnActivityEvent() {
+        let events = SpyActivityEvents()
+        let viewModel = TasbeehViewModel(store: InMemoryStore(), activityEvents: events)
+        viewModel.increment()
+        viewModel.completeSet()
+        XCTAssertEqual(events.recorded.map(\.eventType), ["tasbeeh_session_completed"])
+    }
+
+    @MainActor
+    func testCompleteSetWithZeroCountDoesNotRecordAnActivityEvent() {
+        let events = SpyActivityEvents()
+        let viewModel = TasbeehViewModel(store: InMemoryStore(), activityEvents: events)
+        viewModel.completeSet()
+        XCTAssertTrue(events.recorded.isEmpty)
     }
 
     @MainActor

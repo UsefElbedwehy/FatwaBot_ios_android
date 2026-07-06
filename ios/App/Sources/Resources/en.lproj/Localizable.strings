@@ -102,3 +102,10 @@
 "hadith.benefit_label" = "Benefit";
 "hadith.previous" = "Previous";
 "hadith.next" = "Next";
+"gamification.title" = "Journey";
+"gamification.streaks_section" = "Streaks";
+"gamification.missions_section" = "Missions";
+"gamification.badges_section" = "Badges";
+"gamification.empty_state" = "Complete Azkar, Tasbeeh, Awrad, or Hadith readings to start your journey.";
+"gamification.grace_remaining %lld" = "%lld mercy day(s) left";
+"gamification.longest %lld" = "Best: %lld";

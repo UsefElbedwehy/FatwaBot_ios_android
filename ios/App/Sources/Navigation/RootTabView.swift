@@ -4,6 +4,7 @@ import ConfigKit
 import DesignSystemKit
 import DuaFeature
 import Factory
+import GamificationFeature
 import HadithFeature
 import HomeFeature
 import PrayerFeature
@@ -57,7 +58,7 @@ struct RootTabView: View {
             .tag(AppTab.worship)
 
             NavigationStack {
-                placeholder(tab: .journey)
+                GamificationScreen(viewModel: Container.shared.gamificationViewModel())
                     .navigationTitle(Text("tabs.journey"))
             }
             .tabItem { Label("tabs.journey", systemImage: AppTab.journey.systemImage) }

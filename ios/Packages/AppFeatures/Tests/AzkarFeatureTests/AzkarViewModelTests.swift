@@ -1,5 +1,6 @@
 import XCTest
 import ContentKit
+import CoreKit
 @testable import AzkarFeature
 
 final class AzkarViewModelTests: XCTestCase {
@@ -10,6 +11,11 @@ final class AzkarViewModelTests: XCTestCase {
         func saveSession(_ session: AzkarSessionState?) { self.session = session }
         func loadCompletions() -> [AzkarCompletionRecord] { completions }
         func recordCompletion(_ record: AzkarCompletionRecord) { completions.append(record) }
+    }
+
+    final class SpyActivityEvents: ActivityEventRecording, @unchecked Sendable {
+        var recorded: [(eventType: String, metadata: [String: String])] = []
+        func record(eventType: String, metadata: [String: String]) { recorded.append((eventType, metadata)) }
     }
 
     private func item(_ id: String, repeatCount: Int) -> AzkarItem {
@@ -89,6 +95,20 @@ final class AzkarViewModelTests: XCTestCase {
         viewModel.tick()
         XCTAssertEqual(store.completions.count, 1, "completing twice must not double-record")
         XCTAssertTrue(viewModel.isCompletedToday("cat1"))
+    }
+
+    @MainActor
+    func testSessionCompletionRecordsAnActivityEventExactlyOnce() {
+        let events = SpyActivityEvents()
+        let items = [item("a", repeatCount: 1)]
+        let viewModel = AzkarViewModel(store: InMemoryStore(), activityEvents: events, now: { [fixedNow] in fixedNow })
+        viewModel.startSession(categoryId: "cat1", items: items)
+
+        viewModel.tick() // completes -> should record
+        viewModel.tick() // idempotent no-op -> should NOT record again
+
+        XCTAssertEqual(events.recorded.map(\.eventType), ["azkar_completed"])
+        XCTAssertEqual(events.recorded.first?.metadata["category_id"], "cat1")
     }
 
     @MainActor

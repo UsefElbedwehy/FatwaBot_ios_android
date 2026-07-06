@@ -1,4 +1,5 @@
 import ContentKit
+import CoreKit
 import Foundation
 import Observation
 
@@ -15,17 +16,20 @@ public final class AwradViewModel {
 
     private let contentService: ContentService?
     private let store: WirdStoring
+    private let activityEvents: ActivityEventRecording
     private let now: @Sendable () -> Date
     private let calendar: Calendar
 
     public init(
         contentService: ContentService? = nil,
         store: WirdStoring,
+        activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
         now: @escaping @Sendable () -> Date = { Date() },
         calendar: Calendar = .current
     ) {
         self.contentService = contentService
         self.store = store
+        self.activityEvents = activityEvents
         self.now = now
         self.calendar = calendar
         self.wirds = store.loadWirds()
@@ -78,6 +82,7 @@ public final class AwradViewModel {
             progress.append(WirdDailyProgress(wirdId: wirdId, dateKey: key, count: amount))
         }
         store.saveProgress(progress)
+        activityEvents.record(eventType: "wird_ticked", metadata: ["wird_id": wirdId])
     }
 
     /// Records today's completion only if every *active* wird has reached its
@@ -92,6 +97,7 @@ public final class AwradViewModel {
         let record = WirdDayCompletionRecord(dateKey: key, completedAt: now())
         dayCompletions.append(record)
         store.recordDayCompletion(record)
+        activityEvents.record(eventType: "wird_day_completed", metadata: [:])
         return true
     }
 

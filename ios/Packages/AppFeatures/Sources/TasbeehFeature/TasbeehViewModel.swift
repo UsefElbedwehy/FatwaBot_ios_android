@@ -19,15 +19,18 @@ public final class TasbeehViewModel {
 
     private let haptics: HapticsProviding
     private let store: TasbeehHistoryStoring
+    private let activityEvents: ActivityEventRecording
     private let now: @Sendable () -> Date
 
     public init(
         haptics: HapticsProviding = NoopHaptics(),
         store: TasbeehHistoryStoring,
+        activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.haptics = haptics
         self.store = store
+        self.activityEvents = activityEvents
         self.now = now
         self.history = store.load()
     }
@@ -83,6 +86,7 @@ public final class TasbeehViewModel {
         )
         history.append(entry)
         store.save(history)
+        activityEvents.record(eventType: "tasbeeh_session_completed", metadata: ["count": String(entry.actualCount)])
         performReset()
     }
 

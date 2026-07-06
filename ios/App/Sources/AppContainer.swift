@@ -6,6 +6,7 @@ import CoreKit
 import DuaFeature
 import Factory
 import Foundation
+import GamificationFeature
 import HadithFeature
 import NetworkingKit
 import PrayerFeature
@@ -53,6 +54,57 @@ extension Container {
         self { SystemLocationProvider() }.singleton
     }
 
+    var authTokenStore: Factory<AuthTokenStoring> {
+        self { KeychainAuthTokenStore() }.singleton
+    }
+
+    var authService: Factory<AuthTokenProviding> {
+        self {
+            AuthService(
+                baseURL: AppEnvironment.apiBaseURL,
+                context: ClientContext(
+                    appVersion: AppEnvironment.appVersion,
+                    locale: Locale.preferredLanguages.first ?? "ar"
+                ),
+                store: self.authTokenStore()
+            )
+        }
+        .singleton
+    }
+
+    var authenticatedClient: Factory<AuthenticatedAPIClientProtocol> {
+        self {
+            AuthenticatedAPIClient(
+                baseURL: AppEnvironment.apiBaseURL,
+                context: ClientContext(
+                    appVersion: AppEnvironment.appVersion,
+                    locale: Locale.preferredLanguages.first ?? "ar"
+                ),
+                tokenProvider: self.authService()
+            )
+        }
+        .singleton
+    }
+
+    /// Concrete recorder, shared by GamificationViewModel (to flush before a
+    /// profile read) and every feature ViewModel injected via the CoreKit
+    /// `ActivityEventRecording` boundary below.
+    var gamificationEventRecorder: Factory<GamificationEventRecorder> {
+        self {
+            GamificationEventRecorder(
+                store: FileActivityEventQueueStore(directory: AppEnvironment.sharedContainerURL),
+                client: self.authenticatedClient()
+            )
+        }
+        .singleton
+    }
+
+    /// The CoreKit boundary Tasbeeh/Azkar/Awrad/Hadith are actually injected
+    /// with (ADR-0010: feature -> feature is forbidden, mirrors HapticsProviding).
+    var activityEventRecording: Factory<ActivityEventRecording> {
+        self { self.gamificationEventRecorder() }
+    }
+
     var notificationScheduler: Factory<PrayerNotificationScheduling> {
         self {
             // M1: bundled notification texts. Admin-editable template packs
@@ -90,7 +142,8 @@ extension Container {
         self { @MainActor in
             TasbeehViewModel(
                 haptics: SystemHaptics(),
-                store: FileTasbeehHistoryStore(directory: AppEnvironment.sharedContainerURL)
+                store: FileTasbeehHistoryStore(directory: AppEnvironment.sharedContainerURL),
+                activityEvents: self.activityEventRecording()
             )
         }
         .singleton
@@ -102,7 +155,8 @@ extension Container {
             AzkarViewModel(
                 contentService: self.contentService(),
                 haptics: SystemHaptics(),
-                store: FileAzkarStore(directory: AppEnvironment.sharedContainerURL)
+                store: FileAzkarStore(directory: AppEnvironment.sharedContainerURL),
+                activityEvents: self.activityEventRecording()
             )
         }
         .singleton
@@ -124,7 +178,8 @@ extension Container {
         self { @MainActor in
             AwradViewModel(
                 contentService: self.contentService(),
-                store: FileWirdStore(directory: AppEnvironment.sharedContainerURL)
+                store: FileWirdStore(directory: AppEnvironment.sharedContainerURL),
+                activityEvents: self.activityEventRecording()
             )
         }
         .singleton
@@ -135,7 +190,19 @@ extension Container {
         self { @MainActor in
             HadithViewModel(
                 contentService: self.contentService(),
-                store: FileHadithStore(directory: AppEnvironment.sharedContainerURL)
+                store: FileHadithStore(directory: AppEnvironment.sharedContainerURL),
+                activityEvents: self.activityEventRecording()
+            )
+        }
+        .singleton
+    }
+
+    @MainActor
+    var gamificationViewModel: Factory<GamificationViewModel> {
+        self { @MainActor in
+            GamificationViewModel(
+                client: self.authenticatedClient(),
+                recorder: self.gamificationEventRecorder()
             )
         }
         .singleton

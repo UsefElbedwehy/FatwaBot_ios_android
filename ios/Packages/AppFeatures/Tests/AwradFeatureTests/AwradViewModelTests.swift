@@ -1,5 +1,6 @@
 import XCTest
 import ContentKit
+import CoreKit
 @testable import AwradFeature
 
 final class AwradViewModelTests: XCTestCase {
@@ -15,6 +16,11 @@ final class AwradViewModelTests: XCTestCase {
         func recordDayCompletion(_ record: WirdDayCompletionRecord) { completions.append(record) }
     }
 
+    final class SpyActivityEvents: ActivityEventRecording, @unchecked Sendable {
+        var recorded: [(eventType: String, metadata: [String: String])] = []
+        func record(eventType: String, metadata: [String: String]) { recorded.append((eventType, metadata)) }
+    }
+
     private let fixedNow = Date(timeIntervalSince1970: 1_774_000_000) // a fixed UTC instant
     private let utcCalendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
@@ -23,9 +29,13 @@ final class AwradViewModelTests: XCTestCase {
     }()
 
     @MainActor
-    private func makeViewModel(store: WirdStoring = InMemoryStore(), now: Date? = nil) -> AwradViewModel {
+    private func makeViewModel(
+        store: WirdStoring = InMemoryStore(),
+        activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
+        now: Date? = nil
+    ) -> AwradViewModel {
         let time = now ?? fixedNow
-        return AwradViewModel(store: store, now: { time }, calendar: utcCalendar)
+        return AwradViewModel(store: store, activityEvents: activityEvents, now: { time }, calendar: utcCalendar)
     }
 
     private func template(name: String = "الصلاة على النبي", type: String = "salawat", target: Int = 100, unit: String = "times") -> WirdTemplate {
@@ -65,6 +75,28 @@ final class AwradViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.markDayComplete())
         XCTAssertFalse(viewModel.markDayComplete(), "already completed today — no duplicate record")
         XCTAssertEqual(viewModel.dayCompletions.count, 1)
+    }
+
+    @MainActor
+    func testTickRecordsAWirdTickedActivityEvent() {
+        let events = SpyActivityEvents()
+        let viewModel = makeViewModel(activityEvents: events)
+        viewModel.createWird(fromTemplate: template(target: 3))
+        viewModel.tick(wirdId: viewModel.wirds[0].id)
+        XCTAssertEqual(events.recorded.map(\.eventType), ["wird_ticked"])
+    }
+
+    @MainActor
+    func testMarkDayCompleteRecordsAnActivityEventOnlyWhenItActuallyCompletes() {
+        let events = SpyActivityEvents()
+        let viewModel = makeViewModel(activityEvents: events)
+        viewModel.createWird(fromTemplate: template(target: 1))
+        viewModel.tick(wirdId: viewModel.wirds[0].id)
+
+        XCTAssertTrue(viewModel.markDayComplete())
+        XCTAssertFalse(viewModel.markDayComplete()) // idempotent no-op
+
+        XCTAssertEqual(events.recorded.map(\.eventType), ["wird_ticked", "wird_day_completed"])
     }
 
     @MainActor

@@ -1,5 +1,6 @@
 import XCTest
 import ContentKit
+import CoreKit
 @testable import HadithFeature
 
 final class HadithViewModelTests: XCTestCase {
@@ -7,6 +8,11 @@ final class HadithViewModelTests: XCTestCase {
         var progress: [String: HadithProgress] = [:]
         func loadProgress() -> [String: HadithProgress] { progress }
         func saveProgress(_ progress: [String: HadithProgress]) { self.progress = progress }
+    }
+
+    final class SpyActivityEvents: ActivityEventRecording, @unchecked Sendable {
+        var recorded: [(eventType: String, metadata: [String: String])] = []
+        func record(eventType: String, metadata: [String: String]) { recorded.append((eventType, metadata)) }
     }
 
     private func entry(_ number: Int) -> HadithEntry {
@@ -74,6 +80,18 @@ final class HadithViewModelTests: XCTestCase {
         viewModel.jumpTo(number: 3)
         XCTAssertEqual(viewModel.currentEntry?.number, 3)
         XCTAssertTrue(viewModel.readCount(forSlug: "nawawi40") >= 2, "jumping ahead marks the target read")
+    }
+
+    @MainActor
+    func testActivityEventFiresOnlyForNewlyReadEntriesNotRevisits() {
+        let events = SpyActivityEvents()
+        let viewModel = HadithViewModel(store: InMemoryStore(), activityEvents: events)
+        viewModel.setDetail(detail()) // reads entry 1
+        viewModel.next() // reads entry 2
+        viewModel.previous() // revisits entry 1 — must not re-record
+        viewModel.next() // revisits entry 2 — must not re-record
+
+        XCTAssertEqual(events.recorded.map(\.eventType), ["hadith_entry_read", "hadith_entry_read"])
     }
 
     @MainActor

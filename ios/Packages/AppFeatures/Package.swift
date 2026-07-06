@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "DuaFeature", targets: ["DuaFeature"]),
         .library(name: "AwradFeature", targets: ["AwradFeature"]),
         .library(name: "HadithFeature", targets: ["HadithFeature"]),
+        .library(name: "GamificationFeature", targets: ["GamificationFeature"]),
     ],
     dependencies: [
         .package(path: "../FatwaBotKit"),
@@ -100,5 +101,16 @@ let package = Package(
         ),
         .testTarget(name: "AwradFeatureTests", dependencies: ["AwradFeature"]),
         .testTarget(name: "HadithFeatureTests", dependencies: ["HadithFeature"]),
+        .target(
+            name: "GamificationFeature",
+            dependencies: [
+                .product(name: "CoreKit", package: "FatwaBotKit"),
+                .product(name: "NetworkingKit", package: "FatwaBotKit"),
+                .product(name: "DesignSystemKit", package: "FatwaBotKit"),
+                .product(name: "Factory", package: "Factory"),
+            ],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+        ),
+        .testTarget(name: "GamificationFeatureTests", dependencies: ["GamificationFeature"]),
     ]
 )

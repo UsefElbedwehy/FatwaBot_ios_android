@@ -1,4 +1,5 @@
 import ContentKit
+import CoreKit
 import Foundation
 import Observation
 
@@ -16,10 +17,16 @@ public final class HadithViewModel {
     private var progress: [String: HadithProgress]
     private let contentService: ContentService?
     private let store: HadithStoring
+    private let activityEvents: ActivityEventRecording
 
-    public init(contentService: ContentService? = nil, store: HadithStoring) {
+    public init(
+        contentService: ContentService? = nil,
+        store: HadithStoring,
+        activityEvents: ActivityEventRecording = NoopActivityEventRecording()
+    ) {
         self.contentService = contentService
         self.store = store
+        self.activityEvents = activityEvents
         self.progress = store.loadProgress()
     }
 
@@ -84,9 +91,12 @@ public final class HadithViewModel {
     private func markCurrentRead() {
         guard let detail = currentDetail, let entry = currentEntry else { return }
         var record = progress[detail.slug] ?? HadithProgress()
-        record.readNumbers.insert(entry.number)
+        let (isNewlyRead, _) = record.readNumbers.insert(entry.number)
         record.lastReadNumber = entry.number
         progress[detail.slug] = record
         store.saveProgress(progress)
+        if isNewlyRead {
+            activityEvents.record(eventType: "hadith_entry_read", metadata: ["collection": detail.slug])
+        }
     }
 }

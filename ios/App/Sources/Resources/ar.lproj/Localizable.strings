@@ -102,3 +102,10 @@
 "hadith.benefit_label" = "الفائدة";
 "hadith.previous" = "السابق";
 "hadith.next" = "التالي";
+"gamification.title" = "مسيرتك";
+"gamification.streaks_section" = "التتابع";
+"gamification.missions_section" = "المهام";
+"gamification.badges_section" = "الشارات";
+"gamification.empty_state" = "أكمل جلسات الأذكار أو التسبيح أو الأوراد أو قراءة الأحاديث لتبدأ مسيرتك.";
+"gamification.grace_remaining %lld" = "متبقٍ %lld يوم رحمة";
+"gamification.longest %lld" = "الأفضل: %lld";

@@ -49,7 +49,9 @@ public final class AuthenticatedAPIClient: AuthenticatedAPIClientProtocol {
 
     private func encode<Body: Encodable>(_ body: Body) throws -> Data {
         do {
-            return try JSONEncoder().encode(body)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            return try encoder.encode(body)
         } catch {
             throw APIError.decoding(String(describing: error))
         }
@@ -109,7 +111,9 @@ public final class AuthenticatedAPIClient: AuthenticatedAPIClientProtocol {
             throw APIError.server(statusCode: http.statusCode, code: envelope?.error.code)
         }
         do {
-            return try JSONDecoder().decode(Response.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode(Response.self, from: data)
         } catch {
             throw APIError.decoding(String(describing: error))
         }
