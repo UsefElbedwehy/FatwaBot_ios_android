@@ -96,3 +96,9 @@
 "awrad.save_custom" = "Save wird";
 "awrad.create_title" = "New Wird";
 "common.cancel" = "Cancel";
+"worship.hadith" = "Hadith";
+"hadith.progress_read %lld %lld" = "%1$lld/%2$lld read";
+"hadith.entry_number %lld" = "Hadith #%lld";
+"hadith.benefit_label" = "Benefit";
+"hadith.previous" = "Previous";
+"hadith.next" = "Next";

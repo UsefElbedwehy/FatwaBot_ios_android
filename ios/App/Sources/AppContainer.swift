@@ -6,6 +6,7 @@ import CoreKit
 import DuaFeature
 import Factory
 import Foundation
+import HadithFeature
 import NetworkingKit
 import PrayerFeature
 import PrayerKit
@@ -124,6 +125,17 @@ extension Container {
             AwradViewModel(
                 contentService: self.contentService(),
                 store: FileWirdStore(directory: AppEnvironment.sharedContainerURL)
+            )
+        }
+        .singleton
+    }
+
+    @MainActor
+    var hadithViewModel: Factory<HadithViewModel> {
+        self { @MainActor in
+            HadithViewModel(
+                contentService: self.contentService(),
+                store: FileHadithStore(directory: AppEnvironment.sharedContainerURL)
             )
         }
         .singleton

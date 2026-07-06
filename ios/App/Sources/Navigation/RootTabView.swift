@@ -4,6 +4,7 @@ import ConfigKit
 import DesignSystemKit
 import DuaFeature
 import Factory
+import HadithFeature
 import HomeFeature
 import PrayerFeature
 import PrayerKit
@@ -138,6 +139,13 @@ struct WorshipTabView: View {
                     .navigationBarTitleDisplayMode(.inline)
             } label: {
                 Label("worship.awrad", systemImage: "leaf")
+            }
+            NavigationLink {
+                HadithCollectionsScreen(viewModel: Container.shared.hadithViewModel())
+                    .navigationTitle(Text("worship.hadith"))
+                    .navigationBarTitleDisplayMode(.inline)
+            } label: {
+                Label("worship.hadith", systemImage: "text.book.closed")
             }
         }
     }

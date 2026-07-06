@@ -96,3 +96,9 @@
 "awrad.save_custom" = "حفظ الورد";
 "awrad.create_title" = "ورد جديد";
 "common.cancel" = "إلغاء";
+"worship.hadith" = "الأحاديث";
+"hadith.progress_read %lld %lld" = "%1$lld/%2$lld مقروء";
+"hadith.entry_number %lld" = "الحديث رقم %lld";
+"hadith.benefit_label" = "الفائدة";
+"hadith.previous" = "السابق";
+"hadith.next" = "التالي";
