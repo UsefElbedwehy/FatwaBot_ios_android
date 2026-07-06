@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "PrayerFeature", targets: ["PrayerFeature"]),
         .library(name: "HomeFeature", targets: ["HomeFeature"]),
         .library(name: "TasbeehFeature", targets: ["TasbeehFeature"]),
+        .library(name: "AzkarFeature", targets: ["AzkarFeature"]),
     ],
     dependencies: [
         .package(path: "../FatwaBotKit"),
@@ -49,8 +50,19 @@ let package = Package(
             ],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
+        .target(
+            name: "AzkarFeature",
+            dependencies: [
+                .product(name: "CoreKit", package: "FatwaBotKit"),
+                .product(name: "ContentKit", package: "FatwaBotKit"),
+                .product(name: "DesignSystemKit", package: "FatwaBotKit"),
+                .product(name: "Factory", package: "Factory"),
+            ],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+        ),
         .testTarget(name: "PrayerFeatureTests", dependencies: ["PrayerFeature"]),
         .testTarget(name: "HomeFeatureTests", dependencies: ["HomeFeature"]),
         .testTarget(name: "TasbeehFeatureTests", dependencies: ["TasbeehFeature"]),
+        .testTarget(name: "AzkarFeatureTests", dependencies: ["AzkarFeature"]),
     ]
 )

@@ -3,6 +3,10 @@ import Foundation
 // Server contract models — mirror backend/functions/api/content_types.ts exactly
 // (already locale-resolved plain strings; property names match JSON keys so no
 // CodingKeys are needed). Also the shape of the bundled seed JSON in Resources/.
+//
+// Every struct declares an explicit `public init`: Swift's synthesized
+// memberwise initializer for a public struct is only `internal`, which would
+// make these unconstructible from feature modules (tests, previews, fixtures).
 
 public struct AzkarItem: Codable, Equatable, Identifiable, Sendable {
     public let id: String
@@ -13,6 +17,26 @@ public struct AzkarItem: Codable, Equatable, Identifiable, Sendable {
     public let virtueNote: String?
     public let source: String
     public let repeatCount: Int
+
+    public init(
+        id: String,
+        sortOrder: Int,
+        arabicText: String,
+        transliteration: String?,
+        translation: String?,
+        virtueNote: String?,
+        source: String,
+        repeatCount: Int
+    ) {
+        self.id = id
+        self.sortOrder = sortOrder
+        self.arabicText = arabicText
+        self.transliteration = transliteration
+        self.translation = translation
+        self.virtueNote = virtueNote
+        self.source = source
+        self.repeatCount = repeatCount
+    }
 }
 
 public struct AzkarCategory: Codable, Equatable, Identifiable, Sendable {
@@ -21,11 +45,24 @@ public struct AzkarCategory: Codable, Equatable, Identifiable, Sendable {
     public let name: String
     public let sortOrder: Int
     public let items: [AzkarItem]
+
+    public init(id: String, slug: String, name: String, sortOrder: Int, items: [AzkarItem]) {
+        self.id = id
+        self.slug = slug
+        self.name = name
+        self.sortOrder = sortOrder
+        self.items = items
+    }
 }
 
 public struct AzkarCollection: Codable, Equatable, Sendable {
     public let version: Int
     public let categories: [AzkarCategory]
+
+    public init(version: Int, categories: [AzkarCategory]) {
+        self.version = version
+        self.categories = categories
+    }
 }
 
 public struct Dua: Codable, Equatable, Identifiable, Sendable {
@@ -36,6 +73,24 @@ public struct Dua: Codable, Equatable, Identifiable, Sendable {
     public let transliteration: String?
     public let translation: String?
     public let source: String
+
+    public init(
+        id: String,
+        sortOrder: Int,
+        title: String,
+        arabicText: String,
+        transliteration: String?,
+        translation: String?,
+        source: String
+    ) {
+        self.id = id
+        self.sortOrder = sortOrder
+        self.title = title
+        self.arabicText = arabicText
+        self.transliteration = transliteration
+        self.translation = translation
+        self.source = source
+    }
 }
 
 public struct DuaCategory: Codable, Equatable, Identifiable, Sendable {
@@ -44,11 +99,24 @@ public struct DuaCategory: Codable, Equatable, Identifiable, Sendable {
     public let name: String
     public let sortOrder: Int
     public let duas: [Dua]
+
+    public init(id: String, slug: String, name: String, sortOrder: Int, duas: [Dua]) {
+        self.id = id
+        self.slug = slug
+        self.name = name
+        self.sortOrder = sortOrder
+        self.duas = duas
+    }
 }
 
 public struct DuaCollection: Codable, Equatable, Sendable {
     public let version: Int
     public let categories: [DuaCategory]
+
+    public init(version: Int, categories: [DuaCategory]) {
+        self.version = version
+        self.categories = categories
+    }
 }
 
 public struct HadithCollectionSummary: Codable, Equatable, Identifiable, Sendable {
@@ -57,6 +125,14 @@ public struct HadithCollectionSummary: Codable, Equatable, Identifiable, Sendabl
     public let name: String
     public let description: String
     public let entryCount: Int
+
+    public init(id: String, slug: String, name: String, description: String, entryCount: Int) {
+        self.id = id
+        self.slug = slug
+        self.name = name
+        self.description = description
+        self.entryCount = entryCount
+    }
 }
 
 public struct HadithEntry: Codable, Equatable, Identifiable, Sendable {
@@ -67,6 +143,24 @@ public struct HadithEntry: Codable, Equatable, Identifiable, Sendable {
     public let grading: String
     public let benefitNote: String?
     public let source: String
+
+    public init(
+        id: String,
+        number: Int,
+        arabicText: String,
+        translation: String?,
+        grading: String,
+        benefitNote: String?,
+        source: String
+    ) {
+        self.id = id
+        self.number = number
+        self.arabicText = arabicText
+        self.translation = translation
+        self.grading = grading
+        self.benefitNote = benefitNote
+        self.source = source
+    }
 }
 
 public struct HadithCollectionDetail: Codable, Equatable, Sendable {
@@ -75,6 +169,14 @@ public struct HadithCollectionDetail: Codable, Equatable, Sendable {
     public let name: String
     public let description: String
     public let entries: [HadithEntry]
+
+    public init(version: Int, slug: String, name: String, description: String, entries: [HadithEntry]) {
+        self.version = version
+        self.slug = slug
+        self.name = name
+        self.description = description
+        self.entries = entries
+    }
 }
 
 public struct WirdTemplate: Codable, Equatable, Identifiable, Sendable {
@@ -85,11 +187,34 @@ public struct WirdTemplate: Codable, Equatable, Identifiable, Sendable {
     public let defaultTarget: Int
     public let defaultUnit: String
     public let defaultFrequency: String
+
+    public init(
+        id: String,
+        name: String,
+        description: String,
+        type: String,
+        defaultTarget: Int,
+        defaultUnit: String,
+        defaultFrequency: String
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.type = type
+        self.defaultTarget = defaultTarget
+        self.defaultUnit = defaultUnit
+        self.defaultFrequency = defaultFrequency
+    }
 }
 
 public struct WirdTemplatesCollection: Codable, Equatable, Sendable {
     public let version: Int
     public let templates: [WirdTemplate]
+
+    public init(version: Int, templates: [WirdTemplate]) {
+        self.version = version
+        self.templates = templates
+    }
 }
 
 struct HadithCollectionsResponse: Codable, Sendable {
