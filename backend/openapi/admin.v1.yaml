@@ -181,6 +181,9 @@ components:
           - hadith-collections
           - hadith-entries
           - wird-templates
+          - streak-defs
+          - missions
+          - badges
     RowId:
       name: id
       in: path

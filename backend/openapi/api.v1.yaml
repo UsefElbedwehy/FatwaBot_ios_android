@@ -350,6 +350,52 @@ paths:
                   - $ref: "#/components/schemas/WirdTemplatesCollection"
                   - $ref: "#/components/schemas/UpToDate"
         "400": { $ref: "#/components/responses/ApiError" }
+  /v1/gamification/events:
+    post:
+      summary: Batched, idempotent activity-event ingest (docs/features/gamification.md)
+      operationId: submitActivityEvents
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  minItems: 1
+                  items: { $ref: "#/components/schemas/ActivityEventInput" }
+      responses:
+        "200":
+          description: Ingest result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, duplicates]
+                properties:
+                  accepted: { type: integer }
+                  duplicates: { type: integer }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /v1/gamification/profile:
+    get:
+      summary: Assembled streaks/missions/badges, folded live from the event log + published definitions
+      operationId: getGamificationProfile
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: timezone
+          in: query
+          schema: { type: string, description: "IANA timezone, e.g. Asia/Riyadh; defaults to UTC" }
+      responses:
+        "200":
+          description: Gamification profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GamificationProfile" }
+        "401": { $ref: "#/components/responses/ApiError" }
 components:
   securitySchemes:
     bearerAuth:
@@ -570,3 +616,49 @@ components:
         templates:
           type: array
           items: { $ref: "#/components/schemas/WirdTemplate" }
+    ActivityEventInput:
+      type: object
+      required: [client_event_id, event_type, occurred_at, timezone]
+      properties:
+        client_event_id: { type: string, description: "Client-generated UUID; resubmitting is a no-op" }
+        event_type: { type: string }
+        occurred_at: { type: string, format: date-time }
+        timezone: { type: string, description: "IANA timezone" }
+        metadata: { type: object, additionalProperties: true }
+    GamificationProfile:
+      type: object
+      required: [streaks, missions, badges]
+      properties:
+        streaks:
+          type: array
+          items:
+            type: object
+            required: [key, name, current_length, longest_length, grace_remaining]
+            properties:
+              key: { type: string }
+              name: { type: string }
+              current_length: { type: integer }
+              longest_length: { type: integer }
+              grace_remaining: { type: integer }
+        missions:
+          type: array
+          items:
+            type: object
+            required: [key, name, progress, target, window, ends_at]
+            properties:
+              key: { type: string }
+              name: { type: string }
+              progress: { type: integer }
+              target: { type: integer }
+              window: { type: string, enum: [daily, weekly, lifetime] }
+              ends_at: { type: [string, "null"], format: date-time }
+        badges:
+          type: array
+          items:
+            type: object
+            required: [key, name, icon_ref, earned_at]
+            properties:
+              key: { type: string }
+              name: { type: string }
+              icon_ref: { type: string }
+              earned_at: { type: [string, "null"], format: date-time }

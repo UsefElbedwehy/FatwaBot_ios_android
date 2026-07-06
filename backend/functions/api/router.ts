@@ -12,8 +12,10 @@ import type { IdentityRepo } from "./identity_types.ts";
 import type { ContentRepo } from "./content_types.ts";
 import type { AdminAuthRepo, AdminContentRepo, AuditLogRepo } from "./admin_types.ts";
 import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
+import type { GamificationRepo } from "./gamification_types.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
 import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile } from "./handlers/accounts.ts";
+import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
 import {
   handleConfig,
   handleHomeLayout,
@@ -46,6 +48,7 @@ export interface Deps {
   auditLog: AuditLogRepo;
   jwtSecret: string;
   verifier: IdentityProviderVerifier;
+  gamification: GamificationRepo;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".
@@ -124,6 +127,9 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           provider: profile?.provider ?? "anonymous",
         });
       }
+      if (path === "/v1/gamification/profile") {
+        return await handleGamificationProfile(ctx, deps, req, url.searchParams.get("timezone"));
+      }
       return notFound();
     }
 
@@ -144,6 +150,8 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           );
         case "/v1/auth/link":
           return await handleLinkProvider(ctx, deps, req, await readBody(req));
+        case "/v1/gamification/events":
+          return await handleSubmitEvents(ctx, deps, req, await readBody(req));
       }
       return notFound();
     }

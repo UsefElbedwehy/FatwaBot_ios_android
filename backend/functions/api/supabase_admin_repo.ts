@@ -18,9 +18,9 @@ export class SupabaseAdminContentRepo implements AdminContentRepo {
   constructor(private readonly db: SupabaseClient) {}
 
   async list(ctx: AppContext, collection: string): Promise<AdminContentRow[]> {
-    const table = ADMIN_COLLECTIONS[collection];
+    const ref = ADMIN_COLLECTIONS[collection];
     const { data, error } = await this.db
-      .schema("content").from(table)
+      .schema(ref.schema).from(ref.table)
       .select("*")
       .eq("app_id", ctx.appId);
     if (error) throw error;
@@ -32,9 +32,9 @@ export class SupabaseAdminContentRepo implements AdminContentRepo {
     collection: string,
     fields: Record<string, unknown>,
   ): Promise<AdminContentRow> {
-    const table = ADMIN_COLLECTIONS[collection];
+    const ref = ADMIN_COLLECTIONS[collection];
     const { data, error } = await this.db
-      .schema("content").from(table)
+      .schema(ref.schema).from(ref.table)
       .insert({ ...fields, app_id: ctx.appId, published: false, version: 1 })
       .select("*")
       .single();
@@ -48,9 +48,9 @@ export class SupabaseAdminContentRepo implements AdminContentRepo {
     id: string,
     fields: Record<string, unknown>,
   ): Promise<AdminContentRow | null> {
-    const table = ADMIN_COLLECTIONS[collection];
+    const ref = ADMIN_COLLECTIONS[collection];
     const { data: existing, error: fetchError } = await this.db
-      .schema("content").from(table)
+      .schema(ref.schema).from(ref.table)
       .select("published,version")
       .eq("app_id", ctx.appId).eq("id", id)
       .maybeSingle();
@@ -59,7 +59,7 @@ export class SupabaseAdminContentRepo implements AdminContentRepo {
 
     const versionBump = existing.published ? { version: existing.version + 1 } : {};
     const { data, error } = await this.db
-      .schema("content").from(table)
+      .schema(ref.schema).from(ref.table)
       .update({ ...fields, ...versionBump, updated_at: new Date().toISOString() })
       .eq("app_id", ctx.appId).eq("id", id)
       .select("*")
@@ -74,9 +74,9 @@ export class SupabaseAdminContentRepo implements AdminContentRepo {
     id: string,
     published: boolean,
   ): Promise<AdminContentRow | null> {
-    const table = ADMIN_COLLECTIONS[collection];
+    const ref = ADMIN_COLLECTIONS[collection];
     const { data, error } = await this.db
-      .schema("content").from(table)
+      .schema(ref.schema).from(ref.table)
       .update({ published, updated_at: new Date().toISOString() })
       .eq("app_id", ctx.appId).eq("id", id)
       .select("*")

@@ -20,16 +20,27 @@ export interface AuditEntry {
   after: Record<string, unknown> | null;
 }
 
-/** Whitelisted collection slugs → content-schema table names (ADR-0009: no
- * arbitrary table access from admin input). */
-export const ADMIN_COLLECTIONS: Record<string, string> = {
-  "azkar-categories": "azkar_categories",
-  "azkar-items": "azkar_items",
-  "dua-categories": "dua_categories",
-  "duas": "duas",
-  "hadith-collections": "hadith_collections",
-  "hadith-entries": "hadith_entries",
-  "wird-templates": "wird_templates",
+export interface AdminCollectionRef {
+  schema: string;
+  table: string;
+}
+
+/** Whitelisted collection slugs → (Postgres schema, table) (ADR-0009: no
+ * arbitrary table access from admin input). Gamification/leaderboard/
+ * notification definitions (M3) reuse this exact CRUD mechanism — they're
+ * admin-authored draft/publish data with the same shape as content rows,
+ * just living in a different schema (docs/features/gamification.md). */
+export const ADMIN_COLLECTIONS: Record<string, AdminCollectionRef> = {
+  "azkar-categories": { schema: "content", table: "azkar_categories" },
+  "azkar-items": { schema: "content", table: "azkar_items" },
+  "dua-categories": { schema: "content", table: "dua_categories" },
+  "duas": { schema: "content", table: "duas" },
+  "hadith-collections": { schema: "content", table: "hadith_collections" },
+  "hadith-entries": { schema: "content", table: "hadith_entries" },
+  "wird-templates": { schema: "content", table: "wird_templates" },
+  "streak-defs": { schema: "gamification", table: "streak_defs" },
+  "missions": { schema: "gamification", table: "missions" },
+  "badges": { schema: "gamification", table: "badges" },
 };
 
 export interface AdminContentRepo {
