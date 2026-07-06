@@ -14,6 +14,8 @@ import type { AdminAuthRepo, AdminContentRepo, AuditLogRepo } from "./admin_type
 import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
 import type { GamificationRepo } from "./gamification_types.ts";
 import type { LeaderboardRepo } from "./leaderboard_types.ts";
+import type { SearchHistoryRepo } from "./search_types.ts";
+import type { DeliveryLogRepo, NotificationPrefsRepo } from "./notification_types.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
 import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile } from "./handlers/accounts.ts";
 import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
@@ -24,6 +26,18 @@ import {
   handleRecomputeSnapshot,
   handleUpdateMembership,
 } from "./handlers/leaderboard.ts";
+import {
+  handleClearSearchHistory,
+  handleDeleteSearchEntry,
+  handleListSearchHistory,
+  handleRecordSearch,
+} from "./handlers/search_history.ts";
+import {
+  handleGetNotificationPrefs,
+  handleListNotificationTypes,
+  handleMarkNotificationOpened,
+  handleUpdateNotificationPrefs,
+} from "./handlers/notifications.ts";
 import {
   handleConfig,
   handleHomeLayout,
@@ -58,6 +72,9 @@ export interface Deps {
   verifier: IdentityProviderVerifier;
   gamification: GamificationRepo;
   leaderboard: LeaderboardRepo;
+  searchHistory: SearchHistoryRepo;
+  notificationPrefs: NotificationPrefsRepo;
+  deliveryLog: DeliveryLogRepo;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".
@@ -142,10 +159,20 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
       if (path === "/v1/leaderboards") {
         return await handleListLeaderboards(ctx, deps, req);
       }
+      if (path === "/v1/notification-types") {
+        return await handleListNotificationTypes(ctx, deps);
+      }
+      if (path === "/v1/me/notification-prefs") {
+        return await handleGetNotificationPrefs(ctx, deps, req);
+      }
+      if (path === "/v1/search-history") {
+        return await handleListSearchHistory(ctx, deps, req, url);
+      }
       return notFound();
     }
 
     const leaderboardActionMatch = path.match(/^\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/(join|leave)$/);
+    const notificationOpenedMatch = path.match(/^\/v1\/notifications\/([A-Za-z0-9_-]{1,64})\/opened$/);
 
     // --- auth writes ---
     if (method === "POST") {
@@ -166,6 +193,8 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           return await handleLinkProvider(ctx, deps, req, await readBody(req));
         case "/v1/gamification/events":
           return await handleSubmitEvents(ctx, deps, req, await readBody(req));
+        case "/v1/search-history":
+          return await handleRecordSearch(ctx, deps, req, await readBody(req));
       }
       if (leaderboardActionMatch) {
         const [, key, action] = leaderboardActionMatch;
@@ -173,15 +202,29 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           ? await handleJoinLeaderboard(ctx, deps, req, key, await readBody(req))
           : await handleLeaveLeaderboard(ctx, deps, req, key);
       }
+      if (notificationOpenedMatch) {
+        return await handleMarkNotificationOpened(ctx, deps, notificationOpenedMatch[1]);
+      }
       return notFound();
     }
 
     if (method === "PATCH" && path === "/v1/me/profile") {
       return await handleUpdateProfile(deps, req, await readBody(req));
     }
+    if (method === "PATCH" && path === "/v1/me/notification-prefs") {
+      return await handleUpdateNotificationPrefs(ctx, deps, req, await readBody(req));
+    }
     const membershipMatch = path.match(/^\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/membership$/);
     if (method === "PATCH" && membershipMatch) {
       return await handleUpdateMembership(ctx, deps, req, membershipMatch[1], await readBody(req));
+    }
+
+    if (method === "DELETE" && path === "/v1/search-history") {
+      return await handleClearSearchHistory(ctx, deps, req);
+    }
+    const searchEntryMatch = path.match(/^\/v1\/search-history\/([A-Za-z0-9_-]{1,64})$/);
+    if (method === "DELETE" && searchEntryMatch) {
+      return await handleDeleteSearchEntry(ctx, deps, req, searchEntryMatch[1]);
     }
 
     return methodNotAllowed();

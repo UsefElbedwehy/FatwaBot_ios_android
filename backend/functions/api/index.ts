@@ -13,6 +13,8 @@ import {
 import { DevIdentityProviderVerifier } from "./auth/provider_verify.ts";
 import { SupabaseGamificationRepo } from "./supabase_gamification_repo.ts";
 import { SupabaseLeaderboardRepo } from "./supabase_leaderboard_repo.ts";
+import { SupabaseSearchHistoryRepo } from "./supabase_search_repo.ts";
+import { SupabaseDeliveryLogRepo, SupabaseNotificationPrefsRepo } from "./supabase_notification_repo.ts";
 
 const client = supabaseClientFromEnv();
 const jwtSecret = Deno.env.get("API_JWT_SECRET");
@@ -31,6 +33,9 @@ const deps = {
   verifier: new DevIdentityProviderVerifier(),
   gamification: new SupabaseGamificationRepo(client),
   leaderboard: new SupabaseLeaderboardRepo(client),
+  searchHistory: new SupabaseSearchHistoryRepo(client),
+  notificationPrefs: new SupabaseNotificationPrefsRepo(client),
+  deliveryLog: new SupabaseDeliveryLogRepo(client),
 };
 
 Deno.serve((req) => route(req, deps));

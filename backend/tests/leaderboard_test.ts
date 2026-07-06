@@ -12,6 +12,8 @@ import {
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
 import { InMemoryGamificationRepo } from "./in_memory_gamification_repo.ts";
 import { InMemoryLeaderboardRepo } from "./in_memory_leaderboard_repo.ts";
+import { InMemorySearchHistoryRepo } from "./in_memory_search_repo.ts";
+import { InMemoryDeliveryLogRepo, InMemoryNotificationPrefsRepo } from "./in_memory_notification_repo.ts";
 
 const BASE = "https://x.supabase.co/functions/v1/api";
 const SECRET = "test-secret";
@@ -67,6 +69,9 @@ async function deps() {
     verifier: new DevIdentityProviderVerifier(),
     gamification: new InMemoryGamificationRepo(),
     leaderboard: new InMemoryLeaderboardRepo(),
+    searchHistory: new InMemorySearchHistoryRepo(),
+    notificationPrefs: new InMemoryNotificationPrefsRepo(),
+    deliveryLog: new InMemoryDeliveryLogRepo(),
   };
 }
 

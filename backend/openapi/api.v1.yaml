@@ -474,6 +474,153 @@ paths:
               schema: { $ref: "#/components/schemas/LeaderboardMembership" }
         "401": { $ref: "#/components/responses/ApiError" }
         "404": { $ref: "#/components/responses/ApiError" }
+  /v1/search-history:
+    get:
+      summary: List search history, most recent first (docs/features/search-history.md)
+      operationId: listSearchHistory
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: source
+          in: query
+          schema: { type: string, enum: [azkar, dua, hadith_collections, ai_fatwa, ai_hadith, ai_question] }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: before
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entries]
+                properties:
+                  entries:
+                    type: array
+                    items: { $ref: "#/components/schemas/SearchHistoryEntry" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+    post:
+      summary: Record a search (fire-and-forget; failures never block the search UI)
+      operationId: recordSearch
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source, query_text]
+              properties:
+                source: { type: string, enum: [azkar, dua, hadith_collections, ai_fatwa, ai_hadith, ai_question] }
+                query_text: { type: string, minLength: 1 }
+                locale: { type: string, default: ar }
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchHistoryEntry" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+    delete:
+      summary: Clear all search history (destructive; client must confirm first)
+      operationId: clearSearchHistory
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Cleared
+          content:
+            application/json:
+              schema: { type: object, required: [cleared], properties: { cleared: { type: boolean, enum: [true] } } }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /v1/search-history/{id}:
+    delete:
+      summary: Delete one search history entry
+      operationId: deleteSearchHistoryEntry
+      security: [{ bearerAuth: [] }]
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { type: object, required: [deleted], properties: { deleted: { type: boolean, enum: [true] } } }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /v1/notification-types:
+    get:
+      summary: Public notification catalog, drives the Settings screen (docs/features/notification-campaigns.md)
+      operationId: listNotificationTypes
+      responses:
+        "200":
+          description: Catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [types]
+                properties:
+                  types:
+                    type: array
+                    items: { $ref: "#/components/schemas/NotificationType" }
+  /v1/me/notification-prefs:
+    get:
+      summary: Catalog defaults merged with this user's overrides
+      operationId: getNotificationPrefs
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Prefs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [prefs]
+                properties:
+                  prefs:
+                    type: array
+                    items: { $ref: "#/components/schemas/NotificationPref" }
+        "401": { $ref: "#/components/responses/ApiError" }
+    patch:
+      summary: Set one notification type's enabled/offset override
+      operationId: updateNotificationPrefs
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notification_type_key]
+              properties:
+                notification_type_key: { type: string }
+                enabled: { type: boolean }
+                offset_minutes: { type: [integer, "null"] }
+      responses:
+        "200":
+          description: Updated pref
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPref" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /v1/notifications/{id}/opened:
+    post:
+      summary: Client reports a notification tap, feeding delivery/open metrics
+      operationId: markNotificationOpened
+      parameters: [ { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200":
+          description: Marked opened
+          content:
+            application/json:
+              schema: { type: object, required: [opened], properties: { opened: { type: boolean, enum: [true] } } }
+        "404": { $ref: "#/components/responses/ApiError" }
 components:
   securitySchemes:
     bearerAuth:
@@ -766,3 +913,30 @@ components:
         handle: { type: string }
         publish_name: { type: boolean }
         city: { type: [string, "null"] }
+    SearchHistoryEntry:
+      type: object
+      required: [id, source, query_text, locale, created_at]
+      properties:
+        id: { type: string }
+        source: { type: string, enum: [azkar, dua, hadith_collections, ai_fatwa, ai_hadith, ai_question] }
+        query_text: { type: string }
+        locale: { type: string }
+        created_at: { type: string, format: date-time }
+    NotificationType:
+      type: object
+      required: [key, category, name, help_text, default_enabled, offset_configurable, delivery_class]
+      properties:
+        key: { type: string }
+        category: { type: string, enum: [worship, gamification, campaign] }
+        name: { type: string }
+        help_text: { type: string }
+        default_enabled: { type: boolean }
+        offset_configurable: { type: boolean }
+        delivery_class: { type: string, enum: [local_computed, remote] }
+    NotificationPref:
+      type: object
+      required: [notification_type_key, enabled, offset_minutes]
+      properties:
+        notification_type_key: { type: string }
+        enabled: { type: boolean }
+        offset_minutes: { type: [integer, "null"] }

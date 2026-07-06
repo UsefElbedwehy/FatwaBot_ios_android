@@ -211,6 +211,9 @@ components:
           - missions
           - badges
           - leaderboard-defs
+          - notification-types
+          - notification-templates
+          - notification-campaigns
     RowId:
       name: id
       in: path

@@ -42,6 +42,9 @@ export const ADMIN_COLLECTIONS: Record<string, AdminCollectionRef> = {
   "missions": { schema: "gamification", table: "missions" },
   "badges": { schema: "gamification", table: "badges" },
   "leaderboard-defs": { schema: "gamification", table: "leaderboard_defs" },
+  "notification-types": { schema: "config", table: "notification_types" },
+  "notification-templates": { schema: "notifications", table: "templates" },
+  "notification-campaigns": { schema: "notifications", table: "campaigns" },
 };
 
 export interface AdminContentRepo {

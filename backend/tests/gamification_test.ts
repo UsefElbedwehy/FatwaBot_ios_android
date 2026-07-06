@@ -11,6 +11,8 @@ import {
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
 import { InMemoryGamificationRepo } from "./in_memory_gamification_repo.ts";
 import { InMemoryLeaderboardRepo } from "./in_memory_leaderboard_repo.ts";
+import { InMemorySearchHistoryRepo } from "./in_memory_search_repo.ts";
+import { InMemoryDeliveryLogRepo, InMemoryNotificationPrefsRepo } from "./in_memory_notification_repo.ts";
 
 const BASE = "https://x.supabase.co/functions/v1/api";
 const SECRET = "test-secret";
@@ -101,6 +103,9 @@ function deps() {
     verifier: new DevIdentityProviderVerifier(),
     gamification: new InMemoryGamificationRepo(),
     leaderboard: new InMemoryLeaderboardRepo(),
+    searchHistory: new InMemorySearchHistoryRepo(),
+    notificationPrefs: new InMemoryNotificationPrefsRepo(),
+    deliveryLog: new InMemoryDeliveryLogRepo(),
   };
 }
 
@@ -167,19 +172,17 @@ Deno.test("gamification profile assembles streaks/missions/badges from published
   const user = await signIn(d);
   const auth = { authorization: `Bearer ${user.access_token}` };
 
+  // Timestamped at "now" (not a hardcoded date) so the streak's current-day
+  // check against wall-clock "today" doesn't go stale as real time passes.
+  const now = new Date().toISOString();
   await route(
     post("/v1/gamification/events", {
       events: [
-        {
-          client_event_id: "e1",
-          event_type: "azkar_completed",
-          occurred_at: "2026-07-06T06:00:00Z",
-          timezone: "Asia/Riyadh",
-        },
+        { client_event_id: "e1", event_type: "azkar_completed", occurred_at: now, timezone: "Asia/Riyadh" },
         {
           client_event_id: "e2",
           event_type: "tasbeeh_session_completed",
-          occurred_at: "2026-07-06T06:00:00Z",
+          occurred_at: now,
           timezone: "Asia/Riyadh",
         },
       ],
