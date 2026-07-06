@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Spa
@@ -25,10 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.core.content.AzkarCategory
 import com.fatwabot.core.content.Dua
 import com.fatwabot.core.content.HadithCollectionSummary
@@ -41,15 +42,18 @@ import com.fatwabot.feature.hadith.HadithCollectionsScreen
 import com.fatwabot.feature.hadith.HadithReadingScreen
 import com.fatwabot.feature.prayer.PrayerScreen
 import com.fatwabot.feature.prayer.PrayerViewModel
+import com.fatwabot.feature.prayer.QiblaScreen
 import com.fatwabot.feature.tasbeeh.TasbeehScreen
 
 /**
- * M2 interim: lightweight in-tab destination switch. A full feature nav-graph
- * per ADR-0005 (Android dialect) replaces this once Qibla lands as its own
- * row (task 26 wires the complete Worship surface).
+ * M2: lightweight in-tab destination switch. A full feature nav-graph per
+ * ADR-0005 (Android dialect) is a future refactor once this list stops
+ * growing. `destination` is hoisted to RootScaffold so Home's quick actions
+ * (task 26) can deep-link directly into a screen, not just the tab.
  */
-private enum class WorshipDestination(val title: String) {
+enum class WorshipDestination(val title: String) {
     PRAYER("أوقات الصلاة"),
+    QIBLA("القبلة"),
     TASBEEH("السُّبحة"),
     AZKAR("الأذكار"),
     DUA("الأدعية"),
@@ -58,24 +62,37 @@ private enum class WorshipDestination(val title: String) {
 }
 
 @Composable
-fun WorshipTab(prayerViewModel: PrayerViewModel) {
-    var destination by rememberSaveable { mutableStateOf<WorshipDestination?>(null) }
+fun WorshipTab(
+    prayerViewModel: PrayerViewModel,
+    destination: WorshipDestination?,
+    onDestinationChange: (WorshipDestination?) -> Unit,
+) {
+    val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
 
     when (destination) {
-        null -> WorshipMenu(onSelect = { destination = it })
+        null -> WorshipMenu(
+            hasLocation = prayerState.location != null,
+            onSelect = onDestinationChange,
+        )
         WorshipDestination.PRAYER -> WorshipDetailScaffold(
             title = WorshipDestination.PRAYER.title,
-            onBack = { destination = null },
+            onBack = { onDestinationChange(null) },
         ) { PrayerScreen(prayerViewModel) }
+        WorshipDestination.QIBLA -> WorshipDetailScaffold(
+            title = WorshipDestination.QIBLA.title,
+            onBack = { onDestinationChange(null) },
+        ) {
+            prayerState.location?.let { location -> QiblaScreen(location = location) }
+        }
         WorshipDestination.TASBEEH -> WorshipDetailScaffold(
             title = WorshipDestination.TASBEEH.title,
-            onBack = { destination = null },
+            onBack = { onDestinationChange(null) },
         ) { TasbeehScreen(viewModel = hiltViewModel()) }
         WorshipDestination.AZKAR -> {
             var selectedCategory by remember { mutableStateOf<AzkarCategory?>(null) }
             WorshipDetailScaffold(
                 title = selectedCategory?.name ?: WorshipDestination.AZKAR.title,
-                onBack = { if (selectedCategory != null) selectedCategory = null else destination = null },
+                onBack = { if (selectedCategory != null) selectedCategory = null else onDestinationChange(null) },
             ) {
                 val category = selectedCategory
                 if (category == null) {
@@ -89,7 +106,7 @@ fun WorshipTab(prayerViewModel: PrayerViewModel) {
             var selectedDua by remember { mutableStateOf<Dua?>(null) }
             WorshipDetailScaffold(
                 title = selectedDua?.title ?: WorshipDestination.DUA.title,
-                onBack = { if (selectedDua != null) selectedDua = null else destination = null },
+                onBack = { if (selectedDua != null) selectedDua = null else onDestinationChange(null) },
             ) {
                 val dua = selectedDua
                 if (dua == null) {
@@ -101,13 +118,13 @@ fun WorshipTab(prayerViewModel: PrayerViewModel) {
         }
         WorshipDestination.AWRAD -> WorshipDetailScaffold(
             title = WorshipDestination.AWRAD.title,
-            onBack = { destination = null },
+            onBack = { onDestinationChange(null) },
         ) { AwradBoardScreen(viewModel = hiltViewModel()) }
         WorshipDestination.HADITH -> {
             var selectedCollection by remember { mutableStateOf<HadithCollectionSummary?>(null) }
             WorshipDetailScaffold(
                 title = selectedCollection?.name ?: WorshipDestination.HADITH.title,
-                onBack = { if (selectedCollection != null) selectedCollection = null else destination = null },
+                onBack = { if (selectedCollection != null) selectedCollection = null else onDestinationChange(null) },
             ) {
                 val collection = selectedCollection
                 if (collection == null) {
@@ -121,15 +138,17 @@ fun WorshipTab(prayerViewModel: PrayerViewModel) {
 }
 
 @Composable
-private fun WorshipMenu(onSelect: (WorshipDestination) -> Unit) {
+private fun WorshipMenu(hasLocation: Boolean, onSelect: (WorshipDestination) -> Unit) {
+    val visible = WorshipDestination.entries.filter { it != WorshipDestination.QIBLA || hasLocation }
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(WorshipDestination.entries) { destination ->
+        items(visible) { destination ->
             ListItem(
                 headlineContent = { Text(destination.title) },
                 leadingContent = {
                     Icon(
                         when (destination) {
                             WorshipDestination.PRAYER -> Icons.Filled.AccessTime
+                            WorshipDestination.QIBLA -> Icons.Filled.Explore
                             WorshipDestination.AZKAR -> Icons.AutoMirrored.Filled.MenuBook
                             WorshipDestination.DUA -> Icons.Filled.Favorite
                             WorshipDestination.AWRAD -> Icons.Filled.Spa

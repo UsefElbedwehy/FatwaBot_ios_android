@@ -9,4 +9,8 @@
     <string name="home_ask_intent_hadith">استخراج الأحاديث</string>
     <string name="home_ask_intent_general">سؤال ديني عام</string>
     <string name="home_ask_coming_soon">قريباً إن شاء الله</string>
+    <string name="quick_qibla">القبلة</string>
+    <string name="quick_tasbeeh">السُّبحة</string>
+    <string name="quick_azkar">الأذكار</string>
+    <string name="quick_history">تاريخ البحث</string>
 </resources>

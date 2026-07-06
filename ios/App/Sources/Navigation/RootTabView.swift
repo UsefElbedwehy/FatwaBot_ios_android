@@ -11,11 +11,18 @@ import PrayerKit
 import SwiftUI
 import TasbeehFeature
 
+/// Destinations reachable from the Worship tab's own list *and* by deep link
+/// from Home's quick actions (task 26 wiring) — pushed onto `worshipPath`.
+enum WorshipDestination: Hashable {
+    case qibla, tasbeeh, azkar, dua, awrad, hadith
+}
+
 struct RootTabView: View {
     @Environment(ThemeStore.self) private var theme
     @Environment(\.colorScheme) private var colorScheme
     @State private var selection: AppTab = .home
     @State private var prayerViewModel = Container.shared.prayerViewModel()
+    @State private var worshipPath = NavigationPath()
 
     var body: some View {
         TabView(selection: $selection) {
@@ -39,9 +46,12 @@ struct RootTabView: View {
             .tabItem { Label("tabs.home", systemImage: AppTab.home.systemImage) }
             .tag(AppTab.home)
 
-            NavigationStack {
+            NavigationStack(path: $worshipPath) {
                 WorshipTabView(prayerViewModel: prayerViewModel)
                     .navigationTitle(Text("tabs.worship"))
+                    .navigationDestination(for: WorshipDestination.self) { destination in
+                        worshipDestinationView(destination)
+                    }
             }
             .tabItem { Label("tabs.worship", systemImage: AppTab.worship.systemImage) }
             .tag(AppTab.worship)
@@ -74,9 +84,54 @@ struct RootTabView: View {
         )
     }
 
+    /// Deep-links from Home's quick actions (task 26): switches to Worship and
+    /// pushes the target screen directly — no extra tap required. `.history`
+    /// (Search History) has no content until AI Search ships (M5+), so it is
+    /// intentionally inert rather than routing to a hollow screen.
     private func handleQuickAction(_ action: QuickAction) {
-        // M1: qibla lives in Worship; the rest arrive in M2.
-        if action == .qibla { selection = .worship }
+        switch action {
+        case .qibla:
+            guard prayerViewModel.location != nil else { selection = .worship; return }
+            worshipPath.append(WorshipDestination.qibla)
+        case .tasbeeh:
+            worshipPath.append(WorshipDestination.tasbeeh)
+        case .azkar:
+            worshipPath.append(WorshipDestination.azkar)
+        case .history:
+            return
+        }
+        selection = .worship
+    }
+
+    @ViewBuilder
+    private func worshipDestinationView(_ destination: WorshipDestination) -> some View {
+        switch destination {
+        case .qibla:
+            if let location = prayerViewModel.location {
+                QiblaScreen(location: location, provider: SystemHeadingProvider())
+                    .navigationTitle(Text("worship.qibla"))
+            }
+        case .tasbeeh:
+            TasbeehScreen(viewModel: Container.shared.tasbeehViewModel())
+                .navigationTitle(Text("worship.tasbeeh"))
+                .navigationBarTitleDisplayMode(.inline)
+        case .azkar:
+            AzkarCategoryListScreen(viewModel: Container.shared.azkarViewModel())
+                .navigationTitle(Text("worship.azkar"))
+                .navigationBarTitleDisplayMode(.inline)
+        case .dua:
+            DuaLibraryScreen(viewModel: Container.shared.duaViewModel())
+                .navigationTitle(Text("worship.dua"))
+                .navigationBarTitleDisplayMode(.inline)
+        case .awrad:
+            AwradBoardScreen(viewModel: Container.shared.awradViewModel())
+                .navigationTitle(Text("worship.awrad"))
+                .navigationBarTitleDisplayMode(.inline)
+        case .hadith:
+            HadithCollectionsScreen(viewModel: Container.shared.hadithViewModel())
+                .navigationTitle(Text("worship.hadith"))
+                .navigationBarTitleDisplayMode(.inline)
+        }
     }
 
     private func placeholder(tab: AppTab) -> some View {
@@ -104,47 +159,24 @@ struct WorshipTabView: View {
             } label: {
                 Label("worship.prayer_times", systemImage: "clock")
             }
-            if let location = prayerViewModel.location {
-                NavigationLink {
-                    QiblaScreen(location: location, provider: SystemHeadingProvider())
-                        .navigationTitle(Text("worship.qibla"))
-                } label: {
+            if prayerViewModel.location != nil {
+                NavigationLink(value: WorshipDestination.qibla) {
                     Label("worship.qibla", systemImage: "safari")
                 }
             }
-            NavigationLink {
-                TasbeehScreen(viewModel: Container.shared.tasbeehViewModel())
-                    .navigationTitle(Text("worship.tasbeeh"))
-                    .navigationBarTitleDisplayMode(.inline)
-            } label: {
+            NavigationLink(value: WorshipDestination.tasbeeh) {
                 Label("worship.tasbeeh", systemImage: "circle.grid.3x3")
             }
-            NavigationLink {
-                AzkarCategoryListScreen(viewModel: Container.shared.azkarViewModel())
-                    .navigationTitle(Text("worship.azkar"))
-                    .navigationBarTitleDisplayMode(.inline)
-            } label: {
+            NavigationLink(value: WorshipDestination.azkar) {
                 Label("worship.azkar", systemImage: "book.closed")
             }
-            NavigationLink {
-                DuaLibraryScreen(viewModel: Container.shared.duaViewModel())
-                    .navigationTitle(Text("worship.dua"))
-                    .navigationBarTitleDisplayMode(.inline)
-            } label: {
+            NavigationLink(value: WorshipDestination.dua) {
                 Label("worship.dua", systemImage: "hands.sparkles")
             }
-            NavigationLink {
-                AwradBoardScreen(viewModel: Container.shared.awradViewModel())
-                    .navigationTitle(Text("worship.awrad"))
-                    .navigationBarTitleDisplayMode(.inline)
-            } label: {
+            NavigationLink(value: WorshipDestination.awrad) {
                 Label("worship.awrad", systemImage: "leaf")
             }
-            NavigationLink {
-                HadithCollectionsScreen(viewModel: Container.shared.hadithViewModel())
-                    .navigationTitle(Text("worship.hadith"))
-                    .navigationBarTitleDisplayMode(.inline)
-            } label: {
+            NavigationLink(value: WorshipDestination.hadith) {
                 Label("worship.hadith", systemImage: "text.book.closed")
             }
         }

@@ -9,4 +9,8 @@
     <string name="home_ask_intent_hadith">Hadith lookup</string>
     <string name="home_ask_intent_general">General question</string>
     <string name="home_ask_coming_soon">Coming soon, in shaa Allah</string>
+    <string name="quick_qibla">Qibla</string>
+    <string name="quick_tasbeeh">Tasbeeh</string>
+    <string name="quick_azkar">Azkar</string>
+    <string name="quick_history">Search history</string>
 </resources>

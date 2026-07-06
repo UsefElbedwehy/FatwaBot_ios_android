@@ -1,6 +1,7 @@
 package com.fatwabot.feature.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.fatwabot.core.common.HomeLayout
@@ -26,6 +34,14 @@ import com.fatwabot.core.prayer.HijriDateUi
 import com.fatwabot.core.prayer.NextPrayerState
 import com.fatwabot.core.prayer.PrayerDayUi
 import com.fatwabot.core.prayer.PrayerNameUi
+
+/** Home's quick-actions row — mirror of iOS HomeFeature.QuickAction. */
+enum class QuickAction(val titleRes: Int, val icon: ImageVector) {
+    QIBLA(R.string.quick_qibla, Icons.Filled.Explore),
+    TASBEEH(R.string.quick_tasbeeh, Icons.Filled.Circle),
+    AZKAR(R.string.quick_azkar, Icons.Filled.MenuBook),
+    HISTORY(R.string.quick_history, Icons.Filled.History),
+}
 
 /** Prayer state handed in by the app composition (feature→feature forbidden). */
 data class HomeHeroContent(
@@ -47,6 +63,7 @@ fun HomeScreen(
     hero: HomeHeroContent?,
     formatTime: (Long) -> String,
     prayerTitle: @Composable (PrayerNameUi) -> String,
+    onQuickAction: (QuickAction) -> Unit = {},
 ) {
     val sections = layout?.renderableSections(SUPPORTED_SECTIONS)?.map { it.type }
         ?: FALLBACK_SECTIONS
@@ -64,7 +81,39 @@ fun HomeScreen(
                     "ambient_header" -> AmbientHeader(hero)
                     "prayer_hero" -> hero?.let { PrayerHeroCard(it, formatTime, prayerTitle) }
                     "ask_ai" -> AskSection(askEnabled)
-                    "quick_actions" -> {} // arrives with Worship features on Android in M2
+                    "quick_actions" -> QuickActionsRow(onQuickAction)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionsRow(onQuickAction: (QuickAction) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        QuickAction.entries.forEach { action ->
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onQuickAction(action) },
+            ) {
+                Column(
+                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(action.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        stringResource(action.titleRes),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                    )
                 }
             }
         }

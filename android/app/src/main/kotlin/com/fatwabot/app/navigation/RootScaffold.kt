@@ -28,6 +28,7 @@ import com.fatwabot.app.BuildConfig
 import com.fatwabot.feature.home.HomeHeroContent
 import com.fatwabot.feature.home.HomeScreen
 import com.fatwabot.feature.home.HomeViewModel
+import com.fatwabot.feature.home.QuickAction
 import com.fatwabot.feature.prayer.CityPicker
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.formatTime
@@ -40,6 +41,7 @@ import com.fatwabot.feature.prayer.titleRes
 @Composable
 fun RootScaffold() {
     var selected by rememberSaveable { mutableStateOf(AppTab.HOME) }
+    var worshipDestination by rememberSaveable { mutableStateOf<WorshipDestination?>(null) }
     val prayerViewModel: PrayerViewModel = hiltViewModel()
     val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
     val homeViewModel: HomeViewModel = hiltViewModel()
@@ -77,8 +79,24 @@ fun RootScaffold() {
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selected) {
-                AppTab.HOME -> HomeTab(prayerViewModel, prayerState, homeState)
-                AppTab.WORSHIP -> WorshipTab(prayerViewModel)
+                AppTab.HOME -> HomeTab(
+                    viewModel = prayerViewModel,
+                    state = prayerState,
+                    homeState = homeState,
+                    onQuickAction = { action ->
+                        handleQuickAction(
+                            action = action,
+                            hasLocation = prayerState.location != null,
+                            switchToWorship = { selected = AppTab.WORSHIP },
+                            setWorshipDestination = { worshipDestination = it },
+                        )
+                    },
+                )
+                AppTab.WORSHIP -> WorshipTab(
+                    prayerViewModel = prayerViewModel,
+                    destination = worshipDestination,
+                    onDestinationChange = { worshipDestination = it },
+                )
                 AppTab.JOURNEY, AppTab.SETTINGS -> ComingSoon(selected)
             }
         }
@@ -90,6 +108,7 @@ private fun HomeTab(
     viewModel: PrayerViewModel,
     state: PrayerViewModel.UiState,
     homeState: HomeViewModel.UiState,
+    onQuickAction: (QuickAction) -> Unit,
 ) {
     if (state.needsLocation) {
         CityPicker(onSelect = viewModel::selectCity)
@@ -111,7 +130,33 @@ private fun HomeTab(
         hero = hero,
         formatTime = ::formatTime,
         prayerTitle = { stringResource(it.titleRes()) },
+        onQuickAction = onQuickAction,
     )
+}
+
+/** Deep-links from Home's quick actions (task 26): switches to Worship and
+ * pushes the target screen directly — no extra tap required. `HISTORY`
+ * (Search History) has no content until AI Search ships (M5+), so it is
+ * intentionally inert rather than routing to a hollow screen. */
+private fun handleQuickAction(
+    action: QuickAction,
+    hasLocation: Boolean,
+    switchToWorship: () -> Unit,
+    setWorshipDestination: (WorshipDestination?) -> Unit,
+) {
+    when (action) {
+        QuickAction.QIBLA -> {
+            if (!hasLocation) {
+                switchToWorship()
+                return
+            }
+            setWorshipDestination(WorshipDestination.QIBLA)
+        }
+        QuickAction.TASBEEH -> setWorshipDestination(WorshipDestination.TASBEEH)
+        QuickAction.AZKAR -> setWorshipDestination(WorshipDestination.AZKAR)
+        QuickAction.HISTORY -> return
+    }
+    switchToWorship()
 }
 
 @Composable
