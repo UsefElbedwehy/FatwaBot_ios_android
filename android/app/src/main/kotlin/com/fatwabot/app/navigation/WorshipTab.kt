@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.fatwabot.core.content.AzkarCategory
 import com.fatwabot.core.content.Dua
+import com.fatwabot.feature.awrad.AwradBoardScreen
 import com.fatwabot.feature.azkar.AzkarCategoryListScreen
 import com.fatwabot.feature.azkar.AzkarSessionScreen
 import com.fatwabot.feature.dua.DuaLibraryScreen
@@ -49,6 +51,7 @@ private enum class WorshipDestination(val title: String) {
     TASBEEH("السُّبحة"),
     AZKAR("الأذكار"),
     DUA("الأدعية"),
+    AWRAD("أثرك"),
 }
 
 @Composable
@@ -93,6 +96,10 @@ fun WorshipTab(prayerViewModel: PrayerViewModel) {
                 }
             }
         }
+        WorshipDestination.AWRAD -> WorshipDetailScaffold(
+            title = WorshipDestination.AWRAD.title,
+            onBack = { destination = null },
+        ) { AwradBoardScreen(viewModel = hiltViewModel()) }
     }
 }
 
@@ -108,6 +115,7 @@ private fun WorshipMenu(onSelect: (WorshipDestination) -> Unit) {
                             WorshipDestination.PRAYER -> Icons.Filled.AccessTime
                             WorshipDestination.AZKAR -> Icons.AutoMirrored.Filled.MenuBook
                             WorshipDestination.DUA -> Icons.Filled.Favorite
+                            WorshipDestination.AWRAD -> Icons.Filled.Spa
                             else -> Icons.Filled.Circle
                         },
                         contentDescription = null,
