@@ -263,3 +263,9 @@ begin
      '{"ar": "وِرد يومي من الاستغفار", "en": "A daily wird of seeking Allah''s forgiveness"}'::jsonb,
      'istighfar', 100, 'times', 'daily', 2, true);
 end $$;
+
+-- Bootstrap dev admin (docs/features/admin-dashboard-v1.md). DEV-ONLY credentials —
+-- rotate the password (or delete this row) before any non-local deployment.
+insert into admin.admin_users (email, password_hash) values
+    ('admin@fatwabot.dev', crypt('change-me-dev-only', gen_salt('bf')))
+on conflict (app_id, email) do nothing;

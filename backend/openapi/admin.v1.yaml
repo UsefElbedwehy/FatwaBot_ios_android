@@ -1,0 +1,223 @@
+openapi: "3.1.0"
+info:
+  title: Fatwa Bot Admin Dashboard API
+  version: "1.0.0-m2"
+  description: >
+    Dashboard-only surface (ADR-0009) mounted at /admin/v1 on the same gateway
+    function as the mobile API (docs/features/admin-dashboard-v1.md). Every
+    route except login requires an admin bearer token (aud=admin); mobile
+    anonymous/account tokens are rejected here. Content is stored generically
+    per whitelisted collection (draft/published + version), with every
+    mutation recorded to the audit log.
+servers:
+  - url: https://{project}.supabase.co/functions/v1/api
+    variables:
+      project:
+        default: fatwabot
+paths:
+  /admin/v1/auth/login:
+    post:
+      summary: Admin login (email + password)
+      operationId: adminLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Admin access token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [admin_id, access_token, expires_in]
+                properties:
+                  admin_id: { type: string }
+                  access_token: { type: string }
+                  expires_in: { type: integer, description: "Access token TTL in seconds" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /admin/v1/content/{collection}:
+    get:
+      summary: List all rows (draft + published) in a whitelisted collection
+      operationId: listAdminContent
+      security: [{ adminBearerAuth: [] }]
+      parameters: [ $ref: "#/components/parameters/Collection" ]
+      responses:
+        "200":
+          description: Rows in the collection
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rows]
+                properties:
+                  rows:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminContentRow" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+    post:
+      summary: Create a new draft row (unpublished, version 1)
+      operationId: createAdminContent
+      security: [{ adminBearerAuth: [] }]
+      parameters: [ $ref: "#/components/parameters/Collection" ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true, description: "Collection-specific fields" }
+      responses:
+        "201":
+          description: Created draft row
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentRow" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /admin/v1/content/{collection}/{id}:
+    patch:
+      summary: Update a row's fields (version bumps only if already published)
+      operationId: updateAdminContent
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Collection"
+        - $ref: "#/components/parameters/RowId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true, description: "Partial field update" }
+      responses:
+        "200":
+          description: Updated row
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentRow" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /admin/v1/content/{collection}/{id}/publish:
+    post:
+      summary: Publish a row, making it visible on the public content API
+      operationId: publishAdminContent
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Collection"
+        - $ref: "#/components/parameters/RowId"
+      responses:
+        "200":
+          description: Row with published=true
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentRow" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /admin/v1/content/{collection}/{id}/unpublish:
+    post:
+      summary: Unpublish a row, removing it from the public content API
+      operationId: unpublishAdminContent
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Collection"
+        - $ref: "#/components/parameters/RowId"
+      responses:
+        "200":
+          description: Row with published=false
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminContentRow" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /admin/v1/audit-log:
+    get:
+      summary: List audit log entries, most recent first
+      operationId: listAuditLog
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - name: collection
+          in: query
+          schema: { type: string }
+          description: Optional filter to one collection slug
+      responses:
+        "200":
+          description: Audit entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entries]
+                properties:
+                  entries:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEntry" }
+        "401": { $ref: "#/components/responses/ApiError" }
+components:
+  securitySchemes:
+    adminBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT with aud=admin, issued by POST /admin/v1/auth/login
+  parameters:
+    Collection:
+      name: collection
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - azkar-categories
+          - azkar-items
+          - dua-categories
+          - duas
+          - hadith-collections
+          - hadith-entries
+          - wird-templates
+    RowId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    ApiError:
+      description: Structured error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: object
+                required: [code, message]
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+  schemas:
+    AdminContentRow:
+      type: object
+      required: [id, published, version, fields]
+      properties:
+        id: { type: string }
+        published: { type: boolean }
+        version: { type: integer }
+        fields: { type: object, additionalProperties: true }
+    AuditEntry:
+      type: object
+      required: [adminId, collection, rowId, action, before, after, createdAtEpochSeconds]
+      properties:
+        adminId: { type: string }
+        collection: { type: string }
+        rowId: { type: string }
+        action: { type: string, enum: [create, update, publish, unpublish] }
+        before: { type: [object, "null"], additionalProperties: true }
+        after: { type: [object, "null"], additionalProperties: true }
+        createdAtEpochSeconds: { type: integer }

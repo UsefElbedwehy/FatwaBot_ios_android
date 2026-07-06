@@ -3,6 +3,11 @@ import { apiPath, route } from "../functions/api/router.ts";
 import { InMemoryConfigRepo } from "./in_memory_repo.ts";
 import { InMemoryIdentityRepo } from "./in_memory_identity_repo.ts";
 import { InMemoryContentRepo } from "./in_memory_content_repo.ts";
+import {
+  InMemoryAdminAuthRepo,
+  InMemoryAdminContentRepo,
+  InMemoryAuditLogRepo,
+} from "./in_memory_admin_repo.ts";
 
 const BASE = "https://x.supabase.co/functions/v1/api";
 
@@ -15,6 +20,9 @@ function deps() {
     repo: new InMemoryConfigRepo(),
     identity: new InMemoryIdentityRepo(),
     content: new InMemoryContentRepo(),
+    adminContent: new InMemoryAdminContentRepo(),
+    adminAuth: new InMemoryAdminAuthRepo(),
+    auditLog: new InMemoryAuditLogRepo(),
     jwtSecret: "test-secret",
   };
 }
@@ -23,6 +31,11 @@ Deno.test("apiPath extracts /v1 suffix from function-prefixed paths", () => {
   assertEquals(apiPath("/functions/v1/api/v1/health"), "/v1/health");
   assertEquals(apiPath("/api/v1/config/theme"), "/v1/config/theme");
   assertEquals(apiPath("/no-version-here"), null);
+});
+
+Deno.test("apiPath extracts /admin/v1 suffix (ADR-0009 dashboard surface)", () => {
+  assertEquals(apiPath("/functions/v1/api/admin/v1/auth/login"), "/admin/v1/auth/login");
+  assertEquals(apiPath("/api/admin/v1/content/azkar-categories"), "/admin/v1/content/azkar-categories");
 });
 
 Deno.test("GET /v1/health returns ok", async () => {

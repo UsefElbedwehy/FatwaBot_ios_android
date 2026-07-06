@@ -40,6 +40,33 @@ export async function verifyAccessToken(token: string, secret: string): Promise<
   }
 }
 
+/** Admin tokens carry `aud: "admin"` so they're never confusable with mobile
+ * access tokens even when signed with the same secret (ADR-0009). */
+export interface AdminClaims {
+  adminId: string;
+}
+
+export async function signAdminToken(adminId: string, secret: string): Promise<string> {
+  return await new SignJWT({})
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(adminId)
+    .setIssuer(ISSUER)
+    .setAudience("admin")
+    .setIssuedAt()
+    .setExpirationTime(`${ACCESS_TTL_SECONDS}s`)
+    .sign(key(secret));
+}
+
+export async function verifyAdminToken(token: string, secret: string): Promise<AdminClaims | null> {
+  try {
+    const { payload } = await jwtVerify(token, key(secret), { issuer: ISSUER, audience: "admin" });
+    if (typeof payload.sub !== "string") return null;
+    return { adminId: payload.sub };
+  } catch {
+    return null;
+  }
+}
+
 /** Opaque refresh token + its storage hash (sha-256 hex). */
 export async function mintRefreshToken(): Promise<{ token: string; hash: string }> {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
