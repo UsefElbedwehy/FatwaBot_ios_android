@@ -1,3 +1,4 @@
+import AzkarFeature
 import ConfigKit
 import DesignSystemKit
 import Factory
@@ -115,12 +116,13 @@ struct WorshipTabView: View {
             } label: {
                 Label("worship.tasbeeh", systemImage: "circle.grid.3x3")
             }
-            Section {
+            NavigationLink {
+                AzkarCategoryListScreen(viewModel: Container.shared.azkarViewModel())
+                    .navigationTitle(Text("worship.azkar"))
+                    .navigationBarTitleDisplayMode(.inline)
+            } label: {
                 Label("worship.azkar", systemImage: "book.closed")
-            } header: {
-                Text("common.coming_soon")
             }
-            .foregroundStyle(.secondary)
         }
     }
 }

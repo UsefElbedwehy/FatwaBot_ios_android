@@ -68,3 +68,9 @@
 "tasbeeh.stats.sets" = "Sets Completed";
 "common.reset" = "Reset";
 "common.done" = "Done";
+"azkar.loading" = "Loading…";
+"azkar.completed_today_a11y" = "Completed today";
+"azkar.tap_to_count" = "Tap to count";
+"azkar.virtue_note_label" = "Benefit";
+"azkar.session_complete" = "Azkar completed";
+"azkar.session_complete_subtitle" = "May Allah accept it from you";

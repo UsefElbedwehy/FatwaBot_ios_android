@@ -24,7 +24,7 @@ targets:
       - package: PrayerKit
         products: [PrayerKit]
       - package: AppFeatures
-        products: [PrayerFeature, HomeFeature, TasbeehFeature]
+        products: [PrayerFeature, HomeFeature, TasbeehFeature, AzkarFeature]
       - target: FatwaBotWidgets
     settings:
       base:

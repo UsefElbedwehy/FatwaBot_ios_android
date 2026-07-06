@@ -1,4 +1,6 @@
+import AzkarFeature
 import ConfigKit
+import ContentKit
 import CoreKit
 import Factory
 import Foundation
@@ -28,6 +30,16 @@ extension Container {
         self {
             ConfigService(
                 store: FileConfigStore(directory: AppEnvironment.sharedContainerURL),
+                client: self.apiClient()
+            )
+        }
+        .singleton
+    }
+
+    var contentService: Factory<ContentService> {
+        self {
+            ContentService(
+                store: ContentFileStore(directory: AppEnvironment.sharedContainerURL),
                 client: self.apiClient()
             )
         }
@@ -76,6 +88,18 @@ extension Container {
             TasbeehViewModel(
                 haptics: SystemHaptics(),
                 store: FileTasbeehHistoryStore(directory: AppEnvironment.sharedContainerURL)
+            )
+        }
+        .singleton
+    }
+
+    @MainActor
+    var azkarViewModel: Factory<AzkarViewModel> {
+        self { @MainActor in
+            AzkarViewModel(
+                contentService: self.contentService(),
+                haptics: SystemHaptics(),
+                store: FileAzkarStore(directory: AppEnvironment.sharedContainerURL)
             )
         }
         .singleton

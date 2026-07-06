@@ -68,3 +68,9 @@
 "tasbeeh.stats.sets" = "الجولات المكتملة";
 "common.reset" = "إعادة";
 "common.done" = "تم";
+"azkar.loading" = "جارٍ التحميل…";
+"azkar.completed_today_a11y" = "أُنجز اليوم";
+"azkar.tap_to_count" = "اضغط للعد";
+"azkar.virtue_note_label" = "الفائدة";
+"azkar.session_complete" = "أتممت الأذكار";
+"azkar.session_complete_subtitle" = "تقبّل الله منك";
