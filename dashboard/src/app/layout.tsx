@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NAV_DOMAINS } from "@/lib/nav";
+import { getAdminToken } from "@/lib/session";
+import { logoutAction } from "@/lib/actions";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,7 +10,9 @@ export const metadata: Metadata = {
   description: "Operational control center for the Fatwa Bot platform",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const isSignedIn = Boolean(await getAdminToken());
+
   return (
     <html lang="en">
       <body className="min-h-screen bg-stone-100 text-stone-900 antialiased">
@@ -33,6 +37,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 ))}
               </ul>
             </nav>
+            {isSignedIn && (
+              <form action={logoutAction} className="border-t border-stone-200 p-3">
+                <button type="submit" className="w-full rounded-lg px-3 py-2 text-start text-sm text-stone-500 hover:bg-stone-100">
+                  Sign out
+                </button>
+              </form>
+            )}
           </aside>
           <main className="flex-1 p-8">{children}</main>
         </div>

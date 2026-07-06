@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { NAV_DOMAINS } from "@/lib/nav";
 
 export function generateStaticParams() {
-  return NAV_DOMAINS.filter((d) => d.slug !== "overview").map((d) => ({ domain: d.slug }));
+  return NAV_DOMAINS.filter((d) => !d.implemented).map((d) => ({ domain: d.slug }));
 }
 
 export default async function DomainPlaceholderPage({
@@ -12,7 +12,7 @@ export default async function DomainPlaceholderPage({
 }) {
   const { domain: slug } = await params;
   const domain = NAV_DOMAINS.find((d) => d.slug === slug);
-  if (!domain || domain.slug === "overview") notFound();
+  if (!domain || domain.implemented) notFound();
 
   return (
     <div className="max-w-2xl">
