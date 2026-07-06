@@ -1,6 +1,7 @@
 import AzkarFeature
 import ConfigKit
 import DesignSystemKit
+import DuaFeature
 import Factory
 import HomeFeature
 import PrayerFeature
@@ -122,6 +123,13 @@ struct WorshipTabView: View {
                     .navigationBarTitleDisplayMode(.inline)
             } label: {
                 Label("worship.azkar", systemImage: "book.closed")
+            }
+            NavigationLink {
+                DuaLibraryScreen(viewModel: Container.shared.duaViewModel())
+                    .navigationTitle(Text("worship.dua"))
+                    .navigationBarTitleDisplayMode(.inline)
+            } label: {
+                Label("worship.dua", systemImage: "hands.sparkles")
             }
         }
     }

@@ -2,6 +2,7 @@ import AzkarFeature
 import ConfigKit
 import ContentKit
 import CoreKit
+import DuaFeature
 import Factory
 import Foundation
 import NetworkingKit
@@ -100,6 +101,17 @@ extension Container {
                 contentService: self.contentService(),
                 haptics: SystemHaptics(),
                 store: FileAzkarStore(directory: AppEnvironment.sharedContainerURL)
+            )
+        }
+        .singleton
+    }
+
+    @MainActor
+    var duaViewModel: Factory<DuaViewModel> {
+        self { @MainActor in
+            DuaViewModel(
+                contentService: self.contentService(),
+                store: FileDuaStore(directory: AppEnvironment.sharedContainerURL)
             )
         }
         .singleton

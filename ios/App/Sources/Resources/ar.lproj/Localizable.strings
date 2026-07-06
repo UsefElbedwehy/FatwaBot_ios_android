@@ -22,7 +22,8 @@
 "prayer.pick_city" = "اختر مدينتك";
 "worship.prayer_times" = "أوقات الصلاة";
 "worship.qibla" = "القبلة";
-"worship.azkar" = "الأذكار والأدعية";
+"worship.azkar" = "الأذكار";
+"worship.dua" = "الأدعية";
 "worship.tasbeeh" = "السُّبحة";
 "quick.qibla" = "القبلة";
 "quick.tasbeeh" = "السُّبحة";
@@ -74,3 +75,7 @@
 "azkar.virtue_note_label" = "الفائدة";
 "azkar.session_complete" = "أتممت الأذكار";
 "azkar.session_complete_subtitle" = "تقبّل الله منك";
+"dua.favorites" = "المفضلة";
+"dua.search_placeholder" = "ابحث في الأدعية…";
+"dua.search_results" = "نتائج البحث";
+"dua.search_no_results" = "لا توجد نتائج مطابقة";

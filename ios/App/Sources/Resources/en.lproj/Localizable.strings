@@ -22,7 +22,8 @@
 "prayer.pick_city" = "Choose your city";
 "worship.prayer_times" = "Prayer times";
 "worship.qibla" = "Qibla";
-"worship.azkar" = "Azkar & Duas";
+"worship.azkar" = "Azkar";
+"worship.dua" = "Duas";
 "worship.tasbeeh" = "Tasbeeh";
 "quick.qibla" = "Qibla";
 "quick.tasbeeh" = "Tasbeeh";
@@ -74,3 +75,7 @@
 "azkar.virtue_note_label" = "Benefit";
 "azkar.session_complete" = "Azkar completed";
 "azkar.session_complete_subtitle" = "May Allah accept it from you";
+"dua.favorites" = "Favorites";
+"dua.search_placeholder" = "Search duas…";
+"dua.search_results" = "Search results";
+"dua.search_no_results" = "No matching results";
