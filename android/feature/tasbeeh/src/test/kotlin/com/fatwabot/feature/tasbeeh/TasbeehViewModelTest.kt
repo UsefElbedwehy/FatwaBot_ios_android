@@ -1,5 +1,7 @@
 package com.fatwabot.feature.tasbeeh
 
+import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopHaptics
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.junit.Assert.assertEquals

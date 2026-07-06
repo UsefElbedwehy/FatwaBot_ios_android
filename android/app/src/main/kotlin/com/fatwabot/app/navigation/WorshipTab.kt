@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material3.HorizontalDivider
@@ -21,23 +22,28 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.fatwabot.core.content.AzkarCategory
+import com.fatwabot.feature.azkar.AzkarCategoryListScreen
+import com.fatwabot.feature.azkar.AzkarSessionScreen
 import com.fatwabot.feature.prayer.PrayerScreen
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.tasbeeh.TasbeehScreen
 
 /**
  * M2 interim: lightweight in-tab destination switch. A full feature nav-graph
- * per ADR-0005 (Android dialect) replaces this once Azkar/Dua/Hadith/Qibla
- * land (task 26 wires the complete Worship surface).
+ * per ADR-0005 (Android dialect) replaces this once Dua/Hadith/Qibla land
+ * (task 26 wires the complete Worship surface).
  */
 private enum class WorshipDestination(val title: String) {
     PRAYER("أوقات الصلاة"),
     TASBEEH("السُّبحة"),
+    AZKAR("الأذكار والأدعية"),
 }
 
 @Composable
@@ -54,6 +60,20 @@ fun WorshipTab(prayerViewModel: PrayerViewModel) {
             title = WorshipDestination.TASBEEH.title,
             onBack = { destination = null },
         ) { TasbeehScreen(viewModel = hiltViewModel()) }
+        WorshipDestination.AZKAR -> {
+            var selectedCategory by remember { mutableStateOf<AzkarCategory?>(null) }
+            WorshipDetailScaffold(
+                title = selectedCategory?.name ?: WorshipDestination.AZKAR.title,
+                onBack = { if (selectedCategory != null) selectedCategory = null else destination = null },
+            ) {
+                val category = selectedCategory
+                if (category == null) {
+                    AzkarCategoryListScreen(onCategorySelected = { selectedCategory = it })
+                } else {
+                    AzkarSessionScreen(category = category)
+                }
+            }
+        }
     }
 }
 
@@ -65,7 +85,11 @@ private fun WorshipMenu(onSelect: (WorshipDestination) -> Unit) {
                 headlineContent = { Text(destination.title) },
                 leadingContent = {
                     Icon(
-                        if (destination == WorshipDestination.PRAYER) Icons.Filled.AccessTime else Icons.Filled.Circle,
+                        when (destination) {
+                            WorshipDestination.PRAYER -> Icons.Filled.AccessTime
+                            WorshipDestination.AZKAR -> Icons.AutoMirrored.Filled.MenuBook
+                            else -> Icons.Filled.Circle
+                        },
                         contentDescription = null,
                     )
                 },
@@ -75,7 +99,7 @@ private fun WorshipMenu(onSelect: (WorshipDestination) -> Unit) {
         }
         item {
             Text(
-                "الأذكار والأدعية والأحاديث — قريباً إن شاء الله",
+                "الأدعية والأحاديث — قريباً إن شاء الله",
                 modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

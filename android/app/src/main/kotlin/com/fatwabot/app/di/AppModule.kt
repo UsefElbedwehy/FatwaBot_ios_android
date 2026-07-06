@@ -15,9 +15,13 @@ import com.fatwabot.feature.prayer.LocationProviding
 import com.fatwabot.feature.prayer.PrayerNotificationScheduler
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.app.tasbeeh.SystemHaptics
+import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.content.ContentFileStore
+import com.fatwabot.core.content.ContentService
+import com.fatwabot.feature.azkar.AzkarStoring
+import com.fatwabot.feature.azkar.FileAzkarStore
 import com.fatwabot.feature.prayer.notificationString
 import com.fatwabot.feature.tasbeeh.FileTasbeehHistoryStore
-import com.fatwabot.feature.tasbeeh.HapticsProviding
 import com.fatwabot.feature.tasbeeh.TasbeehHistoryStoring
 import com.fatwabot.widget.HijriDateWidget
 import com.fatwabot.widget.NextPrayerWidget
@@ -108,5 +112,21 @@ abstract class AppModule {
             client = client,
             nowEpochSeconds = { System.currentTimeMillis() / 1000 },
         )
+
+        @Provides
+        @Singleton
+        fun provideContentService(
+            @ApplicationContext context: Context,
+            client: ApiClientProtocol,
+        ): ContentService = ContentService(
+            store = ContentFileStore(File(context.filesDir, "content")),
+            client = client,
+        )
+
+        @Provides
+        @Singleton
+        fun provideAzkarStore(
+            @ApplicationContext context: Context,
+        ): AzkarStoring = FileAzkarStore(File(context.filesDir, "azkar"))
     }
 }

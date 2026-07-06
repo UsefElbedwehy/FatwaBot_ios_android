@@ -1,5 +1,6 @@
 package com.fatwabot.feature.tasbeeh
 
+import com.fatwabot.core.common.HapticsProviding
 import java.io.File
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -40,17 +41,6 @@ data class TasbeehStats(val totalCount: Int, val setsCompleted: Int) {
             setsCompleted = history.size,
         )
     }
-}
-
-/** Haptics boundary — abstracted so the ViewModel is unit-testable without Android APIs. */
-interface HapticsProviding {
-    fun tick()
-    fun targetReached()
-}
-
-class NoopHaptics : HapticsProviding {
-    override fun tick() {}
-    override fun targetReached() {}
 }
 
 /** Persistence boundary (mirrors core:config's FileConfigStore pattern). */

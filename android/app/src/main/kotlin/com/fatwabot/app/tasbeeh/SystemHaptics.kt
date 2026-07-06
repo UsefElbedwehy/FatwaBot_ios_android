@@ -6,7 +6,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.content.getSystemService
-import com.fatwabot.feature.tasbeeh.HapticsProviding
+import com.fatwabot.core.common.HapticsProviding
 
 /** Vibrator-based haptics — mirror of iOS SystemHaptics (light tick / success pattern). */
 class SystemHaptics(private val context: Context) : HapticsProviding {

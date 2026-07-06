@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.fatwabot.feature.tasbeeh"
+    namespace = "com.fatwabot.feature.azkar"
     compileSdk = 35
 
     defaultConfig {
@@ -28,6 +28,7 @@ android {
 
 dependencies {
     implementation(project(":core:common"))
+    implementation(project(":core:content"))
     implementation(project(":core:designsystem"))
 
     val composeBom = platform(libs.compose.bom)

@@ -1,6 +1,7 @@
 package com.fatwabot.feature.tasbeeh
 
 import androidx.lifecycle.ViewModel
+import com.fatwabot.core.common.HapticsProviding
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
