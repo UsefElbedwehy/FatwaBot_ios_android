@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,21 +30,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.fatwabot.core.content.AzkarCategory
+import com.fatwabot.core.content.Dua
 import com.fatwabot.feature.azkar.AzkarCategoryListScreen
 import com.fatwabot.feature.azkar.AzkarSessionScreen
+import com.fatwabot.feature.dua.DuaLibraryScreen
+import com.fatwabot.feature.dua.DuaReadingScreen
 import com.fatwabot.feature.prayer.PrayerScreen
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.tasbeeh.TasbeehScreen
 
 /**
  * M2 interim: lightweight in-tab destination switch. A full feature nav-graph
- * per ADR-0005 (Android dialect) replaces this once Dua/Hadith/Qibla land
+ * per ADR-0005 (Android dialect) replaces this once Hadith/Qibla land
  * (task 26 wires the complete Worship surface).
  */
 private enum class WorshipDestination(val title: String) {
     PRAYER("أوقات الصلاة"),
     TASBEEH("السُّبحة"),
-    AZKAR("الأذكار والأدعية"),
+    AZKAR("الأذكار"),
+    DUA("الأدعية"),
 }
 
 @Composable
@@ -74,6 +79,20 @@ fun WorshipTab(prayerViewModel: PrayerViewModel) {
                 }
             }
         }
+        WorshipDestination.DUA -> {
+            var selectedDua by remember { mutableStateOf<Dua?>(null) }
+            WorshipDetailScaffold(
+                title = selectedDua?.title ?: WorshipDestination.DUA.title,
+                onBack = { if (selectedDua != null) selectedDua = null else destination = null },
+            ) {
+                val dua = selectedDua
+                if (dua == null) {
+                    DuaLibraryScreen(onDuaSelected = { selectedDua = it })
+                } else {
+                    DuaReadingScreen(dua = dua)
+                }
+            }
+        }
     }
 }
 
@@ -88,6 +107,7 @@ private fun WorshipMenu(onSelect: (WorshipDestination) -> Unit) {
                         when (destination) {
                             WorshipDestination.PRAYER -> Icons.Filled.AccessTime
                             WorshipDestination.AZKAR -> Icons.AutoMirrored.Filled.MenuBook
+                            WorshipDestination.DUA -> Icons.Filled.Favorite
                             else -> Icons.Filled.Circle
                         },
                         contentDescription = null,
@@ -99,7 +119,7 @@ private fun WorshipMenu(onSelect: (WorshipDestination) -> Unit) {
         }
         item {
             Text(
-                "الأدعية والأحاديث — قريباً إن شاء الله",
+                "الأحاديث — قريباً إن شاء الله",
                 modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

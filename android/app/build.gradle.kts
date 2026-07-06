@@ -50,6 +50,7 @@ dependencies {
     implementation(project(":feature:tasbeeh"))
     implementation(project(":core:content"))
     implementation(project(":feature:azkar"))
+    implementation(project(":feature:dua"))
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)

@@ -20,6 +20,8 @@ import com.fatwabot.core.content.ContentFileStore
 import com.fatwabot.core.content.ContentService
 import com.fatwabot.feature.azkar.AzkarStoring
 import com.fatwabot.feature.azkar.FileAzkarStore
+import com.fatwabot.feature.dua.DuaStoring
+import com.fatwabot.feature.dua.FileDuaStore
 import com.fatwabot.feature.prayer.notificationString
 import com.fatwabot.feature.tasbeeh.FileTasbeehHistoryStore
 import com.fatwabot.feature.tasbeeh.TasbeehHistoryStoring
@@ -128,5 +130,11 @@ abstract class AppModule {
         fun provideAzkarStore(
             @ApplicationContext context: Context,
         ): AzkarStoring = FileAzkarStore(File(context.filesDir, "azkar"))
+
+        @Provides
+        @Singleton
+        fun provideDuaStore(
+            @ApplicationContext context: Context,
+        ): DuaStoring = FileDuaStore(File(context.filesDir, "dua-favorites.json"))
     }
 }
