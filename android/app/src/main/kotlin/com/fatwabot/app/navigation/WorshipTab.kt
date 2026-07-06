@@ -12,12 +12,12 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -28,23 +28,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.fatwabot.core.content.AzkarCategory
 import com.fatwabot.core.content.Dua
+import com.fatwabot.core.content.HadithCollectionSummary
 import com.fatwabot.feature.awrad.AwradBoardScreen
 import com.fatwabot.feature.azkar.AzkarCategoryListScreen
 import com.fatwabot.feature.azkar.AzkarSessionScreen
 import com.fatwabot.feature.dua.DuaLibraryScreen
 import com.fatwabot.feature.dua.DuaReadingScreen
+import com.fatwabot.feature.hadith.HadithCollectionsScreen
+import com.fatwabot.feature.hadith.HadithReadingScreen
 import com.fatwabot.feature.prayer.PrayerScreen
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.tasbeeh.TasbeehScreen
 
 /**
  * M2 interim: lightweight in-tab destination switch. A full feature nav-graph
- * per ADR-0005 (Android dialect) replaces this once Hadith/Qibla land
- * (task 26 wires the complete Worship surface).
+ * per ADR-0005 (Android dialect) replaces this once Qibla lands as its own
+ * row (task 26 wires the complete Worship surface).
  */
 private enum class WorshipDestination(val title: String) {
     PRAYER("أوقات الصلاة"),
@@ -52,6 +54,7 @@ private enum class WorshipDestination(val title: String) {
     AZKAR("الأذكار"),
     DUA("الأدعية"),
     AWRAD("أثرك"),
+    HADITH("الأحاديث"),
 }
 
 @Composable
@@ -100,6 +103,20 @@ fun WorshipTab(prayerViewModel: PrayerViewModel) {
             title = WorshipDestination.AWRAD.title,
             onBack = { destination = null },
         ) { AwradBoardScreen(viewModel = hiltViewModel()) }
+        WorshipDestination.HADITH -> {
+            var selectedCollection by remember { mutableStateOf<HadithCollectionSummary?>(null) }
+            WorshipDetailScaffold(
+                title = selectedCollection?.name ?: WorshipDestination.HADITH.title,
+                onBack = { if (selectedCollection != null) selectedCollection = null else destination = null },
+            ) {
+                val collection = selectedCollection
+                if (collection == null) {
+                    HadithCollectionsScreen(onCollectionSelected = { selectedCollection = it })
+                } else {
+                    HadithReadingScreen(slug = collection.slug)
+                }
+            }
+        }
     }
 }
 
@@ -116,6 +133,7 @@ private fun WorshipMenu(onSelect: (WorshipDestination) -> Unit) {
                             WorshipDestination.AZKAR -> Icons.AutoMirrored.Filled.MenuBook
                             WorshipDestination.DUA -> Icons.Filled.Favorite
                             WorshipDestination.AWRAD -> Icons.Filled.Spa
+                            WorshipDestination.HADITH -> Icons.Filled.LibraryBooks
                             else -> Icons.Filled.Circle
                         },
                         contentDescription = null,
@@ -124,14 +142,6 @@ private fun WorshipMenu(onSelect: (WorshipDestination) -> Unit) {
                 modifier = Modifier.clickable { onSelect(destination) },
             )
             HorizontalDivider()
-        }
-        item {
-            Text(
-                "الأحاديث — قريباً إن شاء الله",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

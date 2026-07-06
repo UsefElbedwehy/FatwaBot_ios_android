@@ -24,6 +24,8 @@ import com.fatwabot.feature.awrad.FileWirdStore
 import com.fatwabot.feature.awrad.WirdStoring
 import com.fatwabot.feature.dua.DuaStoring
 import com.fatwabot.feature.dua.FileDuaStore
+import com.fatwabot.feature.hadith.FileHadithStore
+import com.fatwabot.feature.hadith.HadithStoring
 import com.fatwabot.feature.prayer.notificationString
 import com.fatwabot.feature.tasbeeh.FileTasbeehHistoryStore
 import com.fatwabot.feature.tasbeeh.TasbeehHistoryStoring
@@ -144,5 +146,11 @@ abstract class AppModule {
         fun provideWirdStore(
             @ApplicationContext context: Context,
         ): WirdStoring = FileWirdStore(File(context.filesDir, "awrad"))
+
+        @Provides
+        @Singleton
+        fun provideHadithStore(
+            @ApplicationContext context: Context,
+        ): HadithStoring = FileHadithStore(File(context.filesDir, "hadith-progress.json"))
     }
 }
