@@ -40,4 +40,12 @@ export class InMemoryGamificationRepo implements GamificationRepo {
   listEvents(_ctx: AppContext, userId: string): Promise<StoredActivityEvent[]> {
     return Promise.resolve(this.byUser.get(userId) ?? []);
   }
+
+  listEventsForUsers(_ctx: AppContext, userIds: string[]): Promise<Record<string, StoredActivityEvent[]>> {
+    const byUser: Record<string, StoredActivityEvent[]> = {};
+    for (const userId of userIds) {
+      byUser[userId] = this.byUser.get(userId) ?? [];
+    }
+    return Promise.resolve(byUser);
+  }
 }

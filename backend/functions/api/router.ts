@@ -13,9 +13,17 @@ import type { ContentRepo } from "./content_types.ts";
 import type { AdminAuthRepo, AdminContentRepo, AuditLogRepo } from "./admin_types.ts";
 import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
 import type { GamificationRepo } from "./gamification_types.ts";
+import type { LeaderboardRepo } from "./leaderboard_types.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
 import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile } from "./handlers/accounts.ts";
 import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
+import {
+  handleJoinLeaderboard,
+  handleLeaveLeaderboard,
+  handleListLeaderboards,
+  handleRecomputeSnapshot,
+  handleUpdateMembership,
+} from "./handlers/leaderboard.ts";
 import {
   handleConfig,
   handleHomeLayout,
@@ -49,6 +57,7 @@ export interface Deps {
   jwtSecret: string;
   verifier: IdentityProviderVerifier;
   gamification: GamificationRepo;
+  leaderboard: LeaderboardRepo;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".
@@ -130,8 +139,13 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
       if (path === "/v1/gamification/profile") {
         return await handleGamificationProfile(ctx, deps, req, url.searchParams.get("timezone"));
       }
+      if (path === "/v1/leaderboards") {
+        return await handleListLeaderboards(ctx, deps, req);
+      }
       return notFound();
     }
+
+    const leaderboardActionMatch = path.match(/^\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/(join|leave)$/);
 
     // --- auth writes ---
     if (method === "POST") {
@@ -153,11 +167,21 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
         case "/v1/gamification/events":
           return await handleSubmitEvents(ctx, deps, req, await readBody(req));
       }
+      if (leaderboardActionMatch) {
+        const [, key, action] = leaderboardActionMatch;
+        return action === "join"
+          ? await handleJoinLeaderboard(ctx, deps, req, key, await readBody(req))
+          : await handleLeaveLeaderboard(ctx, deps, req, key);
+      }
       return notFound();
     }
 
     if (method === "PATCH" && path === "/v1/me/profile") {
       return await handleUpdateProfile(deps, req, await readBody(req));
+    }
+    const membershipMatch = path.match(/^\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/membership$/);
+    if (method === "PATCH" && membershipMatch) {
+      return await handleUpdateMembership(ctx, deps, req, membershipMatch[1], await readBody(req));
     }
 
     return methodNotAllowed();
@@ -245,6 +269,12 @@ async function routeAdmin(
       id,
       action === "publish",
     );
+  }
+
+  const recomputeMatch = path.match(/^\/admin\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/recompute$/);
+  if (recomputeMatch) {
+    if (method !== "POST") return methodNotAllowed();
+    return await handleRecomputeSnapshot(ctx, deps, recomputeMatch[1]);
   }
 
   return notFound();

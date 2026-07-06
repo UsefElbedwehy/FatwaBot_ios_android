@@ -396,6 +396,84 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/GamificationProfile" }
         "401": { $ref: "#/components/responses/ApiError" }
+  /v1/leaderboards:
+    get:
+      summary: Published, enabled boards with my_rank + ranked entries (docs/features/leaderboard.md)
+      operationId: listLeaderboards
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Boards
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [boards]
+                properties:
+                  boards:
+                    type: array
+                    items: { $ref: "#/components/schemas/LeaderboardBoard" }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /v1/leaderboards/{key}/join:
+    post:
+      summary: Opt in to a board (ADR-0007 pseudonymous by default; Q2c city opt-in)
+      operationId: joinLeaderboard
+      security: [{ bearerAuth: [] }]
+      parameters: [ { name: key, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                publish_name: { type: boolean, default: false }
+                city: { type: string, description: "Required for scope=city boards" }
+      responses:
+        "200":
+          description: Membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeaderboardMembership" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
+  /v1/leaderboards/{key}/leave:
+    post:
+      summary: Leave a board
+      operationId: leaveLeaderboard
+      security: [{ bearerAuth: [] }]
+      parameters: [ { name: key, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200":
+          description: Left
+          content:
+            application/json:
+              schema: { type: object, required: [left], properties: { left: { type: boolean, enum: [true] } } }
+        "401": { $ref: "#/components/responses/ApiError" }
+  /v1/leaderboards/{key}/membership:
+    patch:
+      summary: Change publish-name/city choice without leaving
+      operationId: updateLeaderboardMembership
+      security: [{ bearerAuth: [] }]
+      parameters: [ { name: key, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                publish_name: { type: boolean }
+                city: { type: [string, "null"] }
+      responses:
+        "200":
+          description: Updated membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeaderboardMembership" }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
 components:
   securitySchemes:
     bearerAuth:
@@ -662,3 +740,29 @@ components:
               name: { type: string }
               icon_ref: { type: string }
               earned_at: { type: [string, "null"], format: date-time }
+    LeaderboardBoard:
+      type: object
+      required: [key, name, scope, period, joined, my_rank, entries]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        scope: { type: string, enum: [global, country, city] }
+        period: { type: string, enum: [weekly, monthly, seasonal, lifetime, challenge] }
+        joined: { type: boolean }
+        my_rank: { type: [integer, "null"] }
+        entries:
+          type: array
+          items:
+            type: object
+            required: [rank, score, display_name]
+            properties:
+              rank: { type: integer }
+              score: { type: number }
+              display_name: { type: string, description: "Pseudonymous handle, or the real display name if published" }
+    LeaderboardMembership:
+      type: object
+      required: [handle, publish_name, city]
+      properties:
+        handle: { type: string }
+        publish_name: { type: boolean }
+        city: { type: [string, "null"] }

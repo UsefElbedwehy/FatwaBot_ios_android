@@ -43,4 +43,23 @@ export class SupabaseGamificationRepo implements GamificationRepo {
       timezone: r.timezone,
     }));
   }
+
+  async listEventsForUsers(
+    ctx: AppContext,
+    userIds: string[],
+  ): Promise<Record<string, StoredActivityEvent[]>> {
+    if (userIds.length === 0) return {};
+    const { data, error } = await this.db
+      .schema("gamification").from("activity_events")
+      .select("user_id,event_type,occurred_at,timezone")
+      .eq("app_id", ctx.appId).in("user_id", userIds);
+    if (error) throw error;
+    const byUser: Record<string, StoredActivityEvent[]> = {};
+    for (const r of data ?? []) {
+      const list = byUser[r.user_id] ?? [];
+      list.push({ eventType: r.event_type, occurredAt: new Date(r.occurred_at), timezone: r.timezone });
+      byUser[r.user_id] = list;
+    }
+    return byUser;
+  }
 }

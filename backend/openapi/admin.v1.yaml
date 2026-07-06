@@ -159,6 +159,32 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/AuditEntry" }
         "401": { $ref: "#/components/responses/ApiError" }
+  /admin/v1/leaderboards/{key}/recompute:
+    post:
+      summary: >
+        Materialize the current period's snapshot for a published leaderboard
+        (docs/features/leaderboard.md). Stands in for a pg_cron-scheduled job
+        until Supabase is deployed with cron configured.
+      operationId: recomputeLeaderboardSnapshot
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Recompute result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [period_key, entries]
+                properties:
+                  period_key: { type: string }
+                  entries: { type: integer }
+        "401": { $ref: "#/components/responses/ApiError" }
+        "404": { $ref: "#/components/responses/ApiError" }
 components:
   securitySchemes:
     adminBearerAuth:
@@ -184,6 +210,7 @@ components:
           - streak-defs
           - missions
           - badges
+          - leaderboard-defs
     RowId:
       name: id
       in: path

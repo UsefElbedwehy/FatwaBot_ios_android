@@ -12,6 +12,7 @@ import {
 } from "./supabase_admin_repo.ts";
 import { DevIdentityProviderVerifier } from "./auth/provider_verify.ts";
 import { SupabaseGamificationRepo } from "./supabase_gamification_repo.ts";
+import { SupabaseLeaderboardRepo } from "./supabase_leaderboard_repo.ts";
 
 const client = supabaseClientFromEnv();
 const jwtSecret = Deno.env.get("API_JWT_SECRET");
@@ -29,6 +30,7 @@ const deps = {
   // once Q8's OAuth credentials are provisioned — no contract change needed.
   verifier: new DevIdentityProviderVerifier(),
   gamification: new SupabaseGamificationRepo(client),
+  leaderboard: new SupabaseLeaderboardRepo(client),
 };
 
 Deno.serve((req) => route(req, deps));

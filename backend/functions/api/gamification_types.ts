@@ -24,4 +24,6 @@ export interface GamificationRepo {
     events: ActivityEventInput[],
   ): Promise<{ accepted: number; duplicates: number }>;
   listEvents(ctx: AppContext, userId: string): Promise<StoredActivityEvent[]>;
+  /** For leaderboard snapshot recompute — events for a set of users at once. */
+  listEventsForUsers(ctx: AppContext, userIds: string[]): Promise<Record<string, StoredActivityEvent[]>>;
 }

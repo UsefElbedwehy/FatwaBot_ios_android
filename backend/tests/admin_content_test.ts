@@ -11,6 +11,7 @@ import {
 } from "./in_memory_admin_repo.ts";
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
 import { InMemoryGamificationRepo } from "./in_memory_gamification_repo.ts";
+import { InMemoryLeaderboardRepo } from "./in_memory_leaderboard_repo.ts";
 
 const BASE = "https://x.supabase.co/functions/v1/api";
 const SECRET = "test-secret";
@@ -28,6 +29,7 @@ async function makeDeps() {
     jwtSecret: SECRET,
     verifier: new DevIdentityProviderVerifier(),
     gamification: new InMemoryGamificationRepo(),
+    leaderboard: new InMemoryLeaderboardRepo(),
   };
 }
 

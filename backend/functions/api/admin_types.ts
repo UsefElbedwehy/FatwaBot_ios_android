@@ -41,6 +41,7 @@ export const ADMIN_COLLECTIONS: Record<string, AdminCollectionRef> = {
   "streak-defs": { schema: "gamification", table: "streak_defs" },
   "missions": { schema: "gamification", table: "missions" },
   "badges": { schema: "gamification", table: "badges" },
+  "leaderboard-defs": { schema: "gamification", table: "leaderboard_defs" },
 };
 
 export interface AdminContentRepo {
