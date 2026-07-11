@@ -1,7 +1,9 @@
 package com.fatwabot.feature.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,10 +16,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -25,11 +31,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fatwabot.core.common.HomeLayout
+import com.fatwabot.core.designsystem.ColorTokens
+import com.fatwabot.core.designsystem.DarkTokens
+import com.fatwabot.core.designsystem.LightTokens
+import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.prayer.HijriDateUi
 import com.fatwabot.core.prayer.NextPrayerState
 import com.fatwabot.core.prayer.PrayerDayUi
@@ -67,21 +80,22 @@ fun HomeScreen(
 ) {
     val sections = layout?.renderableSections(SUPPORTED_SECTIONS)?.map { it.type }
         ?: FALLBACK_SECTIONS
+    val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .brandScreenBackground(tokens),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         sections.forEach { type ->
             item(key = type) {
                 when (type) {
-                    "ambient_header" -> AmbientHeader(hero)
-                    "prayer_hero" -> hero?.let { PrayerHeroCard(it, formatTime, prayerTitle) }
-                    "ask_ai" -> AskSection(askEnabled)
-                    "quick_actions" -> QuickActionsRow(onQuickAction)
+                    "ambient_header" -> AmbientHeader(hero, tokens)
+                    "prayer_hero" -> hero?.let { PrayerHeroCard(it, formatTime, prayerTitle, tokens) }
+                    "ask_ai" -> AskSection(askEnabled, tokens)
+                    "quick_actions" -> QuickActionsRow(onQuickAction, tokens)
                 }
             }
         }
@@ -89,29 +103,39 @@ fun HomeScreen(
 }
 
 @Composable
-private fun QuickActionsRow(onQuickAction: (QuickAction) -> Unit) {
+private fun QuickActionsRow(onQuickAction: (QuickAction) -> Unit, tokens: ColorTokens) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         QuickAction.entries.forEach { action ->
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = RoundedCornerShape(18.dp),
+                color = tokens.surfaceElevated,
                 modifier = Modifier
                     .weight(1f)
+                    .border(1.dp, tokens.outline.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
                     .clickable { onQuickAction(action) },
             ) {
                 Column(
-                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
+                    modifier = Modifier.padding(vertical = 14.dp, horizontal = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(action.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(tokens.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(action.icon, contentDescription = null, tint = tokens.primary)
+                    }
                     Text(
                         stringResource(action.titleRes),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium,
+                        color = tokens.onSurface,
                         maxLines = 1,
                     )
                 }
@@ -121,18 +145,19 @@ private fun QuickActionsRow(onQuickAction: (QuickAction) -> Unit) {
 }
 
 @Composable
-private fun AmbientHeader(hero: HomeHeroContent?) {
+private fun AmbientHeader(hero: HomeHeroContent?, tokens: ColorTokens) {
     Column {
         Text(
             stringResource(R.string.home_greeting),
             style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold,
+            color = tokens.onSurface,
         )
         hero?.hijri?.let {
             Text(
                 "${it.monthName} ${it.day}، ${it.year} هـ",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.onSurfaceSecondary,
             )
         }
     }
@@ -143,132 +168,157 @@ private fun PrayerHeroCard(
     hero: HomeHeroContent,
     formatTime: (Long) -> String,
     prayerTitle: @Composable (PrayerNameUi) -> String,
+    tokens: ColorTokens,
 ) {
-    Surface(shape = RoundedCornerShape(20.dp)) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
-                        ),
-                    ),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.linearGradient(listOf(tokens.primary, tokens.primary.copy(alpha = 0.85f))),
+            )
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                Text(
+                    stringResource(R.string.home_next_prayer),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.75f),
                 )
-                .padding(18.dp),
+                Text(
+                    prayerTitle(hero.next.next),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            }
+            Text(
+                formatTime(hero.next.nextTime.epochSeconds),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            hero.today.ordered.filter { it.first.isPrayer }.forEach { (name, _) ->
+                val isNext = name == hero.next.next
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(if (isNext) 8.dp else 5.dp)
+                            .background(
+                                Color.White.copy(alpha = if (isNext) 1f else 0.5f),
+                                CircleShape,
+                            ),
+                    )
+                    Text(
+                        prayerTitle(name),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = if (isNext) 1f else 0.6f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AskSection(enabled: Boolean, tokens: ColorTokens) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = tokens.surfaceElevated,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, tokens.outline.copy(alpha = 0.6f), RoundedCornerShape(20.dp)),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column {
-                    Text(
-                        stringResource(R.string.home_next_prayer),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
-                    )
-                    Text(
-                        prayerTitle(hero.next.next),
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = tokens.accent, modifier = Modifier.size(20.dp))
                 Text(
-                    formatTime(hero.next.nextTime.epochSeconds),
+                    stringResource(R.string.home_ask_title),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.onSurface,
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                hero.today.ordered.filter { it.first.isPrayer }.forEach { (name, _) ->
-                    val isNext = name == hero.next.next
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(if (isNext) 8.dp else 5.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.onPrimary.copy(
-                                        alpha = if (isNext) 1f else 0.5f,
-                                    ),
-                                    CircleShape,
-                                ),
-                        )
-                        Text(
-                            prayerTitle(name),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(
-                                alpha = if (isNext) 1f else 0.6f,
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AskSection(enabled: Boolean) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            stringResource(R.string.home_ask_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-        ) {
-            Text(
-                stringResource(R.string.home_ask_placeholder),
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = tokens.surface,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IntentChip(R.string.home_ask_intent_fatwa, Modifier.weight(1f))
-            IntentChip(R.string.home_ask_intent_hadith, Modifier.weight(1f))
-            IntentChip(R.string.home_ask_intent_general, Modifier.weight(1f))
-        }
-        if (!enabled) {
+                    .border(1.dp, tokens.outline.copy(alpha = 0.6f), RoundedCornerShape(14.dp)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(Icons.Filled.Search, contentDescription = null, tint = tokens.onSurfaceSecondary, modifier = Modifier.size(18.dp))
+                    Text(
+                        stringResource(R.string.home_ask_placeholder),
+                        color = tokens.onSurfaceSecondary,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IntentChip(R.string.home_ask_intent_fatwa, Icons.Filled.Search, tokens, Modifier.weight(1f))
+                IntentChip(R.string.home_ask_intent_hadith, Icons.Filled.Book, tokens, Modifier.weight(1f))
+                IntentChip(R.string.home_ask_intent_general, Icons.Filled.QuestionAnswer, tokens, Modifier.weight(1f))
+            }
+            if (!enabled) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = tokens.accent, modifier = Modifier.size(14.dp))
+                    Text(
+                        stringResource(R.string.home_ask_coming_soon),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = tokens.accent,
+                    )
+                }
+            }
             Text(
-                stringResource(R.string.home_ask_coming_soon),
+                stringResource(R.string.home_ask_trust_line),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.secondary,
+                color = tokens.onSurfaceSecondary,
             )
         }
-        Text(
-            stringResource(R.string.home_ask_trust_line),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
 @Composable
-private fun IntentChip(textRes: Int, modifier: Modifier = Modifier) {
+private fun IntentChip(textRes: Int, icon: ImageVector, tokens: ColorTokens, modifier: Modifier = Modifier) {
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer,
+        color = tokens.primaryContainer,
         modifier = modifier,
     ) {
-        Text(
-            stringResource(textRes),
+        Row(
             modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-        )
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = tokens.primary, modifier = Modifier.size(14.dp))
+            Text(
+                stringResource(textRes),
+                style = MaterialTheme.typography.labelMedium,
+                color = tokens.primary,
+                maxLines = 1,
+            )
+        }
     }
 }

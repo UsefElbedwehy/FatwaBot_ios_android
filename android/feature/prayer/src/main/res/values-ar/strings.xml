@@ -7,6 +7,8 @@
     <string name="prayer_maghrib">المغرب</string>
     <string name="prayer_isha">العشاء</string>
     <string name="prayer_pick_city">اختر مدينتك</string>
+    <string name="prayer_previous_day">اليوم السابق</string>
+    <string name="prayer_next_day">اليوم التالي</string>
     <string name="city_makkah">مكة المكرمة</string>
     <string name="city_madinah">المدينة المنورة</string>
     <string name="city_riyadh">الرياض</string>

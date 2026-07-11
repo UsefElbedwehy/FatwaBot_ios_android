@@ -29,6 +29,16 @@ export interface LocaleInfo {
   direction: "ltr" | "rtl";
 }
 
+export interface AdminUser {
+  id: string;
+  kind: "anonymous" | "account";
+  provider: "anonymous" | "apple" | "google";
+  displayName: string | null;
+  countryCode: string | null;
+  createdAtEpochSeconds: number;
+  linkedAtEpochSeconds: number | null;
+}
+
 const FALLBACK_LOCALES: LocaleInfo[] = [
   { locale: "ar", display_name: "العربية", direction: "rtl" },
   { locale: "en", display_name: "English", direction: "ltr" },
@@ -140,6 +150,14 @@ export async function listAuditLog(collection?: string): Promise<AuditEntry[]> {
   if (!res.ok) throw new AdminApiError(res.status, await errorMessage(res, "Failed to load audit log"));
   const body = await res.json();
   return body.entries;
+}
+
+export async function listAdminUsers(query?: string): Promise<AdminUser[]> {
+  const qs = query ? `?query=${encodeURIComponent(query)}` : "";
+  const res = await adminFetch(`/admin/v1/users${qs}`);
+  if (!res.ok) throw new AdminApiError(res.status, await errorMessage(res, "Failed to list users"));
+  const body = await res.json();
+  return body.users;
 }
 
 /** Enabled locales drive the editor's locale tabs (spec: "tabs for enabled

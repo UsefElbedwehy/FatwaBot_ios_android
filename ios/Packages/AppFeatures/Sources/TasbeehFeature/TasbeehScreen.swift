@@ -17,16 +17,15 @@ public struct TasbeehScreen: View {
     }
 
     public var body: some View {
-        VStack(spacing: 20) {
-            countHeader
-            presetChips
-            Spacer()
-            tapTarget
-            Spacer()
-            controls
+        ScrollView {
+            VStack(spacing: 24) {
+                presetChips
+                tapTarget
+                controls
+            }
+            .padding(20)
         }
-        .padding()
-        .background(Color(hexToken: tokens.surface))
+        .brandScreenBackground(tokens)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -34,6 +33,7 @@ public struct TasbeehScreen: View {
                 } label: {
                     Image(systemName: "clock.arrow.circlepath")
                 }
+                .accessibilityLabel(Text("tasbeeh.history_title"))
             }
         }
         .sheet(isPresented: $showHistory) {
@@ -52,41 +52,37 @@ public struct TasbeehScreen: View {
         }
     }
 
-    private var countHeader: some View {
-        VStack(spacing: 4) {
-            Text("\(viewModel.count)")
-                .font(.system(size: 64, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(Color(hexToken: tokens.primary))
-                .contentTransition(.numericText())
-                .animation(.snappy, value: viewModel.count)
-            Text("tasbeeh.target \(viewModel.target)")
-                .font(.subheadline)
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-        }
+    @ScaledMetric(relativeTo: .largeTitle) private var countFontSize: CGFloat = 64
+
+    /// Fraction of the current target reached (clamped to 1 past target) — drives the ring.
+    private var progressFraction: Double {
+        viewModel.target > 0 ? min(Double(viewModel.count) / Double(viewModel.target), 1) : 0
     }
 
     @ViewBuilder
     private var presetChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(DhikrPreset.bundled) { preset in
-                    chip(title: preset.arabicText, isSelected: viewModel.selectedPreset.id == preset.id) {
-                        viewModel.select(preset: preset)
+        VStack(alignment: .leading, spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(DhikrPreset.bundled) { preset in
+                        chip(title: preset.arabicText, isSelected: viewModel.selectedPreset.id == preset.id) {
+                            viewModel.select(preset: preset)
+                        }
+                    }
+                    chip(
+                        title: String(localized: "tasbeeh.custom"),
+                        isSelected: viewModel.selectedPreset.id == DhikrPreset.custom.id
+                    ) {
+                        viewModel.select(preset: .custom)
                     }
                 }
-                chip(
-                    title: String(localized: "tasbeeh.custom"),
-                    isSelected: viewModel.selectedPreset.id == DhikrPreset.custom.id
-                ) {
-                    viewModel.select(preset: .custom)
-                }
+                .padding(.horizontal, 2)
             }
-        }
-        if viewModel.selectedPreset.id == DhikrPreset.custom.id {
-            TextField("tasbeeh.custom_placeholder", text: $viewModel.customText)
-                .textFieldStyle(.roundedBorder)
-                .multilineTextAlignment(.trailing)
+            if viewModel.selectedPreset.id == DhikrPreset.custom.id {
+                TextField("tasbeeh.custom_placeholder", text: $viewModel.customText)
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+            }
         }
     }
 
@@ -105,21 +101,54 @@ public struct TasbeehScreen: View {
         .buttonStyle(.plain)
     }
 
+    /// The centerpiece: a big circular tap target with a progress ring around
+    /// the live count and the selected dhikr text beneath it.
     private var tapTarget: some View {
         Button {
             viewModel.increment()
         } label: {
-            Circle()
-                .fill(Color(hexToken: tokens.primary))
-                .overlay {
+            ZStack {
+                RingProgress(value: progressFraction, lineWidth: 12, tokens: tokens)
+                    .motionAnimation(.snappy, value: progressFraction)
+
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(hexToken: tokens.primaryContainer),
+                                Color(hexToken: tokens.surfaceElevated),
+                            ],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+                    .padding(18)
+
+                VStack(spacing: 8) {
+                    Text("\(viewModel.count)")
+                        .font(.system(size: countFontSize, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Color(hexToken: tokens.primary))
+                        .contentTransition(.numericText())
+                        .motionAnimation(.snappy, value: viewModel.count)
+
                     Text(viewModel.displayText)
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(Color(hexToken: tokens.onPrimary))
-                        .padding()
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Color(hexToken: tokens.onSurface))
+                        .multilineTextAlignment(.center)
                         .minimumScaleFactor(0.5)
+                        .lineLimit(2)
+                        .padding(.horizontal, 24)
+
+                    Text("tasbeeh.target \(viewModel.target)")
+                        .font(.subheadline)
+                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                        .monospacedDigit()
                 }
-                .frame(width: 220, height: 220)
-                .shadow(radius: viewModel.justReachedTarget ? 12 : 4)
+                .padding(28)
+            }
+            .frame(width: 300, height: 300)
+            .shadow(color: Color(hexToken: tokens.primary).opacity(viewModel.justReachedTarget ? 0.35 : 0.12),
+                    radius: viewModel.justReachedTarget ? 22 : 14, x: 0, y: 8)
         }
         .buttonStyle(.plain)
         .sensoryFeedback(.success, trigger: viewModel.justReachedTarget) { _, new in new }
@@ -164,26 +193,48 @@ struct TasbeehHistoryView: View {
     let stats: TasbeehStats
     let history: [TasbeehHistoryEntry]
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var tokens: ColorTokens {
+        let base = DesignTokens.bundledDefault
+        return colorScheme == .dark ? base.dark : base.light
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    HStack {
-                        statColumn(value: stats.totalCount, labelKey: "tasbeeh.stats.total")
-                        statColumn(value: stats.setsCompleted, labelKey: "tasbeeh.stats.sets")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack(spacing: 14) {
+                        statCard(value: stats.totalCount, labelKey: "tasbeeh.stats.total")
+                        statCard(value: stats.setsCompleted, labelKey: "tasbeeh.stats.sets")
                     }
-                }
-                Section {
-                    ForEach(history.sorted(by: { $0.completedAt > $1.completedAt })) { entry in
-                        HStack {
-                            Text(entry.customText ?? entry.presetId ?? "")
-                            Spacer()
-                            Text("\(entry.actualCount)/\(entry.target)").monospacedDigit()
+
+                    if history.isEmpty {
+                        BrandEmptyState(systemImage: "list.bullet.rectangle", messageKey: "tasbeeh.history_empty", tokens: tokens)
+                    } else {
+                        VStack(spacing: 0) {
+                            let entries = history.sorted(by: { $0.completedAt > $1.completedAt })
+                            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                                HStack {
+                                    Text(entry.customText ?? entry.presetId ?? "")
+                                        .foregroundStyle(Color(hexToken: tokens.onSurface))
+                                    Spacer()
+                                    Text("\(entry.actualCount)/\(entry.target)")
+                                        .font(.body.monospacedDigit())
+                                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                                }
+                                .padding(.vertical, 12)
+                                if index < entries.count - 1 {
+                                    Divider().opacity(0.3)
+                                }
+                            }
                         }
+                        .brandCard(tokens)
                     }
                 }
+                .padding(20)
             }
+            .brandScreenBackground(tokens)
             .navigationTitle(Text("tasbeeh.history_title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -193,11 +244,23 @@ struct TasbeehHistoryView: View {
         }
     }
 
-    private func statColumn(value: Int, labelKey: LocalizedStringKey) -> some View {
-        VStack {
-            Text("\(value)").font(.title.weight(.bold)).monospacedDigit()
-            Text(labelKey).font(.caption)
+    private func statCard(value: Int, labelKey: LocalizedStringKey) -> some View {
+        VStack(spacing: 4) {
+            Text("\(value)")
+                .font(.system(size: 32, weight: .heavy, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Color(hexToken: tokens.primary))
+            Text(labelKey)
+                .font(.caption)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(Color(hexToken: tokens.surfaceElevated), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color(hexToken: tokens.outline).opacity(0.6), lineWidth: 1)
+        )
+        .shadow(color: Color(hexToken: tokens.primary).opacity(0.05), radius: 8, x: 0, y: 3)
     }
 }

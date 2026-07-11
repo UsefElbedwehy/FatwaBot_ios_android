@@ -26,6 +26,8 @@ public final class PrayerViewModel {
     private let notificationPreferences: PrayerNotificationPreferences
     private let widgetStore: WidgetSnapshotStore?
     private let reloadWidgets: (@Sendable () -> Void)?
+    private let liveActivity: PrayerLiveActivityManaging
+    private let liveActivityPreference: LiveActivityPreferenceStoring
     private let now: @Sendable () -> Date
     private let calendar: Calendar
 
@@ -36,6 +38,8 @@ public final class PrayerViewModel {
         notificationPreferences: PrayerNotificationPreferences = PrayerNotificationPreferences(),
         widgetStore: WidgetSnapshotStore? = nil,
         reloadWidgets: (@Sendable () -> Void)? = nil,
+        liveActivity: PrayerLiveActivityManaging = NoopPrayerLiveActivityManager(),
+        liveActivityPreference: LiveActivityPreferenceStoring = UserDefaultsLiveActivityPreferenceStore(),
         settings: PrayerSettings = PrayerSettings(),
         now: @escaping @Sendable () -> Date = { Date() },
         calendar: Calendar = .current
@@ -46,12 +50,17 @@ public final class PrayerViewModel {
         self.notificationPreferences = notificationPreferences
         self.widgetStore = widgetStore
         self.reloadWidgets = reloadWidgets
+        self.liveActivity = liveActivity
+        self.liveActivityPreference = liveActivityPreference
         self.settings = settings
         self.now = now
         self.calendar = calendar
         // Instant first paint from cache; resolve() refines asynchronously.
+        // Widget snapshot write is skipped here (updateWidget: false) — it's a
+        // disk write + WidgetKit IPC call, not needed to unblock first paint,
+        // and start() re-applies with updateWidget: true moments later anyway.
         if let cached = locationProvider.cached() {
-            apply(location: cached)
+            apply(location: cached, updateWidget: false)
         }
     }
 
@@ -95,6 +104,19 @@ public final class PrayerViewModel {
     public func refreshNextPrayer() {
         guard let today, let tomorrow else { return }
         nextPrayer = PrayerEngine.nextPrayer(now: now(), today: today, tomorrow: tomorrow)
+        syncLiveActivity()
+    }
+
+    /// Settings-screen entry point (ADR-0016): off by default, and disabling
+    /// ends any running activity immediately rather than waiting for the next
+    /// state transition to notice the preference changed.
+    public func setLiveActivityEnabled(_ enabled: Bool) {
+        liveActivityPreference.setEnabled(enabled)
+        if enabled {
+            syncLiveActivity()
+        } else {
+            Task { await liveActivity.end() }
+        }
     }
 
     public func day(offset: Int) -> PrayerDay? {
@@ -107,7 +129,7 @@ public final class PrayerViewModel {
         )
     }
 
-    private func apply(location: UserLocation) {
+    private func apply(location: UserLocation, updateWidget: Bool = true) {
         self.location = location
         self.status = .ready
         let currentDate = now()
@@ -120,7 +142,22 @@ public final class PrayerViewModel {
         tomorrow = days[1]
         nextPrayer = PrayerEngine.nextPrayer(now: currentDate, today: days[0], tomorrow: days[1])
         hijri = HijriDate(from: currentDate, offsetDays: settings.hijriOffsetDays)
-        writeWidgetSnapshot(location: location, from: todayComponents)
+        if updateWidget {
+            writeWidgetSnapshot(location: location, from: todayComponents)
+            syncLiveActivity()
+        }
+    }
+
+    /// Starts/updates/ends the Live Activity to match the current next-prayer
+    /// state (ADR-0016) — a no-op via NoopPrayerLiveActivityManager unless the
+    /// app container wires a real ActivityKit-backed manager.
+    private func syncLiveActivity() {
+        guard liveActivityPreference.isEnabled() else {
+            Task { await liveActivity.end() }
+            return
+        }
+        guard let nextPrayer, let location else { return }
+        Task { await liveActivity.start(locationName: location.name, prayerName: nextPrayer.next, prayerTime: nextPrayer.nextTime) }
     }
 
     /// Precomputes a 48h widget snapshot into the app-group store so widget

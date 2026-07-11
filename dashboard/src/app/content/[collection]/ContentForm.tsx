@@ -82,6 +82,47 @@ function FieldInput({
     );
   }
 
+  if (field.kind === "boolean") {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          id={field.key}
+          name={field.key}
+          type="checkbox"
+          defaultChecked={initial === true}
+          className="h-4 w-4 rounded border-stone-300"
+        />
+        <label className="text-sm font-medium text-stone-700" htmlFor={field.key}>
+          {field.label}
+        </label>
+      </div>
+    );
+  }
+
+  if (field.kind === "json" || field.kind === "array") {
+    const defaultValue =
+      field.kind === "array"
+        ? ((initial as string[]) ?? []).join("\n")
+        : JSON.stringify(initial ?? (field.kind === "json" ? {} : []), null, 2);
+    return (
+      <div>
+        <label className="block text-sm font-medium text-stone-700" htmlFor={field.key}>
+          {field.label}
+        </label>
+        <p className="mt-0.5 text-xs text-stone-400">
+          {field.kind === "array" ? "One value per line." : "Raw JSON — edited as data, not code."}
+        </p>
+        <textarea
+          id={field.key}
+          name={field.key}
+          defaultValue={defaultValue}
+          rows={field.kind === "json" ? 6 : 3}
+          className={`${inputClass} font-mono text-xs`}
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
       <label className="block text-sm font-medium text-stone-700" htmlFor={field.key}>

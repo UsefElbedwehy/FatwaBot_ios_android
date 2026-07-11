@@ -6,6 +6,7 @@ import { InMemoryContentRepo } from "./in_memory_content_repo.ts";
 import {
   InMemoryAdminAuthRepo,
   InMemoryAdminContentRepo,
+  InMemoryAdminUsersRepo,
   InMemoryAuditLogRepo,
 } from "./in_memory_admin_repo.ts";
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
@@ -22,6 +23,7 @@ function deps() {
     identity: new InMemoryIdentityRepo(),
     content: new InMemoryContentRepo(),
     adminContent: new InMemoryAdminContentRepo(),
+    adminUsers: new InMemoryAdminUsersRepo(),
     adminAuth: new InMemoryAdminAuthRepo(),
     auditLog: new InMemoryAuditLogRepo(),
     jwtSecret: "test-secret",

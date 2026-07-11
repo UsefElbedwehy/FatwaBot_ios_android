@@ -53,6 +53,10 @@ dependencies {
     implementation(project(":feature:dua"))
     implementation(project(":feature:awrad"))
     implementation(project(":feature:hadith"))
+    implementation(project(":feature:gamification"))
+    implementation(project(":feature:leaderboard"))
+    implementation(project(":feature:searchhistory"))
+    implementation(project(":feature:onboarding"))
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)

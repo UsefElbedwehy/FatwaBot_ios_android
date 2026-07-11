@@ -8,6 +8,7 @@ import { SupabaseContentRepo } from "./supabase_content_repo.ts";
 import {
   SupabaseAdminAuthRepo,
   SupabaseAdminContentRepo,
+  SupabaseAdminUsersRepo,
   SupabaseAuditLogRepo,
 } from "./supabase_admin_repo.ts";
 import { DevIdentityProviderVerifier } from "./auth/provider_verify.ts";
@@ -26,6 +27,7 @@ const deps = {
   content: new SupabaseContentRepo(client),
   adminContent: new SupabaseAdminContentRepo(client),
   adminAuth: new SupabaseAdminAuthRepo(client),
+  adminUsers: new SupabaseAdminUsersRepo(client),
   auditLog: new SupabaseAuditLogRepo(client),
   jwtSecret,
   // docs/features/accounts.md: swap for real Apple/Google JWKS verification

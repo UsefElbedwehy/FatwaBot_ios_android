@@ -25,9 +25,10 @@ public struct HadithReadingScreen: View {
             if let entry = viewModel.currentEntry {
                 content(entry)
             } else {
-                ProgressView()
+                ProgressView().tint(Color(hexToken: tokens.primary))
             }
         }
+        .brandScreenBackground(tokens)
         .task { await viewModel.openCollection(slug: slug, locale: locale) }
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -47,41 +48,65 @@ public struct HadithReadingScreen: View {
     private func content(_ entry: HadithEntry) -> some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .trailing, spacing: 16) {
+                VStack(alignment: .trailing, spacing: 18) {
                     HStack {
                         Text("hadith.entry_number \(entry.number)")
                             .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 5)
                             .background(Color(hexToken: tokens.primaryContainer), in: Capsule())
+                            .foregroundStyle(Color(hexToken: tokens.primary))
                         Spacer()
-                        Text(entry.grading)
-                            .font(.caption)
-                            .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                        Label(entry.grading, systemImage: "checkmark.seal.fill")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Color(hexToken: tokens.accent))
                     }
 
+                    // Reverent centerpiece: the hadith text in an elevated card.
                     Text(entry.arabicText)
-                        .font(.title3)
+                        .font(.system(.title3, design: .serif))
+                        .lineSpacing(8)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(20)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hexToken: tokens.surfaceElevated), Color(hexToken: tokens.primaryContainer).opacity(0.5)],
+                                startPoint: .top, endPoint: .bottom
+                            ),
+                            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .stroke(Color(hexToken: tokens.primary).opacity(0.12), lineWidth: 1)
+                        )
+                        .shadow(color: Color(hexToken: tokens.primary).opacity(0.06), radius: 12, x: 0, y: 6)
 
                     if let translation = entry.translation {
                         Text(translation)
                             .font(.body)
-                            .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                            .foregroundStyle(Color(hexToken: tokens.onSurface))
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .brandCard(tokens)
                     }
 
                     if let benefitNote = entry.benefitNote {
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("hadith.benefit_label")
+                        VStack(alignment: .trailing, spacing: 6) {
+                            Label("hadith.benefit_label", systemImage: "lightbulb.fill")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(Color(hexToken: tokens.primary))
-                            Text(benefitNote).font(.subheadline)
+                                .foregroundStyle(Color(hexToken: tokens.accent))
+                            Text(benefitNote)
+                                .font(.subheadline)
+                                .foregroundStyle(Color(hexToken: tokens.onSurface))
+                                .multilineTextAlignment(.trailing)
                         }
                         .frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding()
-                        .background(Color(hexToken: tokens.primaryContainer), in: RoundedRectangle(cornerRadius: 14))
+                        .padding(16)
+                        .background(Color(hexToken: tokens.accent).opacity(0.10), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color(hexToken: tokens.accent).opacity(0.3), lineWidth: 1)
+                        )
                     }
 
                     if !entry.source.isEmpty {
@@ -91,15 +116,19 @@ public struct HadithReadingScreen: View {
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
-                .padding()
+                .padding(20)
             }
 
             HStack(spacing: 12) {
                 Button("hadith.previous") { viewModel.previous() }
                     .buttonStyle(.bordered)
+                    .tint(Color(hexToken: tokens.primary))
+                    .controlSize(.large)
                     .disabled(isAtFirst)
                 Button("hadith.next") { viewModel.next() }
                     .buttonStyle(.borderedProminent)
+                    .tint(Color(hexToken: tokens.primary))
+                    .controlSize(.large)
                     .disabled(isAtLast)
             }
             .padding()

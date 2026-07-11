@@ -1,17 +1,23 @@
 package com.fatwabot.feature.hadith
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -21,10 +27,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fatwabot.core.designsystem.BrandCard
+import com.fatwabot.core.designsystem.DarkTokens
+import com.fatwabot.core.designsystem.LightTokens
+import com.fatwabot.core.designsystem.brandScreenBackground
 
 /** Reading view (docs/features/hadith-collections.md screen 2) — mirror of
  * iOS HadithReadingScreen: number badge, Arabic text, grading, benefit-note
@@ -36,65 +50,108 @@ fun HadithReadingScreen(
     locale: String = "ar",
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
 
     LaunchedEffect(slug, locale) { viewModel.openCollection(slug, locale) }
 
     val entry = state.currentEntry ?: return
     val detail = state.currentDetail
 
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(modifier = Modifier.fillMaxSize().brandScreenBackground(tokens)) {
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = tokens.primaryContainer,
                     shape = RoundedCornerShape(50),
                 ) {
                     Text(
                         "الحديث رقم ${entry.number}",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                         style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = tokens.primary,
                     )
                 }
-                Text(entry.grading, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Filled.Verified, contentDescription = null, tint = tokens.accent, modifier = Modifier.size(14.dp))
+                    Text(entry.grading, style = MaterialTheme.typography.labelMedium, color = tokens.accent)
+                }
             }
 
-            Text(
-                entry.arabicText,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.End,
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            )
-
-            entry.translation?.let {
+            // Reverent centerpiece: the hadith text in an elevated gradient card.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(22.dp), clip = false)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(tokens.surfaceElevated, tokens.primaryContainer.copy(alpha = 0.5f)),
+                        ),
+                        RoundedCornerShape(22.dp),
+                    )
+                    .border(1.dp, tokens.primary.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
+                    .padding(20.dp),
+            ) {
                 Text(
-                    it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    entry.arabicText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 34.sp,
+                    textAlign = TextAlign.End,
+                    color = tokens.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
+            entry.translation?.let {
+                BrandCard(tokens = tokens) {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = tokens.onSurface,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
             entry.benefitNote?.let { note ->
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(tokens.accent.copy(alpha = 0.10f), RoundedCornerShape(18.dp))
+                        .border(1.dp, tokens.accent.copy(alpha = 0.3f), RoundedCornerShape(18.dp))
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = tokens.accent, modifier = Modifier.size(16.dp))
                         Text(
                             "الفائدة",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
+                            color = tokens.accent,
                         )
-                        Text(note, style = MaterialTheme.typography.bodySmall)
                     }
+                    Text(
+                        note,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = tokens.onSurface,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
 
@@ -102,15 +159,15 @@ fun HadithReadingScreen(
                 Text(
                     entry.source,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.onSurfaceSecondary,
                     textAlign = TextAlign.End,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             OutlinedButton(

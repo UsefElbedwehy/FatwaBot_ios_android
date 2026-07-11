@@ -1,5 +1,9 @@
 package com.fatwabot.feature.hadith
 
+import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopActivityEventRecording
+import com.fatwabot.core.common.NoopHaptics
 import com.fatwabot.core.content.HadithCollectionDetail
 import com.fatwabot.core.content.HadithEntry
 import org.junit.Assert.assertEquals
@@ -26,7 +30,23 @@ class HadithViewModelTest {
         version = 1, slug = slug, name = "الأربعون", description = "", entries = entryNumbers.map(::entry),
     )
 
-    private fun makeViewModel(store: HadithStoring = InMemoryStore()) = HadithViewModel(null, store)
+    private class SpyActivityEvents : ActivityEventRecording {
+        val recorded = mutableListOf<String>()
+        override fun record(eventType: String, metadata: Map<String, String>) { recorded += eventType }
+    }
+
+    private class SpyHaptics : HapticsProviding {
+        var tickCount = 0
+        var targetReachedCount = 0
+        override fun tick() { tickCount += 1 }
+        override fun targetReached() { targetReachedCount += 1 }
+    }
+
+    private fun makeViewModel(
+        store: HadithStoring = InMemoryStore(),
+        haptics: HapticsProviding = NoopHaptics(),
+        activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
+    ) = HadithViewModel(null, store, haptics, activityEvents)
 
     @Test
     fun `prev next clamps at boundaries no wraparound`() {
@@ -76,6 +96,32 @@ class HadithViewModelTest {
         viewModel.next()
         viewModel.next()
         assertTrue(viewModel.isCompleted("nawawi40", 3))
+    }
+
+    @Test
+    fun `activity event fires only for newly read entries not revisits`() {
+        val events = SpyActivityEvents()
+        val viewModel = makeViewModel(activityEvents = events)
+        viewModel.setDetail(detail()) // reads entry 1
+        viewModel.next() // reads entry 2
+        viewModel.previous() // revisits entry 1 — must not re-fire
+        viewModel.previous() // already at first, no-op
+
+        assertEquals(listOf("hadith_entry_read", "hadith_entry_read"), events.recorded)
+    }
+
+    @Test
+    fun `marking an entry read fires a haptic only for newly read entries`() {
+        val haptics = SpyHaptics()
+        val viewModel = makeViewModel(haptics = haptics)
+        viewModel.setDetail(detail()) // reads entry 1
+        assertEquals(1, haptics.tickCount)
+
+        viewModel.next() // reads entry 2
+        assertEquals(2, haptics.tickCount)
+
+        viewModel.previous() // revisits entry 1 — must not re-fire
+        assertEquals(2, haptics.tickCount)
     }
 
     @Test

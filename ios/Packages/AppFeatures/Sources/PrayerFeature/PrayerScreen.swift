@@ -6,6 +6,7 @@ public struct PrayerScreen: View {
     @State private var viewModel: PrayerViewModel
     @State private var dayOffset = 0
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(viewModel: PrayerViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -49,11 +50,12 @@ public struct PrayerScreen: View {
         VStack(spacing: 6) {
             HStack {
                 Button {
-                    withAnimation(.snappy) { dayOffset -= 1 }
+                    setDayOffset(dayOffset - 1)
                 } label: {
                     Image(systemName: "chevron.backward")
                 }
                 .disabled(dayOffset <= -7)
+                .accessibilityLabel(Text("prayer.previous_day"))
                 Spacer()
                 VStack(spacing: 2) {
                     if dayOffset == 0, let hijri = viewModel.hijri {
@@ -64,19 +66,29 @@ public struct PrayerScreen: View {
                         .font(.subheadline)
                         .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
                 }
+                .accessibilityElement(children: .combine)
                 Spacer()
                 Button {
-                    withAnimation(.snappy) { dayOffset += 1 }
+                    setDayOffset(dayOffset + 1)
                 } label: {
                     Image(systemName: "chevron.forward")
                 }
                 .disabled(dayOffset >= 7)
+                .accessibilityLabel(Text("prayer.next_day"))
             }
             if let location = viewModel.location {
                 Label(location.name, systemImage: location.isManual ? "building.2" : "location.fill")
                     .font(.caption)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
             }
+        }
+    }
+
+    private func setDayOffset(_ newValue: Int) {
+        if reduceMotion {
+            dayOffset = newValue
+        } else {
+            withAnimation(.snappy) { dayOffset = newValue }
         }
     }
 
@@ -98,6 +110,7 @@ public struct PrayerScreen: View {
                         .monospacedDigit()
                 }
                 .foregroundStyle(Color(hexToken: isNext ? tokens.primary : tokens.onSurface))
+                .accessibilityElement(children: .combine)
                 .padding(.vertical, 14)
                 .padding(.horizontal, 16)
                 .background(
@@ -130,15 +143,58 @@ extension PrayerName {
 
 struct CityPickerView: View {
     let onSelect: (ManualCity, String) -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var tokens: ColorTokens {
+        let base = DesignTokens.bundledDefault
+        return colorScheme == .dark ? base.dark : base.light
+    }
 
     var body: some View {
-        List(ManualCity.bundled) { city in
-            Button {
-                onSelect(city, String(localized: String.LocalizationValue(city.nameKey)))
-            } label: {
-                Text(String(localized: String.LocalizationValue(city.nameKey)))
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                BrandSectionHeader("prayer.pick_city", systemImage: "location.magnifyingglass", tokens: tokens)
+
+                LazyVStack(spacing: 12) {
+                    ForEach(ManualCity.bundled) { city in
+                        cityRow(city)
+                    }
+                }
             }
+            .padding(20)
         }
+        .brandScreenBackground(tokens)
         .navigationTitle(Text("prayer.pick_city"))
+    }
+
+    private func cityRow(_ city: ManualCity) -> some View {
+        let name = String(localized: String.LocalizationValue(city.nameKey))
+        return Button {
+            onSelect(city, name)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(Color(hexToken: tokens.primaryContainer))
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.title3)
+                        .foregroundStyle(Color(hexToken: tokens.primary))
+                }
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
+
+                Text(name)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.forward")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                    .accessibilityHidden(true)
+            }
+            .brandCard(tokens)
+        }
+        .buttonStyle(.plain)
     }
 }

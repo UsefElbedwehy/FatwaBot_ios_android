@@ -1,4 +1,5 @@
 import XCTest
+import CoreKit
 import NetworkingKit
 @testable import GamificationFeature
 
@@ -140,5 +141,44 @@ final class GamificationViewModelTests: XCTestCase {
         await viewModel.load()
 
         XCTAssertEqual(store.events.count, 0, "load() should flush the queue before fetching the profile")
+    }
+
+    func testLoadWritesWidgetSnapshotWithLongestStreakAndFirstIncompleteDailyMission() async {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let widgetStore = GamificationWidgetSnapshotStore(appGroupContainer: tempDir)
+        let client = FakeAuthenticatedAPIClient()
+        client.getHandler = { _, _ in
+            GamificationProfile(
+                streaks: [
+                    GamificationStreak(key: "azkar", name: "Azkar", currentLength: 3, longestLength: 10, graceRemaining: 0),
+                    GamificationStreak(key: "fajr", name: "Fajr", currentLength: 7, longestLength: 7, graceRemaining: 1),
+                ],
+                missions: [
+                    GamificationMission(key: "m1", name: "Done Today", progress: 3, target: 3, window: "daily", endsAt: nil),
+                    GamificationMission(key: "m2", name: "In Progress", progress: 1, target: 3, window: "daily", endsAt: nil),
+                    GamificationMission(key: "m3", name: "Weekly Thing", progress: 1, target: 3, window: "weekly", endsAt: nil),
+                ],
+                badges: []
+            )
+        }
+        let viewModel = GamificationViewModel(client: client, widgetStore: widgetStore)
+
+        await viewModel.load()
+
+        let snapshot = widgetStore.read()
+        XCTAssertEqual(snapshot?.topStreak?.name, "Fajr", "the longest current streak, not the first one")
+        XCTAssertEqual(snapshot?.dailyChallenge?.name, "In Progress", "the first not-yet-complete daily mission, ignoring weekly missions")
+    }
+
+    func testLoadDoesNotWriteWidgetSnapshotWhenRequestFails() async {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let widgetStore = GamificationWidgetSnapshotStore(appGroupContainer: tempDir)
+        let client = FakeAuthenticatedAPIClient()
+        client.getHandler = { _, _ in throw APIError.server(statusCode: 500, code: nil) }
+        let viewModel = GamificationViewModel(client: client, widgetStore: widgetStore)
+
+        await viewModel.load()
+
+        XCTAssertNil(widgetStore.read())
     }
 }

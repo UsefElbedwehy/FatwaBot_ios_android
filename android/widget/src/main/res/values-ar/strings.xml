@@ -2,4 +2,6 @@
 <resources>
     <string name="widget_next_prayer">الصلاة القادمة</string>
     <string name="widget_hijri">التاريخ الهجري</string>
+    <string name="widget_streak">التتابع</string>
+    <string name="widget_daily_challenge">التحدي اليومي</string>
 </resources>

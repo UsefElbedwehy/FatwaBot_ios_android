@@ -1,5 +1,8 @@
 package com.fatwabot.feature.dua
 
+import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopHaptics
+import com.fatwabot.core.common.SearchHistoryRecording
 import com.fatwabot.core.content.Dua
 import com.fatwabot.core.content.DuaCategory
 import kotlinx.datetime.Clock
@@ -20,6 +23,20 @@ class DuaViewModelTest {
         }
     }
 
+    private class SpySearchHistoryRecording : SearchHistoryRecording {
+        val recorded = mutableListOf<Triple<String, String, String>>()
+        override fun record(source: String, queryText: String, locale: String) {
+            recorded += Triple(source, queryText, locale)
+        }
+    }
+
+    private class SpyHaptics : HapticsProviding {
+        var tickCount = 0
+        var targetReachedCount = 0
+        override fun tick() { tickCount += 1 }
+        override fun targetReached() { targetReachedCount += 1 }
+    }
+
     private fun dua(id: String, title: String, arabicText: String, translation: String?) = Dua(
         id = id, sortOrder = 0, title = title, arabicText = arabicText,
         transliteration = null, translation = translation, source = "src",
@@ -37,13 +54,13 @@ class DuaViewModelTest {
 
     @Test
     fun `search is null when query empty`() {
-        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock)
+        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock, NoopHaptics())
         assertNull("empty query must mean 'not searching', not 'no results'", viewModel.state.value.searchResults)
     }
 
     @Test
     fun `search matches arabic title and translation`() {
-        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock)
+        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock, NoopHaptics())
         viewModel.setCategories(listOf(category("daily", listOf(istikhara, distress))))
 
         viewModel.updateSearchQuery("الاستخارة")
@@ -55,15 +72,41 @@ class DuaViewModelTest {
 
     @Test
     fun `search no matches returns empty list not null`() {
-        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock)
+        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock, NoopHaptics())
         viewModel.setCategories(listOf(category("daily", listOf(istikhara, distress))))
         viewModel.updateSearchQuery("xyzxyz-no-match")
         assertEquals(emptyList<Dua>(), viewModel.state.value.searchResults)
     }
 
     @Test
+    fun `search with results records search history once per distinct query`() {
+        val spy = SpySearchHistoryRecording()
+        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock, NoopHaptics(), spy)
+        viewModel.loadCategories("ar")
+        viewModel.setCategories(listOf(category("daily", listOf(istikhara, distress))))
+
+        viewModel.updateSearchQuery("الاستخارة")
+        assertEquals(1, spy.recorded.size)
+        assertEquals(Triple("dua", "الاستخارة", "ar"), spy.recorded[0])
+
+        viewModel.updateSearchQuery("الاستخارة") // no-op re-set of the same query must not re-record
+        assertEquals(1, spy.recorded.size)
+    }
+
+    @Test
+    fun `search with no matches does not record search history`() {
+        val spy = SpySearchHistoryRecording()
+        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock, NoopHaptics(), spy)
+        viewModel.setCategories(listOf(category("daily", listOf(istikhara, distress))))
+
+        viewModel.updateSearchQuery("xyzxyz-no-match")
+
+        assertTrue(spy.recorded.isEmpty())
+    }
+
+    @Test
     fun `toggle favorite twice removes it`() {
-        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock)
+        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock, NoopHaptics())
         assertFalse(viewModel.state.value.isFavorite("d1"))
         viewModel.toggleFavorite("d1")
         assertTrue(viewModel.state.value.isFavorite("d1"))
@@ -72,14 +115,28 @@ class DuaViewModelTest {
     }
 
     @Test
+    fun `toggling favorite fires a distinct haptic for add versus remove`() {
+        val haptics = SpyHaptics()
+        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock, haptics)
+
+        viewModel.toggleFavorite("d1")
+        assertEquals("adding a favorite is the positive/reward moment", 1, haptics.targetReachedCount)
+        assertEquals(0, haptics.tickCount)
+
+        viewModel.toggleFavorite("d1")
+        assertEquals("removing is a lighter, distinct tick", 1, haptics.tickCount)
+        assertEquals(1, haptics.targetReachedCount)
+    }
+
+    @Test
     fun `favorites persist across restarts keyed by stable id`() {
         val store = InMemoryStore()
-        val first = DuaViewModel(null, store, fixedClock)
+        val first = DuaViewModel(null, store, fixedClock, NoopHaptics())
         first.setCategories(listOf(category("daily", listOf(istikhara, distress))))
         first.toggleFavorite("istikhara")
 
         // Simulate app restart with a *different* category ordering (resync).
-        val second = DuaViewModel(null, store, fixedClock)
+        val second = DuaViewModel(null, store, fixedClock, NoopHaptics())
         second.setCategories(listOf(category("daily", listOf(distress, istikhara))))
 
         assertTrue("favorite must survive resync/reorder — keyed by id", second.state.value.isFavorite("istikhara"))
@@ -88,7 +145,7 @@ class DuaViewModelTest {
 
     @Test
     fun `empty favorites is empty list`() {
-        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock)
+        val viewModel = DuaViewModel(null, InMemoryStore(), fixedClock, NoopHaptics())
         assertEquals(emptyList<Dua>(), viewModel.state.value.favoriteDuas)
     }
 
@@ -98,7 +155,7 @@ class DuaViewModelTest {
         val clock = object : Clock {
             override fun now() = current
         }
-        val viewModel = DuaViewModel(null, InMemoryStore(), clock)
+        val viewModel = DuaViewModel(null, InMemoryStore(), clock, NoopHaptics())
         viewModel.setCategories(listOf(category("daily", listOf(istikhara, distress))))
 
         current = fixedNow

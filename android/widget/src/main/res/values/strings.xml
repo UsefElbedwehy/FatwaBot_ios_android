@@ -2,4 +2,6 @@
 <resources>
     <string name="widget_next_prayer">Next Prayer</string>
     <string name="widget_hijri">Hijri Date</string>
+    <string name="widget_streak">Streak</string>
+    <string name="widget_daily_challenge">Daily Challenge</string>
 </resources>

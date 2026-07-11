@@ -10,7 +10,7 @@ import { verifyAccessToken } from "./auth/jwt.ts";
 import type { ConfigRepo } from "./types.ts";
 import type { IdentityRepo } from "./identity_types.ts";
 import type { ContentRepo } from "./content_types.ts";
-import type { AdminAuthRepo, AdminContentRepo, AuditLogRepo } from "./admin_types.ts";
+import type { AdminAuthRepo, AdminContentRepo, AdminUsersRepo, AuditLogRepo } from "./admin_types.ts";
 import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
 import type { GamificationRepo } from "./gamification_types.ts";
 import type { LeaderboardRepo } from "./leaderboard_types.ts";
@@ -60,6 +60,7 @@ import {
   handleSetPublished,
   handleUpdateContent,
 } from "./handlers/admin_content.ts";
+import { handleListUsers } from "./handlers/admin_users.ts";
 
 export interface Deps {
   repo: ConfigRepo;
@@ -67,6 +68,7 @@ export interface Deps {
   content: ContentRepo;
   adminContent: AdminContentRepo;
   adminAuth: AdminAuthRepo;
+  adminUsers: AdminUsersRepo;
   auditLog: AuditLogRepo;
   jwtSecret: string;
   verifier: IdentityProviderVerifier;
@@ -263,6 +265,16 @@ async function routeAdmin(
 
   if (method === "GET" && path === "/admin/v1/audit-log") {
     return await handleListAuditLog(ctx, deps.auditLog, url.searchParams.get("collection"));
+  }
+
+  if (method === "GET" && path === "/admin/v1/users") {
+    return await handleListUsers(
+      ctx,
+      deps.adminUsers,
+      url.searchParams.get("query"),
+      url.searchParams.get("limit"),
+      url.searchParams.get("before"),
+    );
   }
 
   const listOrCreateMatch = path.match(new RegExp(`^/admin/v1/content/(${COLLECTION_SEGMENT})$`));

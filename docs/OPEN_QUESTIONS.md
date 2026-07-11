@@ -5,8 +5,8 @@ Decisions I should not make unilaterally. None block approval of the overall pla
 ## ~~Q1 — Missing design assets~~ ✅ Resolved 2026-07-04
 Designs arrived in `App Demo design/` and are reviewed in [06_DESIGN_REVIEW.md](06_DESIGN_REVIEW.md).
 
-## Q2 — Product name (before store setup; brand otherwise resolved)
-The demo confirms the visual brand (FATWA BOT wordmark, mihrab-arch logo, maroon/cream) — adopted as the design baseline. Remaining question: is **"Fatwa Bot" the final public name**? It undersells the companion platform (prayer, azkar, awrad, streaks) and centers the least-shipped feature; a broader name with "Fatwa" as the AI feature name is worth considering. Per ADR-0011 the in-app display name is server-configurable, but the store name and the name under the icon are not.
+## ~~Q2 — Product name~~ ✅ Resolved 2026-07-08
+"Fatwa Bot" is the final public name — store listing and branding proceed under the existing name (M4).
 
 ## Q2b — Points/formula editing power (before M3 dashboard work)
 ADR-0012 proposes constrained declarative formulas (weighted counters, caps, decay) rather than free-form scripting for ranking/point rules. If you expect admins to need genuinely novel scoring logic per season, say so now — that changes the engine design (sandboxed evaluator, much more testing surface). Recommendation: constrained form.
@@ -29,8 +29,8 @@ Streaks/leaderboards derive only from verifiable in-app worship actions (azkar s
 ## Q6 — AI scholarly oversight (before M5)
 Fatwa-class AI answers carry real religious risk. Is there a scholar/domain expert who will review the source whitelist, refusal boundaries, and the evaluation set? Launching fatwa search without named scholarly oversight is not recommended.
 
-## Q7 — Languages at launch
-The demo's picker lists 16+ languages — the schema now supports all of them from day one (ADR-0014), but each locale needs human-reviewed translation of worship content. Recommendation: launch Arabic + English, prove the translation pipeline with one more locale in beta, then expand. Confirm the launch set.
+## ~~Q7 — Languages at launch~~ ✅ Resolved 2026-07-08
+Arabic + English at launch; prove the translation pipeline in beta before expanding to further locales (M4 store listing scoped to these two).
 
 ## Q8 — Credentials & accounts (before M0 exit)
 Needed from you when implementation starts: Supabase org/project, Firebase project, Apple Developer + App Store Connect, Google Play Console, GitHub org/repo (the folder is not yet a git repository — I'll `git init` at M0 start unless you prefer an existing remote).

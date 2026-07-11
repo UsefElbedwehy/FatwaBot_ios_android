@@ -52,7 +52,11 @@ class PrayerViewModel @Inject constructor(
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
-        locationProvider.cached()?.let(::apply)
+        // Instant first paint from cache; start() refines asynchronously and
+        // re-applies with updateWidget = true — skip the widget-snapshot
+        // write (disk write + updateAll IPC) here so it isn't on the
+        // synchronous cold-start path.
+        locationProvider.cached()?.let { apply(it, updateWidget = false) }
     }
 
     fun start() {
@@ -122,7 +126,7 @@ class PrayerViewModel @Inject constructor(
     private fun localToday(): LocalDate =
         java.time.Instant.ofEpochSecond(clock.now().epochSeconds).atZone(ZoneId.systemDefault()).toLocalDate()
 
-    private fun apply(location: UserLocation) {
+    private fun apply(location: UserLocation, updateWidget: Boolean = true) {
         val settings = _state.value.settings
         val today = localToday()
         val days = runCatching {
@@ -140,7 +144,9 @@ class PrayerViewModel @Inject constructor(
             nextPrayer = PrayerEngine.nextPrayer(clock.now(), days[0], days[1]),
             hijri = HijriDateUi.from(today, settings.clampedHijriOffset),
         )
-        writeWidgetSnapshot(location, today, settings)
+        if (updateWidget) {
+            writeWidgetSnapshot(location, today, settings)
+        }
     }
 
     /** Precomputes a 48h widget snapshot into the shared store (parity with iOS). */

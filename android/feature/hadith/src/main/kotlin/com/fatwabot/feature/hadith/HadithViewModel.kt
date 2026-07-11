@@ -1,6 +1,9 @@
 package com.fatwabot.feature.hadith
 
 import androidx.lifecycle.ViewModel
+import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopActivityEventRecording
 import com.fatwabot.core.content.ContentService
 import com.fatwabot.core.content.HadithCollectionDetail
 import com.fatwabot.core.content.HadithCollectionSummary
@@ -22,10 +25,13 @@ import kotlinx.coroutines.flow.update
 class HadithViewModel @Inject constructor(
     private val contentService: ContentService?,
     private val store: HadithStoring,
+    private val haptics: HapticsProviding,
+    private val activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
 ) : ViewModel() {
 
     data class UiState(
         val collections: List<HadithCollectionSummary> = emptyList(),
+        val hasLoadedCollections: Boolean = false,
         val currentDetail: HadithCollectionDetail? = null,
         val currentIndex: Int = 0,
         val progress: Map<String, HadithProgress> = emptyMap(),
@@ -43,7 +49,12 @@ class HadithViewModel @Inject constructor(
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     fun loadCollections(locale: String) {
-        _state.update { it.copy(collections = contentService?.hadithCollections(locale).orEmpty()) }
+        _state.update {
+            it.copy(
+                collections = contentService?.hadithCollections(locale).orEmpty(),
+                hasLoadedCollections = true,
+            )
+        }
     }
 
     /** Opens a collection, resuming at the last-read entry if one exists. */
@@ -95,9 +106,14 @@ class HadithViewModel @Inject constructor(
         val detail = current.currentDetail ?: return
         val entry = current.currentEntry ?: return
         val existing = current.progress[detail.slug] ?: HadithProgress()
+        val isNewlyRead = entry.number !in existing.readNumbers
         val updated = existing.copy(readNumbers = existing.readNumbers + entry.number, lastReadNumber = entry.number)
         val newProgress = current.progress + (detail.slug to updated)
         store.saveProgress(newProgress)
         _state.update { it.copy(progress = newProgress) }
+        if (isNewlyRead) {
+            activityEvents.record(eventType = "hadith_entry_read")
+            haptics.tick()
+        }
     }
 }

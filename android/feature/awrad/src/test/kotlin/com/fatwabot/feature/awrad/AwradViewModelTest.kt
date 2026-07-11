@@ -1,5 +1,9 @@
 package com.fatwabot.feature.awrad
 
+import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopActivityEventRecording
+import com.fatwabot.core.common.NoopHaptics
 import com.fatwabot.core.content.WirdTemplate
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -27,7 +31,23 @@ class AwradViewModelTest {
         override fun now() = fixedNow
     }
 
-    private fun makeViewModel(store: WirdStoring = InMemoryStore()) = AwradViewModel(null, store, fixedClock)
+    private class SpyActivityEvents : ActivityEventRecording {
+        val recorded = mutableListOf<String>()
+        override fun record(eventType: String, metadata: Map<String, String>) { recorded += eventType }
+    }
+
+    private class SpyHaptics : HapticsProviding {
+        var tickCount = 0
+        var targetReachedCount = 0
+        override fun tick() { tickCount += 1 }
+        override fun targetReached() { targetReachedCount += 1 }
+    }
+
+    private fun makeViewModel(
+        store: WirdStoring = InMemoryStore(),
+        haptics: HapticsProviding = NoopHaptics(),
+        activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
+    ) = AwradViewModel(null, store, fixedClock, haptics, activityEvents)
 
     private fun template(name: String = "الصلاة على النبي", type: String = "salawat", target: Int = 100, unit: String = "times") =
         WirdTemplate(id = "t1", name = name, description = "", type = type, defaultTarget = target, defaultUnit = unit, defaultFrequency = "daily")
@@ -65,6 +85,54 @@ class AwradViewModelTest {
         assertTrue(viewModel.markDayComplete())
         assertFalse("already completed today — no duplicate record", viewModel.markDayComplete())
         assertEquals(1, viewModel.state.value.dayCompletions.size)
+    }
+
+    @Test
+    fun `tick fires a regular haptic then target-reached once on crossing the target`() {
+        val haptics = SpyHaptics()
+        val viewModel = makeViewModel(haptics = haptics)
+        viewModel.createWird(template(target = 3))
+        val wirdId = viewModel.state.value.wirds[0].id
+
+        viewModel.tick(wirdId)
+        viewModel.tick(wirdId)
+        assertEquals(2, haptics.tickCount)
+        assertEquals(0, haptics.targetReachedCount)
+
+        viewModel.tick(wirdId) // crosses target (3)
+        assertEquals("must fire exactly once at the crossing", 1, haptics.targetReachedCount)
+
+        viewModel.tick(wirdId) // past target — a regular tick, not another target-reached
+        assertEquals(1, haptics.targetReachedCount)
+    }
+
+    @Test
+    fun `mark day complete fires target-reached haptic only when it actually completes`() {
+        val haptics = SpyHaptics()
+        val viewModel = makeViewModel(haptics = haptics)
+        viewModel.createWird(template(target = 1))
+        viewModel.tick(viewModel.state.value.wirds[0].id)
+        haptics.targetReachedCount = 0 // reset after the tick's own crossing haptic
+
+        assertTrue(viewModel.markDayComplete())
+        assertEquals(1, haptics.targetReachedCount)
+
+        assertFalse("already completed today", viewModel.markDayComplete())
+        assertEquals("must not fire again on the no-op re-call", 1, haptics.targetReachedCount)
+    }
+
+    @Test
+    fun `ticking fires an activity event and day completion fires a separate one`() {
+        val events = SpyActivityEvents()
+        val viewModel = makeViewModel(activityEvents = events)
+        viewModel.createWird(template(target = 1))
+        val wirdId = viewModel.state.value.wirds[0].id
+
+        viewModel.tick(wirdId)
+        assertEquals(listOf("wird_ticked"), events.recorded)
+
+        viewModel.markDayComplete()
+        assertEquals(listOf("wird_ticked", "wird_day_completed"), events.recorded)
     }
 
     @Test

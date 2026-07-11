@@ -21,6 +21,7 @@ android {
 
 dependencies {
     implementation(project(":core:prayer"))
+    implementation(project(":core:common"))
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
     implementation(libs.kotlinx.datetime)

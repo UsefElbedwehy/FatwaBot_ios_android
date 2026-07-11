@@ -7,6 +7,8 @@
     <string name="prayer_maghrib">Maghrib</string>
     <string name="prayer_isha">Isha</string>
     <string name="prayer_pick_city">Choose your city</string>
+    <string name="prayer_previous_day">Previous day</string>
+    <string name="prayer_next_day">Next day</string>
     <string name="city_makkah">Makkah</string>
     <string name="city_madinah">Madinah</string>
     <string name="city_riyadh">Riyadh</string>

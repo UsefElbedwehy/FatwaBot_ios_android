@@ -48,6 +48,16 @@ public struct ShapeTokens: Equatable, Sendable {
     public var controlRadius: Double
 }
 
+/// Shared animation durations (M4 polish pass) — quickDuration for small
+/// value changes (counters, progress bars), standardDuration for
+/// screen/section-level transitions (empty-state swaps, list changes).
+/// Not server-overridable (unlike color/shape) since motion isn't part of
+/// the ADR-0011 theme payload; bundled-only.
+public enum MotionTokens {
+    public static let quickDuration: Double = 0.2
+    public static let standardDuration: Double = 0.3
+}
+
 public struct DesignTokens: Equatable, Sendable {
     public var light: ColorTokens
     public var dark: ColorTokens

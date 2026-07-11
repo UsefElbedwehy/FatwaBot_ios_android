@@ -12,3 +12,9 @@
 "widget.hijri.name" = "Hijri Date";
 "widget.hijri.desc" = "The current Hijri date";
 "widget.open_app" = "Open the app to see times";
+"widget.streak.name" = "Streak";
+"widget.streak.desc" = "Your longest current streak";
+"widget.streak.grace %lld" = "%lld mercy day(s) left";
+"widget.streak.longest %lld" = "Best: %lld";
+"widget.daily_challenge.name" = "Daily Challenge";
+"widget.daily_challenge.desc" = "Today's mission progress";

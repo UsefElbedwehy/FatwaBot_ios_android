@@ -1,6 +1,9 @@
 package com.fatwabot.feature.dua
 
 import androidx.lifecycle.ViewModel
+import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopSearchHistoryRecording
+import com.fatwabot.core.common.SearchHistoryRecording
 import com.fatwabot.core.content.ContentService
 import com.fatwabot.core.content.Dua
 import com.fatwabot.core.content.DuaCategory
@@ -23,10 +26,17 @@ class DuaViewModel @Inject constructor(
     private val contentService: ContentService?,
     private val store: DuaStoring,
     private val clock: Clock,
+    private val haptics: HapticsProviding,
+    private val searchHistory: SearchHistoryRecording = NoopSearchHistoryRecording(),
 ) : ViewModel() {
+    private var locale = "ar"
+    /** Dedupes recording on repeated identical queries (e.g. focus loss
+     * re-triggering) — not a full debounce, but the spec explicitly allows either. */
+    private var lastRecordedQuery: String? = null
 
     data class UiState(
         val categories: List<DuaCategory> = emptyList(),
+        val hasLoadedCategories: Boolean = false,
         val searchQuery: String = "",
         /** duaId -> addedAt epoch seconds. Dictionary (not array-index) so
          * favorites survive content resync — the spec's "keyed by stable
@@ -65,7 +75,9 @@ class DuaViewModel @Inject constructor(
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     fun loadCategories(locale: String) {
+        this.locale = locale
         setCategories(contentService?.duas(locale)?.categories.orEmpty())
+        _state.update { it.copy(hasLoadedCategories = true) }
     }
 
     /** Internal seam so search/favorite logic is testable without a live
@@ -76,13 +88,20 @@ class DuaViewModel @Inject constructor(
 
     fun updateSearchQuery(query: String) {
         _state.update { it.copy(searchQuery = query) }
+        val results = _state.value.searchResults
+        if (results != null && results.isNotEmpty() && query != lastRecordedQuery) {
+            lastRecordedQuery = query
+            searchHistory.record(source = "dua", queryText = query, locale = locale)
+        }
     }
 
     fun toggleFavorite(duaId: String) {
         val current = _state.value.favorites
         val updated = if (current.containsKey(duaId)) {
+            haptics.tick()
             current - duaId
         } else {
+            haptics.targetReached()
             current + (duaId to clock.now().epochSeconds)
         }
         store.saveFavorites(updated.map { FavoriteDua(it.key, it.value) })

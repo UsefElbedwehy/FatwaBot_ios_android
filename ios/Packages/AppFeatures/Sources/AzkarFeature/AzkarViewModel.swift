@@ -11,6 +11,7 @@ import Observation
 @Observable
 public final class AzkarViewModel {
     public private(set) var categories: [AzkarCategory] = []
+    public private(set) var isLoadingCategories = false
     public private(set) var items: [AzkarItem] = []
     public private(set) var categoryId: String?
     public private(set) var currentItemIndex = 0
@@ -59,7 +60,9 @@ public final class AzkarViewModel {
 
     public func loadCategories(locale: String) async {
         guard let contentService else { return }
+        isLoadingCategories = true
         categories = await contentService.azkar(locale: locale)?.categories ?? []
+        isLoadingCategories = false
     }
 
     public func isCompletedToday(_ categoryId: String) -> Bool {

@@ -25,14 +25,14 @@ public struct HomeScreen: View {
 
     public var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 18) {
                 ForEach(viewModel.sections, id: \.id) { section in
                     render(section)
                 }
             }
             .padding()
         }
-        .background(Color(hexToken: tokens.surface))
+        .brandScreenBackground(tokens)
         .task { await viewModel.load() }
         .refreshable { await viewModel.refresh(locales: ["ar", "en"]) }
     }

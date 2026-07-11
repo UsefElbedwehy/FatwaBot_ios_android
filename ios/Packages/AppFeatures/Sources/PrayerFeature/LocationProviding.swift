@@ -62,6 +62,11 @@ public final class SystemLocationProvider: NSObject, LocationProviding, @uncheck
     private static let cacheKey = "prayer.location.cache"
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<LocationState, Never>?
+    /// True only while `resolve()` is waiting on a `.notDetermined` → answered
+    /// transition — guards `locationManagerDidChangeAuthorization` so it only
+    /// acts during that specific window (that delegate method fires for other
+    /// reasons too, e.g. on `init`).
+    private var awaitingAuthorization = false
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
@@ -92,8 +97,16 @@ public final class SystemLocationProvider: NSObject, LocationProviding, @uncheck
         case .denied, .restricted:
             return cached().map { .resolved($0) } ?? .denied
         case .notDetermined:
-            manager.requestWhenInUseAuthorization()
-            fallthrough
+            // requestLocation() is a no-op while authorization is undetermined
+            // — must wait for the OS dialog to actually resolve first (via
+            // locationManagerDidChangeAuthorization) before requesting a fix,
+            // or the continuation would never be resumed (this used to hang
+            // "Allow" on the onboarding location screen forever).
+            return await withCheckedContinuation { continuation in
+                self.continuation = continuation
+                self.awaitingAuthorization = true
+                manager.requestWhenInUseAuthorization()
+            }
         default:
             return await withCheckedContinuation { continuation in
                 self.continuation = continuation
@@ -155,7 +168,22 @@ extension SystemLocationProvider: CLLocationManagerDelegate {
     }
 
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        if manager.authorizationStatus == .denied, continuation != nil {
+        guard awaitingAuthorization else { return }
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            // Now safe to request a fix — didUpdateLocations/didFailWithError
+            // will resume the continuation.
+            awaitingAuthorization = false
+            manager.requestLocation()
+        case .denied, .restricted:
+            awaitingAuthorization = false
+            let state: LocationState = cached().map { .resolved($0) } ?? .denied
+            continuation?.resume(returning: state)
+            continuation = nil
+        case .notDetermined:
+            break // still waiting on the OS dialog
+        @unknown default:
+            awaitingAuthorization = false
             let state: LocationState = cached().map { .resolved($0) } ?? .denied
             continuation?.resume(returning: state)
             continuation = nil

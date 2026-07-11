@@ -27,6 +27,7 @@ ios/**/DerivedData/
 # Android
 android/**/build/
 android/.gradle/
+android/.kotlin/
 android/local.properties
 android/**/*.iml
 

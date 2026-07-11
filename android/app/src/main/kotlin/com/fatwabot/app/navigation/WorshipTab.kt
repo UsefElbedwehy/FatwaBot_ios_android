@@ -1,11 +1,19 @@
 package com.fatwabot.app.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -15,11 +23,11 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -27,7 +35,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.core.content.AzkarCategory
@@ -137,30 +148,64 @@ fun WorshipTab(
     }
 }
 
+private fun iconFor(destination: WorshipDestination) = when (destination) {
+    WorshipDestination.PRAYER -> Icons.Filled.AccessTime
+    WorshipDestination.QIBLA -> Icons.Filled.Explore
+    WorshipDestination.AZKAR -> Icons.AutoMirrored.Filled.MenuBook
+    WorshipDestination.DUA -> Icons.Filled.Favorite
+    WorshipDestination.AWRAD -> Icons.Filled.Spa
+    WorshipDestination.HADITH -> Icons.Filled.LibraryBooks
+    else -> Icons.Filled.Circle
+}
+
 @Composable
 private fun WorshipMenu(hasLocation: Boolean, onSelect: (WorshipDestination) -> Unit) {
     val visible = WorshipDestination.entries.filter { it != WorshipDestination.QIBLA || hasLocation }
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
+    ) {
         items(visible) { destination ->
-            ListItem(
-                headlineContent = { Text(destination.title) },
-                leadingContent = {
-                    Icon(
-                        when (destination) {
-                            WorshipDestination.PRAYER -> Icons.Filled.AccessTime
-                            WorshipDestination.QIBLA -> Icons.Filled.Explore
-                            WorshipDestination.AZKAR -> Icons.AutoMirrored.Filled.MenuBook
-                            WorshipDestination.DUA -> Icons.Filled.Favorite
-                            WorshipDestination.AWRAD -> Icons.Filled.Spa
-                            WorshipDestination.HADITH -> Icons.Filled.LibraryBooks
-                            else -> Icons.Filled.Circle
-                        },
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.clickable { onSelect(destination) },
+            WorshipTile(destination = destination, onClick = { onSelect(destination) })
+        }
+    }
+}
+
+@Composable
+private fun WorshipTile(destination: WorshipDestination, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.aspectRatio(1f).clickable(onClick = onClick),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(18.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    iconFor(destination),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(30.dp),
+                )
+            }
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 12.dp))
+            Text(
+                destination.title,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
             )
-            HorizontalDivider()
         }
     }
 }
@@ -174,7 +219,7 @@ private fun WorshipDetailScaffold(title: String, onBack: () -> Unit, content: @C
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
                     }
                 },
             )

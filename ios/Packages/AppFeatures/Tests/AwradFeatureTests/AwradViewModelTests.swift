@@ -21,6 +21,13 @@ final class AwradViewModelTests: XCTestCase {
         func record(eventType: String, metadata: [String: String]) { recorded.append((eventType, metadata)) }
     }
 
+    final class SpyHaptics: HapticsProviding, @unchecked Sendable {
+        var tickCount = 0
+        var targetReachedCount = 0
+        func tick() { tickCount += 1 }
+        func targetReached() { targetReachedCount += 1 }
+    }
+
     private let fixedNow = Date(timeIntervalSince1970: 1_774_000_000) // a fixed UTC instant
     private let utcCalendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
@@ -31,11 +38,12 @@ final class AwradViewModelTests: XCTestCase {
     @MainActor
     private func makeViewModel(
         store: WirdStoring = InMemoryStore(),
+        haptics: HapticsProviding = NoopHaptics(),
         activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
         now: Date? = nil
     ) -> AwradViewModel {
         let time = now ?? fixedNow
-        return AwradViewModel(store: store, activityEvents: activityEvents, now: { time }, calendar: utcCalendar)
+        return AwradViewModel(store: store, haptics: haptics, activityEvents: activityEvents, now: { time }, calendar: utcCalendar)
     }
 
     private func template(name: String = "الصلاة على النبي", type: String = "salawat", target: Int = 100, unit: String = "times") -> WirdTemplate {
@@ -75,6 +83,40 @@ final class AwradViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.markDayComplete())
         XCTAssertFalse(viewModel.markDayComplete(), "already completed today — no duplicate record")
         XCTAssertEqual(viewModel.dayCompletions.count, 1)
+    }
+
+    @MainActor
+    func testTickFiresARegularHapticThenTargetReachedOnceOnCrossingTheTarget() {
+        let haptics = SpyHaptics()
+        let viewModel = makeViewModel(haptics: haptics)
+        viewModel.createWird(fromTemplate: template(target: 3))
+        let wirdId = viewModel.wirds[0].id
+
+        viewModel.tick(wirdId: wirdId)
+        viewModel.tick(wirdId: wirdId)
+        XCTAssertEqual(haptics.tickCount, 2)
+        XCTAssertEqual(haptics.targetReachedCount, 0)
+
+        viewModel.tick(wirdId: wirdId) // crosses target (3)
+        XCTAssertEqual(haptics.targetReachedCount, 1, "must fire exactly once at the crossing")
+
+        viewModel.tick(wirdId: wirdId) // past target — a regular tick, not another target-reached
+        XCTAssertEqual(haptics.targetReachedCount, 1)
+    }
+
+    @MainActor
+    func testMarkDayCompleteFiresTargetReachedHapticOnlyWhenItActuallyCompletes() {
+        let haptics = SpyHaptics()
+        let viewModel = makeViewModel(haptics: haptics)
+        viewModel.createWird(fromTemplate: template(target: 1))
+        viewModel.tick(wirdId: viewModel.wirds[0].id)
+        haptics.targetReachedCount = 0 // reset after the tick's own crossing haptic
+
+        XCTAssertTrue(viewModel.markDayComplete())
+        XCTAssertEqual(haptics.targetReachedCount, 1)
+
+        XCTAssertFalse(viewModel.markDayComplete(), "already completed today")
+        XCTAssertEqual(haptics.targetReachedCount, 1, "must not fire again on the no-op re-call")
     }
 
     @MainActor

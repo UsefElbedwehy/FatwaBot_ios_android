@@ -12,3 +12,9 @@
 "widget.hijri.name" = "التاريخ الهجري";
 "widget.hijri.desc" = "التاريخ الهجري الحالي";
 "widget.open_app" = "افتح التطبيق لعرض الأوقات";
+"widget.streak.name" = "التتابع";
+"widget.streak.desc" = "أطول تتابع حالي لك";
+"widget.streak.grace %lld" = "متبقٍ %lld يوم رحمة";
+"widget.streak.longest %lld" = "الأفضل: %lld";
+"widget.daily_challenge.name" = "التحدي اليومي";
+"widget.daily_challenge.desc" = "تقدم مهمة اليوم";
