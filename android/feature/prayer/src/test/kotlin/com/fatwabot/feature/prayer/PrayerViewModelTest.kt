@@ -1,6 +1,5 @@
 package com.fatwabot.feature.prayer
 
-import com.fatwabot.core.prayer.PrayerNotificationPreferences
 import com.fatwabot.core.prayer.WidgetSnapshotStore
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +54,7 @@ class PrayerViewModelTest {
             locationProvider = StubLocation(cachedLocation = riyadh, resolveResult = LocationState.Resolved(riyadh)),
             clock = fixedClock,
             scheduler = null,
-            notificationPreferences = PrayerNotificationPreferences(),
+            notificationPreferenceStore = null,
             widgetStore = widgetStore,
             onWidgetSnapshotWritten = PrayerViewModel.WidgetRefresh { reloadCount++ },
         )

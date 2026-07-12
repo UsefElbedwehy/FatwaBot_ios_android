@@ -172,8 +172,11 @@ abstract class AppModule {
         ): OnboardingCompletionStore = OnboardingCompletionStore(File(context.filesDir, "onboarding-completion.json"))
 
         @Provides
-        fun provideNotificationPreferences(): PrayerNotificationPreferences =
-            PrayerNotificationPreferences()
+        @Singleton
+        fun provideNotificationPreferenceStore(
+            @ApplicationContext context: Context,
+        ): com.fatwabot.feature.prayer.NotificationPreferenceStore =
+            com.fatwabot.feature.prayer.NotificationPreferenceStore(context)
 
         @Provides
         @Singleton

@@ -95,7 +95,7 @@ fun RootScaffold() {
                     onDestinationChange = { worshipDestination = it },
                 )
                 AppTab.JOURNEY -> JourneyTab()
-                AppTab.SETTINGS -> SettingsScreen()
+                AppTab.SETTINGS -> SettingsScreen(prayerViewModel = prayerViewModel)
             }
         }
     }

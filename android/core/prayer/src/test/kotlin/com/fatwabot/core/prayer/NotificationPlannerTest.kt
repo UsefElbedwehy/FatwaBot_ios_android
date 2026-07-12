@@ -3,6 +3,7 @@ package com.fatwabot.core.prayer
 import kotlinx.datetime.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -15,30 +16,72 @@ class NotificationPlannerTest {
     )
 
     @Test
-    fun `plans adhan for enabled prayers only`() {
+    fun `adhan only when other types disabled`() {
         val plan = NotificationPlanner.plan(
             timeline(1),
-            PrayerNotificationPreferences(adhanEnabled = setOf(PrayerNameUi.FAJR, PrayerNameUi.MAGHRIB)),
+            PrayerNotificationPreferences(adhanEnabled = true, preAdhanEnabled = false),
             Instant.fromEpochSeconds(0),
         )
-        assertEquals(setOf(PrayerNameUi.FAJR, PrayerNameUi.MAGHRIB), plan.map { it.prayer }.toSet())
         assertTrue(plan.all { it.kind == PlannedNotification.Kind.ADHAN })
+        assertEquals(
+            PrayerNameUi.entries.filter { it.isPrayer }.toSet(),
+            plan.mapNotNull { it.prayer }.toSet(),
+        )
+    }
+
+    @Test
+    fun `adhan disabled emits nothing`() {
+        val plan = NotificationPlanner.plan(
+            timeline(1),
+            PrayerNotificationPreferences(adhanEnabled = false, preAdhanEnabled = false),
+            Instant.fromEpochSeconds(0),
+        )
+        assertTrue(plan.isEmpty())
     }
 
     @Test
     fun `pre adhan offset schedules earlier reminder`() {
         val plan = NotificationPlanner.plan(
             timeline(1),
-            PrayerNotificationPreferences(
-                adhanEnabled = setOf(PrayerNameUi.DHUHR),
-                preAdhanOffsetMinutes = mapOf(PrayerNameUi.DHUHR to 15),
-            ),
+            PrayerNotificationPreferences(adhanEnabled = true, preAdhanEnabled = true, preAdhanOffsetMinutes = 15),
             Instant.fromEpochSeconds(0),
         )
-        val adhan = plan.first { it.kind == PlannedNotification.Kind.ADHAN }
-        val pre = plan.first { it.kind == PlannedNotification.Kind.PRE_ADHAN }
+        val adhan = plan.first { it.kind == PlannedNotification.Kind.ADHAN && it.prayer == PrayerNameUi.DHUHR }
+        val pre = plan.first { it.kind == PlannedNotification.Kind.PRE_ADHAN && it.prayer == PrayerNameUi.DHUHR }
         assertEquals(900L, adhan.fireEpochSeconds - pre.fireEpochSeconds)
         assertTrue(plan.indexOf(pre) < plan.indexOf(adhan))
+    }
+
+    @Test
+    fun `iqama reminder fires after adhan`() {
+        val days = timeline(1)
+        val plan = NotificationPlanner.plan(
+            days,
+            PrayerNotificationPreferences(adhanEnabled = false, preAdhanEnabled = false, iqamaEnabled = true, iqamaOffsetMinutes = 20),
+            Instant.fromEpochSeconds(0),
+        )
+        assertTrue(plan.all { it.kind == PlannedNotification.Kind.IQAMA })
+        val asr = plan.first { it.prayer == PrayerNameUi.ASR }
+        assertEquals(1200L, asr.fireEpochSeconds - days[0].times.getValue(PrayerNameUi.ASR).epochSeconds)
+    }
+
+    @Test
+    fun `last third fires two thirds into the night`() {
+        val days = timeline(2)
+        val plan = NotificationPlanner.plan(
+            days,
+            PrayerNotificationPreferences(adhanEnabled = false, preAdhanEnabled = false, lastThirdEnabled = true),
+            Instant.fromEpochSeconds(0),
+        )
+        assertEquals(1, plan.size)
+        val n = plan[0]
+        assertEquals(PlannedNotification.Kind.LAST_THIRD, n.kind)
+        assertNull(n.prayer)
+        val maghrib = days[0].times.getValue(PrayerNameUi.MAGHRIB).epochSeconds
+        val fajrNext = days[1].times.getValue(PrayerNameUi.FAJR).epochSeconds
+        val expected = maghrib + (fajrNext - maghrib) * 2L / 3L
+        assertEquals(expected, n.fireEpochSeconds)
+        assertTrue(n.fireEpochSeconds in (maghrib + 1) until fajrNext)
     }
 
     @Test
@@ -64,8 +107,11 @@ class NotificationPlannerTest {
     fun `ids are stable and unique`() {
         val days = timeline(3)
         val now = Instant.fromEpochSeconds(0)
-        val plan = NotificationPlanner.plan(days, PrayerNotificationPreferences(), now)
+        val prefs = PrayerNotificationPreferences(
+            adhanEnabled = true, preAdhanEnabled = true, iqamaEnabled = true, lastThirdEnabled = true,
+        )
+        val plan = NotificationPlanner.plan(days, prefs, now)
         assertEquals(plan.map { it.id }.size, plan.map { it.id }.toSet().size)
-        assertEquals(plan, NotificationPlanner.plan(days, PrayerNotificationPreferences(), now))
+        assertEquals(plan, NotificationPlanner.plan(days, prefs, now))
     }
 }

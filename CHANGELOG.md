@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## [Unreleased]
 
+### 2026-07-12 — Notification suite (both platforms)
+- **Every notification is individually toggleable, with user-set offsets** (stakeholder direction). Extended the pure `NotificationPlanner` on both platforms from adhan + pre-adhan to four types:
+  - **Adhan** — at each prayer time (toggle).
+  - **Pre-adhan** — a user-set number of minutes *before* the adhan (toggle + stepper).
+  - **Iqama reminder** — a user-set number of minutes *after* the adhan (toggle + stepper).
+  - **Last third of the night** — one reminder at the start of the last third (Maghrib→Fajr × 2/3), computed on-device from the timeline (toggle).
+- **Preferences persist** via a new `NotificationPreferenceStore` (UserDefaults on iOS, SharedPreferences on Android); editing in Settings saves and **reschedules immediately** through the ViewModel. `PrayerNotificationPreferences` moved from per-prayer sets to per-type booleans + clamped (1–60 min) offsets; schedulers clear the new `iqama-`/`lastthird-` id prefixes too.
+- **Settings UI** (both platforms): a branded Notifications section (switches + −/+ minute steppers) and a **"?" Features Guide** — expandable rows explaining each notification/feature in plain language (stakeholder: a "?" per item describing what it does).
+- New localized strings (ar/en) for the iqama + last-third notification templates and all the settings/guide copy.
+- Planner tests rewritten + extended on both platforms (adhan-only, all-off, pre-adhan offset, iqama-after-adhan, last-third-at-2/3, past-drop, budget, stable ids). Verified: iOS `swift test` (PrayerKit + AppFeatures) green; Android `./gradlew test` green; both apps build.
+
 ### 2026-07-12 — Backend go-live wiring + Live Activity fix + streak brand mark
 - **Supabase wired (API live):** deployed the `api` edge function to the real project (`nbeobnlgsbokomvkmzeq`), set the `API_JWT_SECRET`, and flipped both apps off the `api.invalid` placeholder onto `https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api`. Function verified reachable end-to-end (validates requests, reaches the DB). Remaining to fully activate: `supabase db push` (the 10 migrations) — deferred to the owner since it needs the DB password. Firebase client configs (`google-services.json`, `GoogleService-Info.plist`) placed; FCM SDK wiring is the next push step.
 - **Live Activity double-activity bug fixed** (stakeholder: "one for Isha, another for Fajr"). Root cause: the `Activity` reference is in-memory only and is `nil` after relaunch, so `start()` requested a *second* activity while the previous prayer's was still on the Lock Screen. `SystemPrayerLiveActivityManager` now reconnects to `Activity.activities` (adopting the running one and ending duplicates) before deciding to start; `update()` also reconnects; `end()` clears all running activities.

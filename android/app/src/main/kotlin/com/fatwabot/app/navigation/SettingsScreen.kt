@@ -1,6 +1,8 @@
 package com.fatwabot.app.navigation
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,17 +19,36 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fatwabot.app.BuildConfig
@@ -36,16 +57,16 @@ import com.fatwabot.core.designsystem.BrandSectionHeader
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.core.prayer.PrayerNotificationPreferences
+import com.fatwabot.feature.prayer.PrayerViewModel
 
 /**
- * Settings tab, restyled as a profile-first screen (stakeholder direction,
- * 2026-07-11: "settings needs to be like profile as we will add login for
- * sure"), mirroring iOS SettingsScreen.swift. The account/login section is
- * honestly a placeholder — no real login exists yet (blocked on Q8 backend
- * credentials) — rather than a button that does nothing when tapped.
+ * Settings tab — profile-first, mirroring iOS SettingsScreen. Adds per-type
+ * notification controls (every notification is toggleable; offsets user-set)
+ * and a "?" features guide (stakeholder direction, 2026-07-12).
  */
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(prayerViewModel: PrayerViewModel) {
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     Column(
         modifier = Modifier
@@ -57,6 +78,10 @@ fun SettingsScreen() {
     ) {
         ProfileHeaderCard()
 
+        NotificationsSection(prayerViewModel)
+
+        FeaturesGuideSection()
+
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandSectionHeader("حول التطبيق", icon = Icons.Filled.Info)
             BrandCard {
@@ -66,12 +91,149 @@ fun SettingsScreen() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("الإصدار", color = MaterialTheme.colorScheme.onSurface)
-                    Text(
-                        BuildConfig.VERSION_NAME,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text(BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
+    var prefs by remember { mutableStateOf(prayerViewModel.currentNotificationPreferences()) }
+    fun update(next: PrayerNotificationPreferences) {
+        prefs = next
+        prayerViewModel.updateNotificationPreferences(next)
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BrandSectionHeader("الإشعارات", icon = Icons.Filled.NotificationsActive)
+        BrandCard {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                ToggleRow("الأذان", "إشعار عند دخول وقت كل صلاة.", prefs.adhanEnabled) {
+                    update(prefs.copy(adhanEnabled = it))
+                }
+                Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                ToggleRow("تنبيه قبل الأذان", "تنبيه قبل الأذان بوقت تحدده.", prefs.preAdhanEnabled) {
+                    update(prefs.copy(preAdhanEnabled = it))
+                }
+                if (prefs.preAdhanEnabled) {
+                    OffsetRow("دقائق قبل الأذان", prefs.preAdhanOffsetMinutes) {
+                        update(prefs.copy(preAdhanOffsetMinutes = it))
+                    }
+                }
+                Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                ToggleRow("تذكير بالإقامة", "تذكير بعد الأذان بوقت تحدده.", prefs.iqamaEnabled) {
+                    update(prefs.copy(iqamaEnabled = it))
+                }
+                if (prefs.iqamaEnabled) {
+                    OffsetRow("دقائق بعد الأذان", prefs.iqamaOffsetMinutes) {
+                        update(prefs.copy(iqamaOffsetMinutes = it))
+                    }
+                }
+                Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                ToggleRow("الثلث الأخير من الليل", "تنبيه عند بدء الثلث الأخير من الليل.", prefs.lastThirdEnabled) {
+                    update(prefs.copy(lastThirdEnabled = it))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary),
+        )
+    }
+}
+
+@Composable
+private fun OffsetRow(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        IconButton(
+            onClick = { onChange((value - 1).coerceAtLeast(PrayerNotificationPreferences.OFFSET_MIN)) },
+            enabled = value > PrayerNotificationPreferences.OFFSET_MIN,
+        ) { Icon(Icons.Filled.Remove, contentDescription = "إنقاص", tint = MaterialTheme.colorScheme.primary) }
+        Text(
+            "$value د",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.width(48.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        IconButton(
+            onClick = { onChange((value + 1).coerceAtMost(PrayerNotificationPreferences.OFFSET_MAX)) },
+            enabled = value < PrayerNotificationPreferences.OFFSET_MAX,
+        ) { Icon(Icons.Filled.Add, contentDescription = "زيادة", tint = MaterialTheme.colorScheme.primary) }
+    }
+}
+
+private data class GuideItem(val icon: ImageVector, val title: String, val body: String)
+
+@Composable
+private fun FeaturesGuideSection() {
+    val items = listOf(
+        GuideItem(Icons.Filled.Campaign, "الأذان", "يرسل إشعارًا عند دخول وقت كل صلاة من الصلوات الخمس حسب موقعك."),
+        GuideItem(Icons.Filled.NotificationsNone, "تنبيه قبل الأذان", "تنبيه مبكر قبل الأذان بعدد الدقائق الذي تحدده لتستعد للصلاة."),
+        GuideItem(Icons.Filled.Groups, "تذكير بالإقامة", "تذكير بعد الأذان بعدد الدقائق الذي تحدده — عند وقت الإقامة تقريبًا."),
+        GuideItem(Icons.Filled.NightsStay, "الثلث الأخير من الليل", "ينبهك عند بدء الثلث الأخير من الليل (من المغرب إلى الفجر) — وهو وقت محبوب للتهجد والدعاء."),
+        GuideItem(Icons.Filled.AutoAwesome, "التتابع", "يتتبع عدد الأيام المتتالية التي تحافظ فيها على كل عبادة. أكمل النشاط يوميًا ليكبر تتابعك."),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BrandSectionHeader("دليل الميزات", icon = Icons.Filled.HelpOutline)
+        BrandCard {
+            Column {
+                items.forEachIndexed { index, item ->
+                    GuideRow(item)
+                    if (index < items.size - 1) {
+                        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GuideRow(item: GuideItem) {
+    var expanded by remember { mutableStateOf(false) }
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(item.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Text(item.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            Icon(
+                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        AnimatedVisibility(visible = expanded) {
+            Text(
+                item.body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
         }
     }
 }

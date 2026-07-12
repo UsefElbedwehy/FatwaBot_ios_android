@@ -20,10 +20,14 @@ public final class PrayerViewModel {
     public private(set) var hijri: HijriDate?
     public private(set) var settings: PrayerSettings
 
+    /// User's notification preferences (per-type toggles + offsets); editable
+    /// from Settings and persisted via `notificationPreferenceStore`.
+    public private(set) var notificationPreferences: PrayerNotificationPreferences
+
     private let engine: PrayerEngine
     private let locationProvider: LocationProviding
     private let scheduler: PrayerNotificationScheduling?
-    private let notificationPreferences: PrayerNotificationPreferences
+    private let notificationPreferenceStore: NotificationPreferenceStoring
     private let widgetStore: WidgetSnapshotStore?
     private let reloadWidgets: (@Sendable () -> Void)?
     private let liveActivity: PrayerLiveActivityManaging
@@ -35,7 +39,7 @@ public final class PrayerViewModel {
         engine: PrayerEngine = PrayerEngine(),
         locationProvider: LocationProviding,
         scheduler: PrayerNotificationScheduling? = nil,
-        notificationPreferences: PrayerNotificationPreferences = PrayerNotificationPreferences(),
+        notificationPreferenceStore: NotificationPreferenceStoring = UserDefaultsNotificationPreferenceStore(),
         widgetStore: WidgetSnapshotStore? = nil,
         reloadWidgets: (@Sendable () -> Void)? = nil,
         liveActivity: PrayerLiveActivityManaging = NoopPrayerLiveActivityManager(),
@@ -47,7 +51,8 @@ public final class PrayerViewModel {
         self.engine = engine
         self.locationProvider = locationProvider
         self.scheduler = scheduler
-        self.notificationPreferences = notificationPreferences
+        self.notificationPreferenceStore = notificationPreferenceStore
+        self.notificationPreferences = notificationPreferenceStore.load()
         self.widgetStore = widgetStore
         self.reloadWidgets = reloadWidgets
         self.liveActivity = liveActivity
@@ -85,6 +90,13 @@ public final class PrayerViewModel {
             startDate: start, days: 3, settings: settings, calendar: calendar
         ) else { return }
         await scheduler.reschedule(timeline: timeline, preferences: notificationPreferences, now: now())
+    }
+
+    /// Persist edited notification preferences and rebuild the schedule.
+    public func setNotificationPreferences(_ preferences: PrayerNotificationPreferences) {
+        notificationPreferences = preferences
+        notificationPreferenceStore.save(preferences)
+        Task { await rescheduleNotifications() }
     }
 
     public func select(city: ManualCity, displayName: String) {

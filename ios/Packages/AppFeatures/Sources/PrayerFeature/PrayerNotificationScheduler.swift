@@ -46,8 +46,9 @@ public final class PrayerNotificationScheduler: PrayerNotificationScheduling, @u
         let plan = NotificationPlanner.plan(timeline: timeline, preferences: preferences, now: now)
 
         // Clear only our prayer notifications, leaving other categories intact.
+        let prefixes = ["adhan-", "pre-", "iqama-", "lastthird-"]
         let pending = await center.pendingNotificationRequests()
-        let ours = pending.map(\.identifier).filter { $0.hasPrefix("adhan-") || $0.hasPrefix("pre-") }
+        let ours = pending.map(\.identifier).filter { id in prefixes.contains { id.hasPrefix($0) } }
         center.removePendingNotificationRequests(withIdentifiers: ours)
 
         for item in plan {

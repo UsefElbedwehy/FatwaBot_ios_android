@@ -27,10 +27,24 @@ class PrayerViewModel @Inject constructor(
     private val locationProvider: LocationProviding,
     private val clock: Clock,
     private val scheduler: PrayerNotificationScheduler?,
-    private val notificationPreferences: PrayerNotificationPreferences,
+    private val notificationPreferenceStore: NotificationPreferenceStore?,
     private val widgetStore: WidgetSnapshotStore?,
     private val onWidgetSnapshotWritten: WidgetRefresh?,
 ) : ViewModel() {
+
+    /** User's notification preferences (per-type toggles + offsets); editable
+     * from Settings and persisted via [notificationPreferenceStore]. */
+    private var notificationPreferences: PrayerNotificationPreferences =
+        notificationPreferenceStore?.load() ?: PrayerNotificationPreferences()
+
+    fun currentNotificationPreferences(): PrayerNotificationPreferences = notificationPreferences
+
+    /** Persist edited preferences and rebuild the schedule. */
+    fun updateNotificationPreferences(preferences: PrayerNotificationPreferences) {
+        notificationPreferences = preferences
+        notificationPreferenceStore?.save(preferences)
+        rescheduleNotifications()
+    }
 
     /** App-supplied hook to trigger Glance updateAll after a new snapshot. */
     fun interface WidgetRefresh {
