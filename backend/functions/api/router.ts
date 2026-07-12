@@ -17,7 +17,7 @@ import type { LeaderboardRepo } from "./leaderboard_types.ts";
 import type { SearchHistoryRepo } from "./search_types.ts";
 import type { DeliveryLogRepo, NotificationPrefsRepo } from "./notification_types.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
-import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile } from "./handlers/accounts.ts";
+import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile, handleUpdatePushToken } from "./handlers/accounts.ts";
 import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
 import {
   handleJoinLeaderboard,
@@ -212,6 +212,9 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
 
     if (method === "PATCH" && path === "/v1/me/profile") {
       return await handleUpdateProfile(deps, req, await readBody(req));
+    }
+    if (method === "PATCH" && path === "/v1/me/push-token") {
+      return await handleUpdatePushToken(deps, req, await readBody(req));
     }
     if (method === "PATCH" && path === "/v1/me/notification-prefs") {
       return await handleUpdateNotificationPrefs(ctx, deps, req, await readBody(req));

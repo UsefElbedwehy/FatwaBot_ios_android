@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## [Unreleased]
 
+### 2026-07-12 — FCM push client (Android wired end-to-end; backend token endpoint)
+- **Backend**: new `PATCH /v1/me/push-token` endpoint stores the device's FCM token on `identity.devices.push_token` (authenticated; `updatePushToken` added to the identity repo + in-memory repo; 2 new tests, 11 passing). Deployed to the live function.
+- **Android — fully wired & building**: added Firebase BOM + `firebase-messaging` + the `google-services` plugin (google-services.json already placed). `FatwaBotMessagingService` (`@AndroidEntryPoint`) registers new tokens with the backend (`PushTokenRegistrar` → authenticated `patchRaw`) and posts foreground messages on a `general` channel; `MainActivity` registers the token on launch; white mihrab-arch `ic_notification` set as the FCM default icon. Android push works end-to-end once the backend **sender** is wired.
+- **Two gated pieces documented** (docs/features/push-notifications.md): (1) the backend **FCM sender** needs the Firebase service-account key set as a Supabase secret — and that key must be **rotated** first (it appeared in chat); (2) the **iOS client** is deliberately deferred — iOS push is impossible without the Apple Developer Program (APNs) and can't run on the Simulator, so the heavy `firebase-ios-sdk` wasn't added yet; the doc lists the small drop-in steps for when that account exists (the backend contract is already in place).
+- Verified: backend `deno test` green; Android `:app:assembleDebug` + `./gradlew test` green.
+
 ### 2026-07-12 — Notification suite (both platforms)
 - **Every notification is individually toggleable, with user-set offsets** (stakeholder direction). Extended the pure `NotificationPlanner` on both platforms from adhan + pre-adhan to four types:
   - **Adhan** — at each prayer time (toggle).

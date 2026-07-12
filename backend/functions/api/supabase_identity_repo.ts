@@ -186,4 +186,13 @@ export class SupabaseIdentityRepo implements IdentityRepo {
       .eq("id", userId);
     if (error) throw error;
   }
+
+  async updatePushToken(userId: string, token: string | null): Promise<void> {
+    // One device per anonymous install in practice; update the user's device(s).
+    const { error } = await this.db
+      .schema("identity").from("devices")
+      .update({ push_token: token })
+      .eq("user_id", userId);
+    if (error) throw error;
+  }
 }
