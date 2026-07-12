@@ -1,0 +1,280 @@
+{
+  "generator": "AlAdhan API v1 (method=4 Umm Al-Qura University Makkah, school=0 Shafi)",
+  "source": "https://api.aladhan.com/v1/timings",
+  "tolerance_minutes": 3,
+  "note": "Authority validation (closes M0 TODO): on-device Umm al-Qura must match the official AlAdhan Umm al-Qura timings within tolerance. Times are local wall-clock in the entry timezone.",
+  "entries": [
+    {
+      "city": "Makkah",
+      "latitude": 21.4225,
+      "longitude": 39.8262,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-03-20",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "05:09",
+        "sunrise": "06:25",
+        "dhuhr": "12:28",
+        "asr": "15:52",
+        "maghrib": "18:32",
+        "isha": "20:02"
+      }
+    },
+    {
+      "city": "Makkah",
+      "latitude": 21.4225,
+      "longitude": 39.8262,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-06-21",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "04:11",
+        "sunrise": "05:39",
+        "dhuhr": "12:22",
+        "asr": "15:42",
+        "maghrib": "19:06",
+        "isha": "20:36"
+      }
+    },
+    {
+      "city": "Makkah",
+      "latitude": 21.4225,
+      "longitude": 39.8262,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-09-23",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "04:54",
+        "sunrise": "06:10",
+        "dhuhr": "12:13",
+        "asr": "15:39",
+        "maghrib": "18:16",
+        "isha": "19:46"
+      }
+    },
+    {
+      "city": "Makkah",
+      "latitude": 21.4225,
+      "longitude": 39.8262,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-12-21",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "05:32",
+        "sunrise": "06:54",
+        "dhuhr": "12:19",
+        "asr": "15:23",
+        "maghrib": "17:44",
+        "isha": "19:14"
+      }
+    },
+    {
+      "city": "Riyadh",
+      "latitude": 24.7136,
+      "longitude": 46.6753,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-03-20",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "04:40",
+        "sunrise": "05:58",
+        "dhuhr": "12:01",
+        "asr": "15:26",
+        "maghrib": "18:04",
+        "isha": "19:34"
+      }
+    },
+    {
+      "city": "Riyadh",
+      "latitude": 24.7136,
+      "longitude": 46.6753,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-06-21",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "03:33",
+        "sunrise": "05:05",
+        "dhuhr": "11:55",
+        "asr": "15:16",
+        "maghrib": "18:45",
+        "isha": "20:15"
+      }
+    },
+    {
+      "city": "Riyadh",
+      "latitude": 24.7136,
+      "longitude": 46.6753,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-09-23",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "04:24",
+        "sunrise": "05:42",
+        "dhuhr": "11:46",
+        "asr": "15:12",
+        "maghrib": "17:49",
+        "isha": "19:19"
+      }
+    },
+    {
+      "city": "Riyadh",
+      "latitude": 24.7136,
+      "longitude": 46.6753,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-12-21",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "05:09",
+        "sunrise": "06:33",
+        "dhuhr": "11:51",
+        "asr": "14:50",
+        "maghrib": "17:09",
+        "isha": "18:39"
+      }
+    },
+    {
+      "city": "Jeddah",
+      "latitude": 21.4858,
+      "longitude": 39.1925,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-03-20",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "05:11",
+        "sunrise": "06:28",
+        "dhuhr": "12:31",
+        "asr": "15:55",
+        "maghrib": "18:34",
+        "isha": "20:04"
+      }
+    },
+    {
+      "city": "Jeddah",
+      "latitude": 21.4858,
+      "longitude": 39.1925,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-06-21",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "04:14",
+        "sunrise": "05:42",
+        "dhuhr": "12:25",
+        "asr": "15:45",
+        "maghrib": "19:08",
+        "isha": "20:38"
+      }
+    },
+    {
+      "city": "Jeddah",
+      "latitude": 21.4858,
+      "longitude": 39.1925,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-09-23",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "04:56",
+        "sunrise": "06:12",
+        "dhuhr": "12:16",
+        "asr": "15:41",
+        "maghrib": "18:19",
+        "isha": "19:49"
+      }
+    },
+    {
+      "city": "Jeddah",
+      "latitude": 21.4858,
+      "longitude": 39.1925,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-12-21",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "05:35",
+        "sunrise": "06:56",
+        "dhuhr": "12:21",
+        "asr": "15:25",
+        "maghrib": "17:46",
+        "isha": "19:16"
+      }
+    },
+    {
+      "city": "Madinah",
+      "latitude": 24.5247,
+      "longitude": 39.5692,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-03-20",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "05:08",
+        "sunrise": "06:26",
+        "dhuhr": "12:29",
+        "asr": "15:55",
+        "maghrib": "18:33",
+        "isha": "20:03"
+      }
+    },
+    {
+      "city": "Madinah",
+      "latitude": 24.5247,
+      "longitude": 39.5692,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-06-21",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "04:02",
+        "sunrise": "05:34",
+        "dhuhr": "12:24",
+        "asr": "15:44",
+        "maghrib": "19:13",
+        "isha": "20:43"
+      }
+    },
+    {
+      "city": "Madinah",
+      "latitude": 24.5247,
+      "longitude": 39.5692,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-09-23",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "04:53",
+        "sunrise": "06:11",
+        "dhuhr": "12:14",
+        "asr": "15:41",
+        "maghrib": "18:17",
+        "isha": "19:47"
+      }
+    },
+    {
+      "city": "Madinah",
+      "latitude": 24.5247,
+      "longitude": 39.5692,
+      "timezone": "Asia/Riyadh",
+      "date": "2026-12-21",
+      "method": "umm_al_qura",
+      "madhab": "shafi",
+      "times_local": {
+        "fajr": "05:38",
+        "sunrise": "07:01",
+        "dhuhr": "12:20",
+        "asr": "15:18",
+        "maghrib": "17:38",
+        "isha": "19:08"
+      }
+    }
+  ]
+}

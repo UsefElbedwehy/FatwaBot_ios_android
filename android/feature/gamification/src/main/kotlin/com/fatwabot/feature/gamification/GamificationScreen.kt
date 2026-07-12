@@ -23,11 +23,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MilitaryTech
-import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -49,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.designsystem.BrandEmptyState
+import com.fatwabot.core.designsystem.BrandMark
 import com.fatwabot.core.designsystem.BrandSectionHeader
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
@@ -87,7 +88,7 @@ fun GamificationScreen(viewModel: GamificationViewModel = hiltViewModel()) {
 
             if (profile.streaks.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("السلاسل", icon = Icons.Filled.Whatshot)
+                    BrandSectionHeader("السلاسل", icon = Icons.Filled.CalendarMonth)
                     profile.streaks.forEach { StreakCard(it) }
                 }
             }
@@ -104,7 +105,7 @@ fun GamificationScreen(viewModel: GamificationViewModel = hiltViewModel()) {
                 }
             }
             if (!state.isLoading && isEmpty && state.error == null) {
-                BrandEmptyState(Icons.Filled.LocalFireDepartment, "ابدأ رحلتك — أكمل نشاطًا لرؤية تقدمك هنا")
+                BrandEmptyState(Icons.Filled.NightsStay, "ابدأ رحلتك — أكمل نشاطًا لرؤية تقدمك هنا")
             }
         }
         if (state.isLoading && isEmpty) {
@@ -152,7 +153,7 @@ private fun StreakHeroCard(streak: GamificationStreak) {
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                BrandMark(color = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(14.dp))
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -180,7 +181,7 @@ private fun StreakCard(streak: GamificationStreak) {
                 modifier = Modifier.size(44.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                BrandMark(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(streak.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)

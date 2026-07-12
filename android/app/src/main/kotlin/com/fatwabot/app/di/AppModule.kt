@@ -81,7 +81,7 @@ abstract class AppModule {
         fun provideApiClient(): ApiClientProtocol = ApiClient(
             // Placeholder until the Supabase project exists (OPEN_QUESTIONS Q8);
             // offline-first means the app is fully functional without it.
-            baseUrl = "https://api.invalid/functions/v1/api",
+            baseUrl = "https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api",
             context = ClientContext(
                 appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
                 locale = Locale.getDefault().language,
@@ -100,7 +100,7 @@ abstract class AppModule {
             store: AuthTokenStoring,
         ): AuthTokenProviding = AuthService(
             // Placeholder until the Supabase project exists (OPEN_QUESTIONS Q8).
-            baseUrl = "https://api.invalid/functions/v1/api",
+            baseUrl = "https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api",
             device = DeviceInfo(
                 platform = "android",
                 appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
@@ -115,7 +115,7 @@ abstract class AppModule {
         @Singleton
         fun provideAuthenticatedApiClient(tokens: AuthTokenProviding): AuthenticatedApiClientProtocol =
             AuthenticatedApiClient(
-                baseUrl = "https://api.invalid/functions/v1/api",
+                baseUrl = "https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api",
                 context = ClientContext(
                     appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
                     locale = Locale.getDefault().language,

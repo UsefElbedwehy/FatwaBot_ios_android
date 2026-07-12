@@ -23,7 +23,11 @@ public struct PrayerSettings: Codable, Equatable, Sendable {
     public static let highLatitudeThreshold = 48.0
 
     public init(
-        method: String = "mwl",
+        // Umm al-Qura is the bundled default (stakeholder direction, 2026-07-12):
+        // it matches the Saudi authority most users compare against, and — unlike
+        // the previous MWL default — is what the app falls back to whenever the
+        // server config (which can override method per country) is unavailable.
+        method: String = "umm_al_qura",
         madhab: String = "shafi",
         highLatitudeRule: String? = nil,
         adjustments: [PrayerName: Int] = [:],

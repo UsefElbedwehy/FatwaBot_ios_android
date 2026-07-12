@@ -260,7 +260,7 @@ extension Container {
 enum AppEnvironment {
     /// Placeholder until the Supabase project exists (OPEN_QUESTIONS Q8);
     /// offline-first design means the app is fully functional without it.
-    static let apiBaseURL = URL(string: "https://api.invalid/functions/v1/api")!
+    static let apiBaseURL = URL(string: "https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api")!
 
     static var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"

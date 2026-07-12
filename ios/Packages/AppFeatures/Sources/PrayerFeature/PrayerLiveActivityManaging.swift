@@ -34,6 +34,18 @@ public final class SystemPrayerLiveActivityManager: PrayerLiveActivityManaging, 
 
     public func start(locationName: String, prayerName: PrayerName, prayerTime: Date) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        // Live Activities outlive the app process, but `activity` is in-memory and
+        // becomes nil on relaunch. Without reconnecting, `start()` would request a
+        // SECOND activity while the previous prayer's is still on the Lock Screen
+        // (the "one for Isha, another for Fajr" bug). Adopt the running activity
+        // and end any leftover duplicates from earlier buggy sessions.
+        if activity == nil {
+            let running = Activity<PrayerActivityAttributes>.activities
+            activity = running.first
+            for duplicate in running.dropFirst() {
+                await duplicate.end(nil, dismissalPolicy: .immediate)
+            }
+        }
         if activity != nil {
             await update(prayerName: prayerName, prayerTime: prayerTime)
             return
@@ -45,6 +57,10 @@ public final class SystemPrayerLiveActivityManager: PrayerLiveActivityManaging, 
     }
 
     public func update(prayerName: PrayerName, prayerTime: Date) async {
+        // Reconnect after relaunch so a tick/refresh updates the existing activity.
+        if activity == nil {
+            activity = Activity<PrayerActivityAttributes>.activities.first
+        }
         guard let activity else { return }
         let state = PrayerActivityAttributes.ContentState(prayerName: prayerName.rawValue, prayerTime: prayerTime)
         let content = ActivityContent(state: state, staleDate: prayerTime.addingTimeInterval(Self.staleGrace))
@@ -52,8 +68,11 @@ public final class SystemPrayerLiveActivityManager: PrayerLiveActivityManaging, 
     }
 
     public func end() async {
-        guard let activity else { return }
-        await activity.end(nil, dismissalPolicy: .immediate)
+        // End every running activity, not just the in-memory reference, so any
+        // duplicates from earlier sessions are cleared too.
+        for running in Activity<PrayerActivityAttributes>.activities {
+            await running.end(nil, dismissalPolicy: .immediate)
+        }
         self.activity = nil
     }
 }

@@ -137,6 +137,21 @@ fun BrandSectionHeader(
     }
 }
 
+// MARK: Brand mark (mihrab arch glyph)
+
+/** The mihrab-arch brand mark as a small filled glyph — used where the app's
+ * logo should stand in for a generic icon (e.g. the streak icon, per
+ * stakeholder direction: the streak is the app logo, not a fire emoji). */
+@Composable
+fun BrandMark(
+    modifier: Modifier = Modifier,
+    color: Color = brandTokens().primary,
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        drawPath(mihrabArchPath(size), color = color)
+    }
+}
+
 // MARK: Ring progress
 
 /** Circular progress ring with a maroon→gold sweep and a faint track. */

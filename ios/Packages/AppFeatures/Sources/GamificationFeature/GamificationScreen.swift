@@ -31,7 +31,7 @@ public struct GamificationScreen: View {
                 }
 
                 if !viewModel.profile.streaks.isEmpty {
-                    Section2(header: "gamification.streaks_section", icon: "flame.fill", tokens: tokens) {
+                    Section2(header: "gamification.streaks_section", icon: "calendar", tokens: tokens) {
                         VStack(spacing: 12) {
                             ForEach(viewModel.profile.streaks) { streak in
                                 StreakCard(streak: streak, tokens: tokens)
@@ -57,7 +57,7 @@ public struct GamificationScreen: View {
                 }
 
                 if isEmpty {
-                    BrandEmptyState(systemImage: "flame", messageKey: "gamification.empty_state", tokens: tokens)
+                    BrandEmptyState(systemImage: "moon.stars.fill", messageKey: "gamification.empty_state", tokens: tokens)
                 }
             }
             .padding(20)
@@ -119,14 +119,16 @@ private struct StreakHeroCard: View {
                     lineWidth: 9,
                     tokens: tokens
                 )
-                VStack(spacing: 0) {
+                VStack(spacing: 2) {
                     Text("\(streak.currentLength)")
                         .font(.system(size: 34, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(Color(hexToken: tokens.primary))
-                    Image(systemName: "flame.fill")
-                        .font(.caption)
-                        .foregroundStyle(Color(hexToken: tokens.accent))
+                    // Brand mark (mihrab arch), per stakeholder: the streak icon is
+                    // the app logo, not a fire emoji.
+                    MihrabArchShape()
+                        .fill(Color(hexToken: tokens.accent))
+                        .frame(width: 13, height: 15)
                 }
             }
             .frame(width: 96, height: 96)
@@ -171,9 +173,9 @@ private struct StreakCard: View {
         HStack(spacing: 14) {
             ZStack {
                 Circle().fill(Color(hexToken: tokens.primaryContainer))
-                Image(systemName: "flame.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color(hexToken: tokens.primary))
+                MihrabArchShape()
+                    .fill(Color(hexToken: tokens.primary))
+                    .frame(width: 17, height: 20)
             }
             .frame(width: 44, height: 44)
             .accessibilityHidden(true)
