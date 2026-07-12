@@ -98,6 +98,14 @@ export class InMemoryIdentityRepo implements IdentityRepo {
     return Promise.resolve();
   }
 
+  listPushTargets(_ctx: AppContext): Promise<{ userId: string; token: string }[]> {
+    const targets: { userId: string; token: string }[] = [];
+    for (const device of this.devices.values()) {
+      if (device.pushToken) targets.push({ userId: device.userId, token: device.pushToken });
+    }
+    return Promise.resolve(targets);
+  }
+
   storeRefreshToken(hash: string, userId: string, deviceId: string, expiresAt: Date, rotatedFrom?: string) {
     const id = this.nextId("token");
     this.tokens.set(id, { id, hash, userId, deviceId, expiresAt, revokedAt: null, ...{ rotatedFrom } });

@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## [Unreleased]
 
+### 2026-07-12 — Backend FCM sender + campaign dispatch
+- **`fcm_sender.ts`** — FCM HTTP v1 sender: mints a Google OAuth access token from the Firebase service account (RS256 JWT via `jose`, cached ~1h) and posts to `…/messages:send`; flags dead tokens (404/UNREGISTERED). `fetch`/`now` injectable → fully unit-tested with a generated key + fake fetch.
+- **`notification_dispatch.ts`** — pure `dispatchCampaign`: per recipient it honors the user's per-type preference, enforces the daily cap (`notification_engine`), sends, writes the `delivery_log` (sent/capped/failed), and clears tokens FCM reports dead.
+- **`POST /admin/v1/campaigns/{key}/send`** (admin) — loads campaign → template (locale-picked) → notification-type default → push audience (`identity.listPushTargets`, new repo method) → dispatch; returns `{recipients, sent, capped, failed, skipped}`. Returns `503` until `FCM_SERVICE_ACCOUNT` is set.
+- Wired the optional `FcmSender` into `index.ts` from the `FCM_SERVICE_ACCOUNT` secret. New `tests/push_test.ts` (6 tests); full backend suite **105 green**. Deployed to the live function.
+- To fire a real push: rotate + set the service-account secret, then trigger a campaign (docs/features/push-notifications.md).
+
 ### 2026-07-12 — FCM push client (Android wired end-to-end; backend token endpoint)
 - **Backend**: new `PATCH /v1/me/push-token` endpoint stores the device's FCM token on `identity.devices.push_token` (authenticated; `updatePushToken` added to the identity repo + in-memory repo; 2 new tests, 11 passing). Deployed to the live function.
 - **Android — fully wired & building**: added Firebase BOM + `firebase-messaging` + the `google-services` plugin (google-services.json already placed). `FatwaBotMessagingService` (`@AndroidEntryPoint`) registers new tokens with the backend (`PushTokenRegistrar` → authenticated `patchRaw`) and posts foreground messages on a `general` channel; `MainActivity` registers the token on launch; white mihrab-arch `ic_notification` set as the FCM default icon. Android push works end-to-end once the backend **sender** is wired.

@@ -16,6 +16,8 @@ import type { GamificationRepo } from "./gamification_types.ts";
 import type { LeaderboardRepo } from "./leaderboard_types.ts";
 import type { SearchHistoryRepo } from "./search_types.ts";
 import type { DeliveryLogRepo, NotificationPrefsRepo } from "./notification_types.ts";
+import type { PushSender } from "./fcm_sender.ts";
+import { handleSendCampaign } from "./handlers/send_campaign.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
 import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile, handleUpdatePushToken } from "./handlers/accounts.ts";
 import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
@@ -77,6 +79,8 @@ export interface Deps {
   searchHistory: SearchHistoryRepo;
   notificationPrefs: NotificationPrefsRepo;
   deliveryLog: DeliveryLogRepo;
+  /** FCM sender — undefined until FCM_SERVICE_ACCOUNT is configured. */
+  pushSender?: PushSender;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".
@@ -333,6 +337,12 @@ async function routeAdmin(
   if (recomputeMatch) {
     if (method !== "POST") return methodNotAllowed();
     return await handleRecomputeSnapshot(ctx, deps, recomputeMatch[1]);
+  }
+
+  const sendCampaignMatch = path.match(/^\/admin\/v1\/campaigns\/([A-Za-z0-9_-]{1,60})\/send$/);
+  if (sendCampaignMatch) {
+    if (method !== "POST") return methodNotAllowed();
+    return await handleSendCampaign(ctx, deps, sendCampaignMatch[1]);
   }
 
   return notFound();

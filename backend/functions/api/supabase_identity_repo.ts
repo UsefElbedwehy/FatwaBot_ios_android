@@ -195,4 +195,16 @@ export class SupabaseIdentityRepo implements IdentityRepo {
       .eq("user_id", userId);
     if (error) throw error;
   }
+
+  async listPushTargets(_ctx: AppContext): Promise<{ userId: string; token: string }[]> {
+    const { data, error } = await this.db
+      .schema("identity").from("devices")
+      .select("user_id, push_token")
+      .not("push_token", "is", null);
+    if (error) throw error;
+    return (data ?? []).map((r: { user_id: string; push_token: string }) => ({
+      userId: r.user_id,
+      token: r.push_token,
+    }));
+  }
 }

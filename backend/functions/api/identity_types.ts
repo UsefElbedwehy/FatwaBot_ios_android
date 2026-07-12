@@ -62,4 +62,6 @@ export interface IdentityRepo {
   updateDisplayName(userId: string, displayName: string | null): Promise<void>;
   /** Store the FCM push token on the user's device(s) — set null to clear. */
   updatePushToken(userId: string, token: string | null): Promise<void>;
+  /** Every device with a registered push token — the push audience. */
+  listPushTargets(ctx: AppContext): Promise<{ userId: string; token: string }[]>;
 }
