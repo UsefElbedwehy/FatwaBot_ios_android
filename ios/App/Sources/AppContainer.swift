@@ -93,6 +93,17 @@ extension Container {
         .singleton
     }
 
+    /// Account reads/writes (`/v1/me`, profile, provider link).
+    var accountService: Factory<AccountServicing> {
+        self { AccountService(client: self.authenticatedClient()) }.singleton
+    }
+
+    /// Provider identity-token source. Stub today (works against the backend's
+    /// dev verifier); swap to native Apple/Google once credentials exist.
+    var providerCredential: Factory<ProviderCredentialProviding> {
+        self { StubProviderCredentialProvider() }.singleton
+    }
+
     /// Concrete recorder, shared by GamificationViewModel (to flush before a
     /// profile read) and every feature ViewModel injected via the CoreKit
     /// `ActivityEventRecording` boundary below.

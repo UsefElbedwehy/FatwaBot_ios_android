@@ -11,6 +11,17 @@
 "settings.live_activity.subtitle" = "يعرض الوقت المتبقي للصلاة القادمة على شاشة القفل والجزيرة الديناميكية.";
 "settings.profile.guest_name" = "ضيف";
 "settings.profile.sign_in_coming_soon" = "تسجيل الدخول — قريباً";
+"settings.account.provider.guest" = "ضيف — سجّل الدخول لحفظ اسمك";
+"settings.account.provider.apple" = "تم تسجيل الدخول عبر Apple";
+"settings.account.provider.google" = "تم تسجيل الدخول عبر Google";
+"settings.account.edit_name" = "تعديل الاسم";
+"settings.account.name_placeholder" = "اسمك المعروض";
+"settings.account.save" = "حفظ";
+"settings.account.cancel" = "إلغاء";
+"settings.account.sign_in_apple" = "تسجيل الدخول عبر Apple";
+"settings.account.sign_in_google" = "المتابعة عبر Google";
+"settings.account.error.generic" = "تعذّر إتمام العملية. حاول مرة أخرى.";
+"settings.account.error.already_linked" = "هذا الحساب مرتبط بملف آخر بالفعل.";
 "settings.about_section" = "حول التطبيق";
 "settings.about.version" = "الإصدار";
 "home.greeting.morning" = "صباح الخير";

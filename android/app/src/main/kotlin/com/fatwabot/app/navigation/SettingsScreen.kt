@@ -30,29 +30,43 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.fatwabot.app.BuildConfig
+import com.fatwabot.app.R
+import com.fatwabot.app.account.AccountViewModel
 import com.fatwabot.core.designsystem.BrandCard
+import com.fatwabot.core.network.AccountProvider
+import kotlinx.coroutines.launch
 import com.fatwabot.core.designsystem.BrandSectionHeader
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
@@ -76,7 +90,7 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
-        ProfileHeaderCard()
+        AccountSection()
 
         NotificationsSection(prayerViewModel)
 
@@ -239,54 +253,132 @@ private fun GuideRow(item: GuideItem) {
 }
 
 @Composable
-private fun ProfileHeaderCard() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surfaceContainer),
-                ),
-            )
-            .padding(20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
+private fun AccountSection(viewModel: AccountViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsState()
+    val scope = rememberCoroutineScope()
+    var isEditing by remember { mutableStateOf(false) }
+    var draftName by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) { viewModel.load() }
+
+    val profile = state.profile
+    val displayName = profile?.displayName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.settings_account_guest)
+    val providerText = when (profile?.provider) {
+        AccountProvider.APPLE -> stringResource(R.string.settings_account_provider_apple)
+        AccountProvider.GOOGLE -> stringResource(R.string.settings_account_provider_google)
+        else -> stringResource(R.string.settings_account_provider_guest)
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(
             modifier = Modifier
-                .size(64.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
                 .background(
                     Brush.linearGradient(
-                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)),
+                        listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surfaceContainer),
                     ),
-                    CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Filled.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(28.dp),
-            )
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Column {
-            Text("ضيف", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(
-                    Icons.Filled.AutoAwesome,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(14.dp),
                 )
-                Text(
-                    "تسجيل الدخول — قريباً",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.secondary,
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)),
+                        ),
+                        CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (state.isSignedIn) Icons.Filled.Verified else Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(28.dp),
                 )
             }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(
+                        if (state.isSignedIn) Icons.Filled.Verified else Icons.Filled.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        providerText,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+            IconButton(onClick = {
+                draftName = profile?.displayName.orEmpty()
+                isEditing = !isEditing
+            }) {
+                Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.settings_account_edit_name), tint = MaterialTheme.colorScheme.primary)
+            }
         }
+
+        AnimatedVisibility(visible = isEditing) {
+            BrandCard {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = draftName,
+                        onValueChange = { draftName = it },
+                        placeholder = { Text(stringResource(R.string.settings_account_name_placeholder)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.align(Alignment.End)) {
+                        TextButton(onClick = { isEditing = false }) { Text(stringResource(R.string.settings_account_cancel)) }
+                        Button(
+                            enabled = !state.isBusy,
+                            onClick = {
+                                scope.launch {
+                                    viewModel.saveDisplayName(draftName)
+                                    isEditing = false
+                                }
+                            },
+                        ) { Text(stringResource(R.string.settings_account_save)) }
+                    }
+                }
+            }
+        }
+
+        if (!state.isSignedIn) {
+            SignInButton(R.string.settings_account_sign_in_apple, enabled = !state.isBusy) {
+                scope.launch { viewModel.signIn(AccountProvider.APPLE) }
+            }
+            SignInButton(R.string.settings_account_sign_in_google, enabled = !state.isBusy) {
+                scope.launch { viewModel.signIn(AccountProvider.GOOGLE) }
+            }
+        }
+
+        val messageText = when (state.message) {
+            AccountViewModel.Message.ALREADY_LINKED -> stringResource(R.string.settings_account_error_already_linked)
+            AccountViewModel.Message.GENERIC -> stringResource(R.string.settings_account_error_generic)
+            AccountViewModel.Message.NONE -> null
+        }
+        if (messageText != null) {
+            Text(messageText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
+private fun SignInButton(textRes: Int, enabled: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(stringResource(textRes), fontWeight = FontWeight.SemiBold)
     }
 }

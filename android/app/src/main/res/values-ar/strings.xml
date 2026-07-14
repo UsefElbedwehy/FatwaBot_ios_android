@@ -6,4 +6,16 @@
     <string name="tab_journey">المسيرة</string>
     <string name="tab_settings">الإعدادات</string>
     <string name="common_coming_soon">قريباً إن شاء الله</string>
+    <string name="settings_account_guest">ضيف</string>
+    <string name="settings_account_provider_guest">ضيف — سجّل الدخول لحفظ اسمك</string>
+    <string name="settings_account_provider_apple">تم تسجيل الدخول عبر Apple</string>
+    <string name="settings_account_provider_google">تم تسجيل الدخول عبر Google</string>
+    <string name="settings_account_edit_name">تعديل الاسم</string>
+    <string name="settings_account_name_placeholder">اسمك المعروض</string>
+    <string name="settings_account_save">حفظ</string>
+    <string name="settings_account_cancel">إلغاء</string>
+    <string name="settings_account_sign_in_apple">تسجيل الدخول عبر Apple</string>
+    <string name="settings_account_sign_in_google">المتابعة عبر Google</string>
+    <string name="settings_account_error_generic">تعذّر إتمام العملية. حاول مرة أخرى.</string>
+    <string name="settings_account_error_already_linked">هذا الحساب مرتبط بملف آخر بالفعل.</string>
 </resources>

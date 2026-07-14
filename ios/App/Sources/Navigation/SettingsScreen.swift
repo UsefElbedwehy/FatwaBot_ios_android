@@ -1,5 +1,6 @@
 import DesignSystemKit
 import Factory
+import NetworkingKit
 import PrayerFeature
 import PrayerKit
 import SwiftUI
@@ -25,7 +26,7 @@ struct SettingsScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                ProfileHeaderCard(tokens: tokens)
+                AccountSection(tokens: tokens)
 
                 VStack(alignment: .leading, spacing: 12) {
                     BrandSectionHeader("settings.prayer_section", systemImage: "moon.stars.fill", tokens: tokens)
@@ -69,35 +70,79 @@ struct SettingsScreen: View {
     }
 }
 
-private struct ProfileHeaderCard: View {
+/// Account/profile section: shows the current identity (guest or linked),
+/// lets the user set a display name (works today against `/v1/me/profile`),
+/// and — when still a guest — offers Sign in with Apple / Google, which link
+/// the anonymous identity without losing any progress (docs/features/accounts.md).
+private struct AccountSection: View {
     let tokens: ColorTokens
+    @StateObject private var viewModel = AccountViewModel(
+        account: Container.shared.accountService(),
+        credentials: Container.shared.providerCredential()
+    )
+    @State private var isEditingName = false
+    @State private var draftName = ""
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            headerCard
+            if isEditingName {
+                nameEditor
+            }
+            if !viewModel.isSignedIn {
+                signInButtons
+            }
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.red)
+            }
+        }
+        .task { await viewModel.load() }
+    }
+
+    private var displayName: String {
+        if let name = viewModel.profile?.displayName, !name.isEmpty { return name }
+        return String(localized: "settings.profile.guest_name")
+    }
+
+    private var headerCard: some View {
         HStack(spacing: 16) {
             ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.primary).opacity(0.75)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        )
+                Circle().fill(
+                    LinearGradient(
+                        colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.primary).opacity(0.75)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
                     )
-                Image(systemName: "person.fill")
-                    .font(.system(size: 28))
+                )
+                Image(systemName: viewModel.isSignedIn ? "person.crop.circle.badge.checkmark" : "person.fill")
+                    .font(.system(size: 26))
                     .foregroundStyle(Color(hexToken: tokens.onPrimary))
             }
             .frame(width: 64, height: 64)
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("settings.profile.guest_name")
+                Text(displayName)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
-                Label("settings.profile.sign_in_coming_soon", systemImage: "sparkles")
+                Label(viewModel.providerLabel, systemImage: viewModel.isSignedIn ? "checkmark.seal.fill" : "sparkles")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Color(hexToken: tokens.accent))
             }
             Spacer(minLength: 0)
+
+            Button {
+                draftName = viewModel.profile?.displayName ?? ""
+                withAnimation { isEditingName.toggle() }
+            } label: {
+                Image(systemName: "pencil")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color(hexToken: tokens.primary))
+                    .frame(width: 36, height: 36)
+                    .background(Color(hexToken: tokens.primary).opacity(0.12), in: Circle())
+            }
+            .accessibilityLabel("settings.account.edit_name")
         }
         .padding(20)
         .background(
@@ -112,7 +157,53 @@ private struct ProfileHeaderCard: View {
                 .stroke(Color(hexToken: tokens.primary).opacity(0.14), lineWidth: 1)
         )
         .shadow(color: Color(hexToken: tokens.primary).opacity(0.10), radius: 16, x: 0, y: 8)
-        .accessibilityElement(children: .combine)
+    }
+
+    private var nameEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            TextField("settings.account.name_placeholder", text: $draftName)
+                .textFieldStyle(.plain)
+                .padding(12)
+                .background(Color(hexToken: tokens.surface), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            HStack {
+                Spacer()
+                Button("settings.account.cancel") { withAnimation { isEditingName = false } }
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                Button("settings.account.save") {
+                    Task {
+                        await viewModel.saveDisplayName(draftName)
+                        withAnimation { isEditingName = false }
+                    }
+                }
+                .fontWeight(.semibold)
+                .foregroundStyle(Color(hexToken: tokens.primary))
+                .disabled(viewModel.isBusy)
+            }
+        }
+        .brandCard(tokens)
+    }
+
+    private var signInButtons: some View {
+        VStack(spacing: 10) {
+            signInButton(.apple, title: "settings.account.sign_in_apple", systemImage: "apple.logo")
+            signInButton(.google, title: "settings.account.sign_in_google", systemImage: "g.circle.fill")
+        }
+    }
+
+    private func signInButton(_ provider: AccountProvider, title: LocalizedStringKey, systemImage: String) -> some View {
+        Button {
+            Task { await viewModel.signIn(with: provider) }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                Text(title).fontWeight(.semibold)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .foregroundStyle(Color(hexToken: tokens.onPrimary))
+            .background(Color(hexToken: tokens.primary), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .disabled(viewModel.isBusy)
     }
 }
 

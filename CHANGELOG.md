@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## [Unreleased]
 
+### 2026-07-14 — Sign in + Account (iOS + Android client)
+- **Account section in Settings** on both platforms replaces the "sign-in coming soon" placeholder: shows Guest vs "Signed in with Apple/Google", an editable **display name** (works today via `PATCH /v1/me/profile`), and Sign in with Apple / Continue with Google buttons when a guest.
+- **`AccountService`** (iOS `NetworkingKit`, Android `core/network`): `me()` / `updateDisplayName()` / `link()` (HTTP 409 → `alreadyLinked`); `AccountViewModel` drives the UI on each platform.
+- **Provider-credential seam** (`ProviderCredentialProviding`) with a `StubProviderCredentialProvider` default that returns a stable per-install token the backend dev verifier accepts — so guest → link → named-account works end-to-end against the live function **today**. Native Sign in with Apple (Apple Developer entitlement) and Google Sign-In (OAuth client) are the documented drop-in, gated on those credentials (see docs/features/accounts.md).
+- Tests: iOS `AccountServiceTests` (7) + Android `AccountServiceTest` (7), both green. iOS app + Android app both build clean. ar/en strings added.
+
+
 ### 2026-07-12 — Backend FCM sender + campaign dispatch
 - **`fcm_sender.ts`** — FCM HTTP v1 sender: mints a Google OAuth access token from the Firebase service account (RS256 JWT via `jose`, cached ~1h) and posts to `…/messages:send`; flags dead tokens (404/UNREGISTERED). `fetch`/`now` injectable → fully unit-tested with a generated key + fake fetch.
 - **`notification_dispatch.ts`** — pure `dispatchCampaign`: per recipient it honors the user's per-type preference, enforces the daily cap (`notification_engine`), sends, writes the `delivery_log` (sent/capped/failed), and clears tokens FCM reports dead.

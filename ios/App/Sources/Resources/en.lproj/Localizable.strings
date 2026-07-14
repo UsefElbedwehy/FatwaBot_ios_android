@@ -11,6 +11,17 @@
 "settings.live_activity.subtitle" = "Shows the time remaining until the next prayer on your Lock Screen and Dynamic Island.";
 "settings.profile.guest_name" = "Guest";
 "settings.profile.sign_in_coming_soon" = "Sign in — coming soon";
+"settings.account.provider.guest" = "Guest — sign in to save your name";
+"settings.account.provider.apple" = "Signed in with Apple";
+"settings.account.provider.google" = "Signed in with Google";
+"settings.account.edit_name" = "Edit name";
+"settings.account.name_placeholder" = "Your display name";
+"settings.account.save" = "Save";
+"settings.account.cancel" = "Cancel";
+"settings.account.sign_in_apple" = "Sign in with Apple";
+"settings.account.sign_in_google" = "Continue with Google";
+"settings.account.error.generic" = "Couldn't complete that. Please try again.";
+"settings.account.error.already_linked" = "That account is already linked to another profile.";
 "settings.about_section" = "About";
 "settings.about.version" = "Version";
 "home.greeting.morning" = "Good morning";

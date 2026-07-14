@@ -4,8 +4,13 @@ import android.content.Context
 import com.fatwabot.app.location.SystemLocationProvider
 import com.fatwabot.core.config.ConfigService
 import com.fatwabot.core.config.FileConfigStore
+import com.fatwabot.core.network.AccountService
+import com.fatwabot.core.network.AccountServicing
 import com.fatwabot.core.network.ApiClient
 import com.fatwabot.core.network.ApiClientProtocol
+import com.fatwabot.core.network.ProviderCredentialProviding
+import com.fatwabot.core.network.StubProviderCredentialProvider
+import com.fatwabot.core.network.SubjectStore
 import com.fatwabot.core.network.AuthService
 import com.fatwabot.core.network.AuthTokenProviding
 import com.fatwabot.core.network.AuthenticatedApiClient
@@ -122,6 +127,24 @@ abstract class AppModule {
                 ),
                 tokens = tokens,
             )
+
+        @Provides
+        @Singleton
+        fun provideAccountService(client: AuthenticatedApiClientProtocol): AccountServicing =
+            AccountService(client)
+
+        @Provides
+        @Singleton
+        fun provideProviderCredential(
+            @ApplicationContext context: Context,
+        ): ProviderCredentialProviding {
+            val prefs = context.getSharedPreferences("fatwabot_account", Context.MODE_PRIVATE)
+            val store = object : SubjectStore {
+                override fun load(): String? = prefs.getString("stub_subject", null)
+                override fun save(value: String) { prefs.edit().putString("stub_subject", value).apply() }
+            }
+            return StubProviderCredentialProvider(store)
+        }
 
         @Provides
         @Singleton

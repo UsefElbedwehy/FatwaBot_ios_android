@@ -6,4 +6,16 @@
     <string name="tab_journey">Journey</string>
     <string name="tab_settings">Settings</string>
     <string name="common_coming_soon">Coming soon, in shaa Allah</string>
+    <string name="settings_account_guest">Guest</string>
+    <string name="settings_account_provider_guest">Guest — sign in to save your name</string>
+    <string name="settings_account_provider_apple">Signed in with Apple</string>
+    <string name="settings_account_provider_google">Signed in with Google</string>
+    <string name="settings_account_edit_name">Edit name</string>
+    <string name="settings_account_name_placeholder">Your display name</string>
+    <string name="settings_account_save">Save</string>
+    <string name="settings_account_cancel">Cancel</string>
+    <string name="settings_account_sign_in_apple">Sign in with Apple</string>
+    <string name="settings_account_sign_in_google">Continue with Google</string>
+    <string name="settings_account_error_generic">Couldn\'t complete that. Please try again.</string>
+    <string name="settings_account_error_already_linked">That account is already linked to another profile.</string>
 </resources>
