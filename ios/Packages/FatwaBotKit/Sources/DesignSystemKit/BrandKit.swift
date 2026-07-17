@@ -25,12 +25,16 @@ private struct BrandScreenBackground: ViewModifier {
                     ],
                     startPoint: .top, endPoint: .bottom
                 )
-                // A large, very faint mihrab arch watermark in the top-trailing
-                // corner — brand texture without competing with content.
-                MihrabArchShape(archRatio: 0.6)
-                    .fill(Color(hexToken: tokens.primary).opacity(0.035))
-                    .frame(width: 320, height: 380)
-                    .offset(x: 150, y: -140)
+                // A large, very faint mihrab arch watermark hanging from the
+                // top-trailing corner — brand texture without competing with
+                // content. Rotated 180° so the *curve* (not the arch's straight
+                // jambs/base) is what bleeds into view; otherwise the flat base
+                // reads as a stray square in the corner.
+                MihrabArchShape(archRatio: 0.85)
+                    .fill(Color(hexToken: tokens.primary).opacity(0.04))
+                    .frame(width: 300, height: 360)
+                    .rotationEffect(.degrees(180))
+                    .offset(x: 150, y: -150)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .clipped()
                     .allowsHitTesting(false)

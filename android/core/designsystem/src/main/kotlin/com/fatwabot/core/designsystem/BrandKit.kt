@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -61,11 +62,18 @@ fun Modifier.brandScreenBackground(tokens: ColorTokens): Modifier =
             ),
         )
         .drawBehind {
-            val w = size.width * 0.85f
-            val h = size.height * 0.32f
+            // Faint mihrab-arch watermark hanging from the top-trailing corner.
+            // Rotated 180° so the *curve* bleeds into view; otherwise the arch's
+            // straight jambs + flat base read as a stray square in the corner.
+            val w = size.width * 0.82f
+            val h = size.height * 0.34f
             val path = mihrabArchPath(Size(w, h))
-            translate(left = size.width - w * 0.45f, top = -h * 0.35f) {
-                drawPath(path, color = tokens.primary.copy(alpha = 0.035f))
+            val left = size.width - w * 0.45f
+            val top = -h * 0.40f
+            rotate(degrees = 180f, pivot = Offset(left + w / 2f, top + h / 2f)) {
+                translate(left = left, top = top) {
+                    drawPath(path, color = tokens.primary.copy(alpha = 0.04f))
+                }
             }
         }
 
