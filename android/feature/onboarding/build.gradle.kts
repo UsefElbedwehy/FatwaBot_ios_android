@@ -29,6 +29,8 @@ android {
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
+    // Account link + provider-credential interfaces (impls are bound in :app).
+    implementation(project(":core:network"))
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
@@ -43,4 +45,5 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
