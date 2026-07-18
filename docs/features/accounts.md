@@ -25,3 +25,34 @@
 ## Tests
 - Backend: sign-in via each provider stub creates/reuses a user by `(provider, provider_subject)`; linking preserves `user_id` and rejects double-linking a provider identity to a second account; `/v1/me` reflects `display_name`/`provider`; profile PATCH validates length and allows clearing.
 - Both platforms: linking flow doesn't reset local gamification/favorites state; display name defaults to unset (pseudonymous) until explicitly chosen.
+
+## Client implementation status (2026-07-14) — BUILT
+The account feature is wired end-to-end on **both platforms**, against the live
+backend's dev verifier:
+- **Account section in Settings** (replaces the old "sign-in coming soon" card):
+  shows the identity (Guest vs "Signed in with Apple/Google"), an editable
+  **display name** (works today via `PATCH /v1/me/profile` → re-reads `GET /v1/me`),
+  and — when still a guest — **Sign in with Apple / Continue with Google** buttons.
+- **`AccountService`** (iOS `NetworkingKit`, Android `core/network`): `me()`,
+  `updateDisplayName()`, `link()` (maps HTTP 409 → `alreadyLinked`). Unit-tested
+  (iOS 7 tests, Android 7 tests).
+- **`AccountViewModel`** on each platform drives load / edit-name / sign-in state.
+- **Provider-credential seam** (`ProviderCredentialProviding`): the sign-in button
+  gets an identity token from this seam, then calls `link()`. A
+  `StubProviderCredentialProvider` (default today) returns a **stable per-install**
+  token the backend `DevIdentityProviderVerifier` accepts, so the whole
+  guest → link → named-account flow is demonstrable now against the live function.
+
+### The gated drop-in (needs credentials, like APNs/push)
+Real native sign-in is blocked on accounts we don't have yet — identical shape to
+the iOS-push gate (docs/features/push-notifications.md):
+- **Sign in with Apple** needs the **Apple Developer Program** ("Sign in with Apple"
+  capability + entitlement on a real provisioning profile). Drop-in: an
+  `AppleCredentialProvider` using `ASAuthorizationController` that returns the real
+  identity token — swap it in for the stub in `AppContainer.providerCredential`.
+- **Google Sign-In** needs a **Google OAuth client ID** (from Google Cloud console;
+  the Firebase config may already carry one). Drop-in: a Google credential provider
+  returning the real ID token — swap it in `AppModule.provideProviderCredential`.
+- The backend `DevIdentityProviderVerifier` must be replaced with real Apple/Google
+  token verification (signature check against the providers' JWKS) at the same time.
+Nothing else changes — the account UI, `link()` flow, and contract are already in place.

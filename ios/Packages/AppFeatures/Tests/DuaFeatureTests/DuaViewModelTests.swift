@@ -1,5 +1,6 @@
 import XCTest
 import ContentKit
+import CoreKit
 @testable import DuaFeature
 
 final class DuaViewModelTests: XCTestCase {
@@ -7,6 +8,20 @@ final class DuaViewModelTests: XCTestCase {
         var favorites: [FavoriteDua] = []
         func loadFavorites() -> [FavoriteDua] { favorites }
         func saveFavorites(_ favorites: [FavoriteDua]) { self.favorites = favorites }
+    }
+
+    final class SpySearchHistoryRecording: SearchHistoryRecording, @unchecked Sendable {
+        private(set) var recorded: [(source: String, queryText: String, locale: String)] = []
+        func record(source: String, queryText: String, locale: String) {
+            recorded.append((source, queryText, locale))
+        }
+    }
+
+    final class SpyHaptics: HapticsProviding, @unchecked Sendable {
+        var tickCount = 0
+        var targetReachedCount = 0
+        func tick() { tickCount += 1 }
+        func targetReached() { targetReachedCount += 1 }
     }
 
     private func dua(_ id: String, title: String, arabicText: String, translation: String?) -> Dua {
@@ -54,6 +69,34 @@ final class DuaViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testSearchWithResultsRecordsSearchHistoryOncePerDistinctQuery() async {
+        let spy = SpySearchHistoryRecording()
+        let viewModel = DuaViewModel(store: InMemoryStore(), searchHistory: spy)
+        viewModel.setCategories([category("daily", duas: [istikhara, distress])])
+        await viewModel.loadCategories(locale: "ar")
+
+        viewModel.searchQuery = "الاستخارة"
+        XCTAssertEqual(spy.recorded.count, 1)
+        XCTAssertEqual(spy.recorded[0].source, "dua")
+        XCTAssertEqual(spy.recorded[0].queryText, "الاستخارة")
+        XCTAssertEqual(spy.recorded[0].locale, "ar")
+
+        viewModel.searchQuery = "الاستخارة" // no-op re-set of the same query must not re-record
+        XCTAssertEqual(spy.recorded.count, 1)
+    }
+
+    @MainActor
+    func testSearchWithNoMatchesDoesNotRecordSearchHistory() {
+        let spy = SpySearchHistoryRecording()
+        let viewModel = DuaViewModel(store: InMemoryStore(), searchHistory: spy)
+        viewModel.setCategories([category("daily", duas: [istikhara, distress])])
+
+        viewModel.searchQuery = "xyzxyz-no-match"
+
+        XCTAssertTrue(spy.recorded.isEmpty)
+    }
+
+    @MainActor
     func testToggleFavoriteTwiceRemovesIt() {
         let viewModel = DuaViewModel(store: InMemoryStore())
         XCTAssertFalse(viewModel.isFavorite("d1"))
@@ -61,6 +104,20 @@ final class DuaViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isFavorite("d1"))
         viewModel.toggleFavorite("d1")
         XCTAssertFalse(viewModel.isFavorite("d1"))
+    }
+
+    @MainActor
+    func testTogglingFavoriteFiresADistinctHapticForAddVersusRemove() {
+        let haptics = SpyHaptics()
+        let viewModel = DuaViewModel(store: InMemoryStore(), haptics: haptics)
+
+        viewModel.toggleFavorite("d1")
+        XCTAssertEqual(haptics.targetReachedCount, 1, "adding a favorite is the positive/reward moment")
+        XCTAssertEqual(haptics.tickCount, 0)
+
+        viewModel.toggleFavorite("d1")
+        XCTAssertEqual(haptics.tickCount, 1, "removing is a lighter, distinct tick")
+        XCTAssertEqual(haptics.targetReachedCount, 1)
     }
 
     @MainActor

@@ -11,28 +11,34 @@ import Observation
 @Observable
 public final class HadithViewModel {
     public private(set) var collections: [HadithCollectionSummary] = []
+    public private(set) var isLoadingCollections = false
     public private(set) var currentDetail: HadithCollectionDetail?
     public private(set) var currentIndex: Int = 0
 
     private var progress: [String: HadithProgress]
     private let contentService: ContentService?
     private let store: HadithStoring
+    private let haptics: HapticsProviding
     private let activityEvents: ActivityEventRecording
 
     public init(
         contentService: ContentService? = nil,
         store: HadithStoring,
+        haptics: HapticsProviding = NoopHaptics(),
         activityEvents: ActivityEventRecording = NoopActivityEventRecording()
     ) {
         self.contentService = contentService
         self.store = store
+        self.haptics = haptics
         self.activityEvents = activityEvents
         self.progress = store.loadProgress()
     }
 
     public func loadCollections(locale: String) async {
         guard let contentService else { return }
+        isLoadingCollections = true
         collections = await contentService.hadithCollections(locale: locale)
+        isLoadingCollections = false
     }
 
     /// Opens a collection, resuming at the last-read entry if one exists.
@@ -97,6 +103,7 @@ public final class HadithViewModel {
         store.saveProgress(progress)
         if isNewlyRead {
             activityEvents.record(eventType: "hadith_entry_read", metadata: ["collection": detail.slug])
+            haptics.tick()
         }
     }
 }

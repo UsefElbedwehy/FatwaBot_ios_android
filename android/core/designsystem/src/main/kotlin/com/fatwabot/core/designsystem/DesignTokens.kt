@@ -47,3 +47,11 @@ object ShapeTokens {
     const val CARD_RADIUS_DP = 18
     const val CONTROL_RADIUS_DP = 12
 }
+
+/** Shared animation durations (M4 polish pass) — mirror of iOS MotionTokens.
+ * QUICK_MS for small value changes (counters, progress bars), STANDARD_MS
+ * for screen/section-level transitions. Bundled-only, not server-overridable. */
+object MotionTokens {
+    const val QUICK_MS = 200
+    const val STANDARD_MS = 300
+}

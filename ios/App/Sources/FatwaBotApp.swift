@@ -7,7 +7,7 @@ struct FatwaBotApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            AppRootView()
                 .environment(theme)
                 .tint(Color(hexToken: theme.current(for: .light).primary))
         }

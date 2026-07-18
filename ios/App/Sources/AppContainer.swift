@@ -8,9 +8,12 @@ import Factory
 import Foundation
 import GamificationFeature
 import HadithFeature
+import LeaderboardFeature
 import NetworkingKit
+import OnboardingFeature
 import PrayerFeature
 import PrayerKit
+import SearchHistoryFeature
 import TasbeehFeature
 import WidgetKit
 
@@ -54,6 +57,10 @@ extension Container {
         self { SystemLocationProvider() }.singleton
     }
 
+    var onboardingCompletionStore: Factory<OnboardingCompletionStore> {
+        self { OnboardingCompletionStore(directory: AppEnvironment.sharedContainerURL) }
+    }
+
     var authTokenStore: Factory<AuthTokenStoring> {
         self { KeychainAuthTokenStore() }.singleton
     }
@@ -81,6 +88,24 @@ extension Container {
                     locale: Locale.preferredLanguages.first ?? "ar"
                 ),
                 tokenProvider: self.authService()
+            )
+        }
+        .singleton
+    }
+
+    /// Account reads/writes (`/v1/me`, profile, provider link).
+    var accountService: Factory<AccountServicing> {
+        self { AccountService(client: self.authenticatedClient()) }.singleton
+    }
+
+    /// Provider identity-token source — both real now: Apple via
+    /// ASAuthorizationController, Google via the GoogleSignIn SDK. Each returns
+    /// a signed token the backend verifies against the provider's JWKS.
+    var providerCredential: Factory<ProviderCredentialProviding> {
+        self {
+            CompositeCredentialProvider(
+                apple: AppleCredentialProvider(),
+                google: GoogleCredentialProvider()
             )
         }
         .singleton
@@ -124,6 +149,22 @@ extension Container {
         }
     }
 
+    var gamificationWidgetStore: Factory<GamificationWidgetSnapshotStore?> {
+        self {
+            FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: "group.com.fatwabot.app")
+                .map { GamificationWidgetSnapshotStore(appGroupContainer: $0) }
+        }
+    }
+
+    var liveActivityManager: Factory<PrayerLiveActivityManaging> {
+        self { SystemPrayerLiveActivityManager() }.singleton
+    }
+
+    var liveActivityPreference: Factory<LiveActivityPreferenceStoring> {
+        self { UserDefaultsLiveActivityPreferenceStore() }.singleton
+    }
+
     @MainActor
     var prayerViewModel: Factory<PrayerViewModel> {
         self { @MainActor in
@@ -131,7 +172,9 @@ extension Container {
                 locationProvider: self.locationProvider(),
                 scheduler: self.notificationScheduler(),
                 widgetStore: self.widgetStore(),
-                reloadWidgets: { WidgetCenter.shared.reloadAllTimelines() }
+                reloadWidgets: { WidgetCenter.shared.reloadAllTimelines() },
+                liveActivity: self.liveActivityManager(),
+                liveActivityPreference: self.liveActivityPreference()
             )
         }
         .singleton
@@ -167,7 +210,9 @@ extension Container {
         self { @MainActor in
             DuaViewModel(
                 contentService: self.contentService(),
-                store: FileDuaStore(directory: AppEnvironment.sharedContainerURL)
+                store: FileDuaStore(directory: AppEnvironment.sharedContainerURL),
+                haptics: SystemHaptics(),
+                searchHistory: self.searchHistoryRecorder()
             )
         }
         .singleton
@@ -179,6 +224,7 @@ extension Container {
             AwradViewModel(
                 contentService: self.contentService(),
                 store: FileWirdStore(directory: AppEnvironment.sharedContainerURL),
+                haptics: SystemHaptics(),
                 activityEvents: self.activityEventRecording()
             )
         }
@@ -191,6 +237,7 @@ extension Container {
             HadithViewModel(
                 contentService: self.contentService(),
                 store: FileHadithStore(directory: AppEnvironment.sharedContainerURL),
+                haptics: SystemHaptics(),
                 activityEvents: self.activityEventRecording()
             )
         }
@@ -202,17 +249,36 @@ extension Container {
         self { @MainActor in
             GamificationViewModel(
                 client: self.authenticatedClient(),
-                recorder: self.gamificationEventRecorder()
+                recorder: self.gamificationEventRecorder(),
+                widgetStore: self.gamificationWidgetStore(),
+                reloadWidgets: { WidgetCenter.shared.reloadAllTimelines() }
             )
         }
         .singleton
+    }
+
+    @MainActor
+    var leaderboardViewModel: Factory<LeaderboardViewModel> {
+        self { @MainActor in LeaderboardViewModel(client: self.authenticatedClient(), haptics: SystemHaptics()) }
+    }
+
+    /// The CoreKit boundary Dua (and any future searchable feature) is
+    /// actually injected with (ADR-0010, mirrors activityEventRecording).
+    var searchHistoryRecorder: Factory<SearchHistoryRecording> {
+        self { SearchHistoryRecorder(client: self.authenticatedClient()) }
+            .singleton
+    }
+
+    @MainActor
+    var searchHistoryViewModel: Factory<SearchHistoryViewModel> {
+        self { @MainActor in SearchHistoryViewModel(client: self.authenticatedClient(), haptics: SystemHaptics()) }
     }
 }
 
 enum AppEnvironment {
     /// Placeholder until the Supabase project exists (OPEN_QUESTIONS Q8);
     /// offline-first design means the app is fully functional without it.
-    static let apiBaseURL = URL(string: "https://api.invalid/functions/v1/api")!
+    static let apiBaseURL = URL(string: "https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api")!
 
     static var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"

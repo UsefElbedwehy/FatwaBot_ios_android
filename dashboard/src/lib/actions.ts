@@ -35,6 +35,30 @@ async function parseFieldsFromForm(collection: string, formData: FormData): Prom
     } else if (field.kind === "number") {
       const raw = formData.get(field.key);
       fields[field.key] = raw !== null && raw !== "" ? Number(raw) : 0;
+    } else if (field.kind === "boolean") {
+      fields[field.key] = formData.get(field.key) === "on";
+    } else if (field.kind === "array") {
+      const raw = String(formData.get(field.key) ?? "");
+      fields[field.key] = raw
+        .split("\n")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    } else if (field.kind === "json") {
+      const raw = String(formData.get(field.key) ?? "").trim();
+      if (raw.length === 0) {
+        fields[field.key] = {};
+      } else {
+        try {
+          fields[field.key] = JSON.parse(raw);
+        } catch {
+          throw new Error(`${field.label}: invalid JSON`);
+        }
+      }
+    } else if (field.kind === "optional-text") {
+      // Nullable columns (e.g. timestamptz start/end dates) must submit null
+      // when empty, not "" — an empty string fails to cast on the backend.
+      const raw = formData.get(field.key);
+      fields[field.key] = raw === null || raw === "" ? null : String(raw);
     } else {
       fields[field.key] = String(formData.get(field.key) ?? "");
     }

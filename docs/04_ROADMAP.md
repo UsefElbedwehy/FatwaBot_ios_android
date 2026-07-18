@@ -55,8 +55,9 @@
 
 ## Milestone 4 — Premium polish pass
 
-- Onboarding flow (value-first, permission priming for location/notifications), empty states, micro-interactions, animation audit, accessibility audit (VoiceOver/TalkBack, Dynamic Type, reduced motion), performance pass (cold start, widget battery), Live Activity prayer countdown (iOS) if approved.
-- Beta program (TestFlight / Play internal), crash & analytics dashboards, store listing prep.
+- Onboarding flow (value-first, permission priming for location/notifications), empty states, micro-interactions, animation audit, accessibility audit (VoiceOver/TalkBack, Dynamic Type, reduced motion), performance pass (cold start, widget battery).
+- **Live Activity prayer countdown (iOS, approved 2026-07-08):** local-only ActivityKit extension, no push infrastructure — see [ADR-0016](adr/ADR-0016-live-activity-prayer-countdown.md).
+- Beta program (TestFlight / Play internal), crash & analytics dashboards (Firebase Crashlytics + Analytics, per the foundation's Firebase-for-push/analytics/crash mandate), store listing prep (name confirmed: "Fatwa Bot"; launch languages confirmed: Arabic + English — Q2/Q7).
 
 **Exit criteria:** beta-quality release candidates on both stores.
 

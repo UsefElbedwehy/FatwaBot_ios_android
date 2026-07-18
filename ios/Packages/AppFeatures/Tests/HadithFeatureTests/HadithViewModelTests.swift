@@ -15,6 +15,13 @@ final class HadithViewModelTests: XCTestCase {
         func record(eventType: String, metadata: [String: String]) { recorded.append((eventType, metadata)) }
     }
 
+    final class SpyHaptics: HapticsProviding, @unchecked Sendable {
+        var tickCount = 0
+        var targetReachedCount = 0
+        func tick() { tickCount += 1 }
+        func targetReached() { targetReachedCount += 1 }
+    }
+
     private func entry(_ number: Int) -> HadithEntry {
         HadithEntry(id: "h\(number)", number: number, arabicText: "حديث \(number)", translation: nil, grading: "صحيح", benefitNote: nil, source: "")
     }
@@ -92,6 +99,20 @@ final class HadithViewModelTests: XCTestCase {
         viewModel.next() // revisits entry 2 — must not re-record
 
         XCTAssertEqual(events.recorded.map(\.eventType), ["hadith_entry_read", "hadith_entry_read"])
+    }
+
+    @MainActor
+    func testMarkingAnEntryReadFiresAHapticOnlyForNewlyReadEntries() {
+        let haptics = SpyHaptics()
+        let viewModel = HadithViewModel(store: InMemoryStore(), haptics: haptics)
+        viewModel.setDetail(detail()) // reads entry 1
+        XCTAssertEqual(haptics.tickCount, 1)
+
+        viewModel.next() // reads entry 2
+        XCTAssertEqual(haptics.tickCount, 2)
+
+        viewModel.previous() // revisits entry 1 — must not re-fire
+        XCTAssertEqual(haptics.tickCount, 2)
     }
 
     @MainActor

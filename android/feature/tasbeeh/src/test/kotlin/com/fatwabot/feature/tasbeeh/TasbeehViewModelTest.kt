@@ -1,5 +1,6 @@
 package com.fatwabot.feature.tasbeeh
 
+import com.fatwabot.core.common.ActivityEventRecording
 import com.fatwabot.core.common.HapticsProviding
 import com.fatwabot.core.common.NoopHaptics
 import kotlinx.datetime.Clock
@@ -17,6 +18,11 @@ class TasbeehViewModelTest {
         var targetReachedCount = 0
         override fun tick() { tickCount++ }
         override fun targetReached() { targetReachedCount++ }
+    }
+
+    private class SpyActivityEvents : ActivityEventRecording {
+        val recorded = mutableListOf<String>()
+        override fun record(eventType: String, metadata: Map<String, String>) { recorded += eventType }
     }
 
     private class InMemoryStore : TasbeehHistoryStoring {
@@ -80,6 +86,23 @@ class TasbeehViewModelTest {
         val viewModel = TasbeehViewModel(NoopHaptics(), store, fixedClock)
         viewModel.completeSet()
         assertTrue(store.entries.isEmpty())
+    }
+
+    @Test
+    fun `completing a set fires an activity event`() {
+        val events = SpyActivityEvents()
+        val viewModel = TasbeehViewModel(NoopHaptics(), InMemoryStore(), fixedClock, events)
+        viewModel.increment()
+        viewModel.completeSet()
+        assertEquals(listOf("tasbeeh_session_completed"), events.recorded)
+    }
+
+    @Test
+    fun `completing an empty set does not fire an activity event`() {
+        val events = SpyActivityEvents()
+        val viewModel = TasbeehViewModel(NoopHaptics(), InMemoryStore(), fixedClock, events)
+        viewModel.completeSet()
+        assertTrue(events.recorded.isEmpty())
     }
 
     @Test

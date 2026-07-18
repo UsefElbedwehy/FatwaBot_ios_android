@@ -1,5 +1,6 @@
 package com.fatwabot.feature.azkar
 
+import com.fatwabot.core.common.ActivityEventRecording
 import com.fatwabot.core.common.NoopHaptics
 import com.fatwabot.core.content.AzkarItem
 import kotlinx.datetime.Clock
@@ -21,6 +22,11 @@ class AzkarViewModelTest {
         override fun recordCompletion(record: AzkarCompletionRecord) {
             completions.add(record)
         }
+    }
+
+    private class SpyActivityEvents : ActivityEventRecording {
+        val recorded = mutableListOf<String>()
+        override fun record(eventType: String, metadata: Map<String, String>) { recorded += eventType }
     }
 
     private fun item(id: String, repeatCount: Int) = AzkarItem(
@@ -100,6 +106,20 @@ class AzkarViewModelTest {
         viewModel.tick()
         assertEquals(1, store.completions.size)
         assertTrue(viewModel.isCompletedToday("cat1"))
+    }
+
+    @Test
+    fun `real completion fires an activity event exactly once, not on the idempotent re-tick`() {
+        val events = SpyActivityEvents()
+        val items = listOf(item("a", 1))
+        val viewModel = AzkarViewModel(null, NoopHaptics(), InMemoryStore(), fixedClock, events)
+        viewModel.startSession("cat1", items)
+
+        viewModel.tick()
+        viewModel.tick()
+        viewModel.tick()
+
+        assertEquals(listOf("azkar_completed"), events.recorded)
     }
 
     @Test

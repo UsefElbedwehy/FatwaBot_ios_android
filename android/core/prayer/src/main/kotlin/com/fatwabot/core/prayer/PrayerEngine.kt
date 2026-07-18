@@ -16,7 +16,10 @@ enum class PrayerNameUi(val isPrayer: Boolean) {
  * Defaults flow: user override → /v1/config/prayer-defaults(country) → bundled fallback.
  */
 data class PrayerSettings(
-    val method: String = "mwl",
+    // Umm al-Qura is the bundled default (stakeholder direction, 2026-07-12):
+    // matches the Saudi authority users compare against, and is the offline
+    // fallback whenever server config (which can override per country) is absent.
+    val method: String = "umm_al_qura",
     val madhab: String = "shafi",
     /** null = automatic: recommended rule ≥48° (spike policy), none below. */
     val highLatitudeRule: String? = null,

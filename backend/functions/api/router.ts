@@ -10,14 +10,16 @@ import { verifyAccessToken } from "./auth/jwt.ts";
 import type { ConfigRepo } from "./types.ts";
 import type { IdentityRepo } from "./identity_types.ts";
 import type { ContentRepo } from "./content_types.ts";
-import type { AdminAuthRepo, AdminContentRepo, AuditLogRepo } from "./admin_types.ts";
+import type { AdminAuthRepo, AdminContentRepo, AdminUsersRepo, AuditLogRepo } from "./admin_types.ts";
 import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
 import type { GamificationRepo } from "./gamification_types.ts";
 import type { LeaderboardRepo } from "./leaderboard_types.ts";
 import type { SearchHistoryRepo } from "./search_types.ts";
 import type { DeliveryLogRepo, NotificationPrefsRepo } from "./notification_types.ts";
+import type { PushSender } from "./fcm_sender.ts";
+import { handleSendCampaign } from "./handlers/send_campaign.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
-import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile } from "./handlers/accounts.ts";
+import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile, handleUpdatePushToken } from "./handlers/accounts.ts";
 import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
 import {
   handleJoinLeaderboard,
@@ -60,6 +62,7 @@ import {
   handleSetPublished,
   handleUpdateContent,
 } from "./handlers/admin_content.ts";
+import { handleListUsers } from "./handlers/admin_users.ts";
 
 export interface Deps {
   repo: ConfigRepo;
@@ -67,6 +70,7 @@ export interface Deps {
   content: ContentRepo;
   adminContent: AdminContentRepo;
   adminAuth: AdminAuthRepo;
+  adminUsers: AdminUsersRepo;
   auditLog: AuditLogRepo;
   jwtSecret: string;
   verifier: IdentityProviderVerifier;
@@ -75,6 +79,8 @@ export interface Deps {
   searchHistory: SearchHistoryRepo;
   notificationPrefs: NotificationPrefsRepo;
   deliveryLog: DeliveryLogRepo;
+  /** FCM sender — undefined until FCM_SERVICE_ACCOUNT is configured. */
+  pushSender?: PushSender;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".
@@ -211,6 +217,9 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
     if (method === "PATCH" && path === "/v1/me/profile") {
       return await handleUpdateProfile(deps, req, await readBody(req));
     }
+    if (method === "PATCH" && path === "/v1/me/push-token") {
+      return await handleUpdatePushToken(deps, req, await readBody(req));
+    }
     if (method === "PATCH" && path === "/v1/me/notification-prefs") {
       return await handleUpdateNotificationPrefs(ctx, deps, req, await readBody(req));
     }
@@ -263,6 +272,16 @@ async function routeAdmin(
 
   if (method === "GET" && path === "/admin/v1/audit-log") {
     return await handleListAuditLog(ctx, deps.auditLog, url.searchParams.get("collection"));
+  }
+
+  if (method === "GET" && path === "/admin/v1/users") {
+    return await handleListUsers(
+      ctx,
+      deps.adminUsers,
+      url.searchParams.get("query"),
+      url.searchParams.get("limit"),
+      url.searchParams.get("before"),
+    );
   }
 
   const listOrCreateMatch = path.match(new RegExp(`^/admin/v1/content/(${COLLECTION_SEGMENT})$`));
@@ -318,6 +337,12 @@ async function routeAdmin(
   if (recomputeMatch) {
     if (method !== "POST") return methodNotAllowed();
     return await handleRecomputeSnapshot(ctx, deps, recomputeMatch[1]);
+  }
+
+  const sendCampaignMatch = path.match(/^\/admin\/v1\/campaigns\/([A-Za-z0-9_-]{1,60})\/send$/);
+  if (sendCampaignMatch) {
+    if (method !== "POST") return methodNotAllowed();
+    return await handleSendCampaign(ctx, deps, sendCampaignMatch[1]);
   }
 
   return notFound();

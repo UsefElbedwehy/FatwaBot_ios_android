@@ -159,6 +159,37 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/AuditEntry" }
         "401": { $ref: "#/components/responses/ApiError" }
+  /admin/v1/users:
+    get:
+      summary: List app users for the dashboard's Users domain (M3 task 37)
+      operationId: listAdminUsers
+      security: [{ adminBearerAuth: [] }]
+      parameters:
+        - name: query
+          in: query
+          schema: { type: string }
+          description: Matches display_name (substring) or id (exact, if query looks like a UUID)
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: before
+          in: query
+          schema: { type: integer }
+          description: Paginate strictly-before this created_at epoch-seconds value
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminUser" }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
   /admin/v1/leaderboards/{key}/recompute:
     post:
       summary: >
@@ -243,6 +274,17 @@ components:
         published: { type: boolean }
         version: { type: integer }
         fields: { type: object, additionalProperties: true }
+    AdminUser:
+      type: object
+      required: [id, kind, provider, displayName, countryCode, createdAtEpochSeconds, linkedAtEpochSeconds]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [anonymous, account] }
+        provider: { type: string, enum: [anonymous, apple, google] }
+        displayName: { type: [string, "null"] }
+        countryCode: { type: [string, "null"] }
+        createdAtEpochSeconds: { type: integer }
+        linkedAtEpochSeconds: { type: [integer, "null"] }
     AuditEntry:
       type: object
       required: [adminId, collection, rowId, action, before, after, createdAtEpochSeconds]

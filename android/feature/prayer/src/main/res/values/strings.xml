@@ -7,6 +7,8 @@
     <string name="prayer_maghrib">Maghrib</string>
     <string name="prayer_isha">Isha</string>
     <string name="prayer_pick_city">Choose your city</string>
+    <string name="prayer_previous_day">Previous day</string>
+    <string name="prayer_next_day">Next day</string>
     <string name="city_makkah">Makkah</string>
     <string name="city_madinah">Madinah</string>
     <string name="city_riyadh">Riyadh</string>
@@ -32,4 +34,12 @@
     <string name="notif_pre_adhan_title_maghrib">Maghrib is approaching</string>
     <string name="notif_pre_adhan_title_isha">Isha is approaching</string>
     <string name="notif_pre_adhan_body">Prepare for prayer</string>
+    <string name="notif_iqama_title_fajr">Iqama for Fajr</string>
+    <string name="notif_iqama_title_dhuhr">Iqama for Dhuhr</string>
+    <string name="notif_iqama_title_asr">Iqama for Asr</string>
+    <string name="notif_iqama_title_maghrib">Iqama for Maghrib</string>
+    <string name="notif_iqama_title_isha">Iqama for Isha</string>
+    <string name="notif_iqama_body">The congregation is about to begin</string>
+    <string name="notif_last_third_title">The last third of the night</string>
+    <string name="notif_last_third_body">A blessed time for tahajjud and du\'a</string>
 </resources>

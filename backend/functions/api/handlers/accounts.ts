@@ -101,3 +101,19 @@ export async function handleUpdateProfile(deps: AccountDeps, req: Request, body:
   await deps.identity.updateDisplayName(claims.sub, displayName);
   return json({ user_id: claims.sub, display_name: displayName });
 }
+
+/** PATCH /v1/me/push-token — register (or clear) this device's FCM push token. */
+export async function handleUpdatePushToken(deps: AccountDeps, req: Request, body: unknown): Promise<Response> {
+  const claims = await bearerClaims(req, deps.jwtSecret);
+  if (!claims) return apiError(401, "unauthorized", "Valid bearer token required");
+
+  if (typeof body !== "object" || body === null || !("push_token" in (body as Record<string, unknown>))) {
+    return apiError(400, "invalid_body", "push_token is required (use null to clear)");
+  }
+  const token = (body as Record<string, unknown>).push_token;
+  if (token !== null && (typeof token !== "string" || token.length === 0 || token.length > 4096)) {
+    return apiError(400, "invalid_push_token", "push_token must be a non-empty string, or null to clear");
+  }
+  await deps.identity.updatePushToken(claims.sub, token);
+  return json({ user_id: claims.sub, registered: token !== null });
+}

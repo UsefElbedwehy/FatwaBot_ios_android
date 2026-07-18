@@ -21,38 +21,26 @@ public struct DuaReadingScreen: View {
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .trailing, spacing: 16) {
-                Text(dua.title)
-                    .font(.title3.weight(.semibold))
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+            VStack(alignment: .trailing, spacing: 18) {
+                header
 
-                Text(dua.arabicText)
-                    .font(.title2)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                arabicCard
 
                 if showTransliteration, let transliteration = dua.transliteration {
-                    Text(transliteration)
-                        .font(.body.italic())
-                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    transliterationCard(transliteration)
                 }
 
                 if let translation = dua.translation {
-                    Text(translation)
-                        .font(.body)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    translationCard(translation)
                 }
 
                 if !dua.source.isEmpty {
-                    Text(dua.source)
-                        .font(.caption)
-                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    sourceRow
                 }
             }
-            .padding()
+            .padding(20)
         }
+        .brandScreenBackground(tokens)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -61,6 +49,7 @@ public struct DuaReadingScreen: View {
                     Image(systemName: viewModel.isFavorite(dua.id) ? "heart.fill" : "heart")
                 }
                 .tint(Color(hexToken: tokens.primary))
+                .accessibilityLabel(Text(viewModel.isFavorite(dua.id) ? "dua.unfavorite" : "dua.favorite"))
             }
             ToolbarItem(placement: .primaryAction) {
                 ShareLink(item: shareText)
@@ -72,9 +61,95 @@ public struct DuaReadingScreen: View {
                     } label: {
                         Image(systemName: showTransliteration ? "textformat.abc" : "textformat")
                     }
+                    .accessibilityLabel(Text("dua.toggle_transliteration"))
                 }
             }
         }
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        VStack(spacing: 12) {
+            ArchIconBadge(systemImage: "hands.sparkles", tokens: tokens, size: CGSize(width: 66, height: 76))
+            Text(dua.title)
+                .font(.title2.weight(.bold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Color(hexToken: tokens.onSurface))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Arabic centerpiece
+
+    private var arabicCard: some View {
+        Text(dua.arabicText)
+            .font(.system(size: 30, weight: .semibold, design: .serif))
+            .lineSpacing(14)
+            .multilineTextAlignment(.trailing)
+            .foregroundStyle(Color(hexToken: tokens.onSurface))
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(24)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(hexToken: tokens.primaryContainer),
+                        Color(hexToken: tokens.surfaceElevated),
+                    ],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color(hexToken: tokens.primary).opacity(0.15), lineWidth: 1)
+            )
+            .shadow(color: Color(hexToken: tokens.primary).opacity(0.10), radius: 16, x: 0, y: 8)
+    }
+
+    // MARK: - Transliteration / translation
+
+    private func transliterationCard(_ transliteration: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("dua.toggle_transliteration", systemImage: "textformat.abc")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color(hexToken: tokens.accent))
+                .accessibilityHidden(true)
+            Text(transliteration)
+                .font(.body.italic())
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(hexToken: tokens.primaryContainer).opacity(0.4), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color(hexToken: tokens.outline).opacity(0.5), lineWidth: 1)
+        )
+    }
+
+    private func translationCard(_ translation: String) -> some View {
+        Text(translation)
+            .font(.body)
+            .foregroundStyle(Color(hexToken: tokens.onSurface))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .brandCard(tokens)
+    }
+
+    // MARK: - Source
+
+    private var sourceRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "book.closed.fill")
+                .font(.caption)
+                .foregroundStyle(Color(hexToken: tokens.accent))
+                .accessibilityHidden(true)
+            Text(dua.source)
+                .font(.caption)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     private var shareText: String {

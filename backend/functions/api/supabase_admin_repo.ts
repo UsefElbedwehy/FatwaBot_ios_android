@@ -5,6 +5,8 @@ import {
   type AdminAuthRepo,
   type AdminContentRepo,
   type AdminContentRow,
+  type AdminUserRow,
+  type AdminUsersRepo,
   type AuditEntry,
   type AuditLogRepo,
 } from "./admin_types.ts";
@@ -83,6 +85,46 @@ export class SupabaseAdminContentRepo implements AdminContentRepo {
       .maybeSingle();
     if (error) throw error;
     return data ? toAdminRow(data) : null;
+  }
+}
+
+function toAdminUserRow(row: Record<string, unknown>): AdminUserRow {
+  return {
+    id: row.id as string,
+    kind: row.kind as AdminUserRow["kind"],
+    provider: row.provider as AdminUserRow["provider"],
+    displayName: (row.display_name as string | null) ?? null,
+    countryCode: (row.country_code as string | null) ?? null,
+    createdAtEpochSeconds: Math.floor(new Date(row.created_at as string).getTime() / 1000),
+    linkedAtEpochSeconds: row.linked_at ? Math.floor(new Date(row.linked_at as string).getTime() / 1000) : null,
+  };
+}
+
+export class SupabaseAdminUsersRepo implements AdminUsersRepo {
+  constructor(private readonly db: SupabaseClient) {}
+
+  async list(
+    ctx: AppContext,
+    query: string | null,
+    limit: number,
+    before: number | null,
+  ): Promise<AdminUserRow[]> {
+    let q = this.db
+      .schema("identity").from("users")
+      .select("id,kind,provider,display_name,country_code,created_at,linked_at")
+      .eq("app_id", ctx.appId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    const isUuid = query !== null && /^[0-9a-f-]{36}$/i.test(query);
+    if (query && isUuid) {
+      q = q.or(`display_name.ilike.%${query}%,id.eq.${query}`);
+    } else if (query) {
+      q = q.ilike("display_name", `%${query}%`);
+    }
+    if (before !== null) q = q.lt("created_at", new Date(before * 1000).toISOString());
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data ?? []).map(toAdminUserRow);
   }
 }
 

@@ -4,9 +4,31 @@ import android.content.Context
 import com.fatwabot.app.location.SystemLocationProvider
 import com.fatwabot.core.config.ConfigService
 import com.fatwabot.core.config.FileConfigStore
+import com.fatwabot.core.network.AccountService
+import com.fatwabot.core.network.AccountServicing
 import com.fatwabot.core.network.ApiClient
 import com.fatwabot.core.network.ApiClientProtocol
+import com.fatwabot.app.auth.CompositeCredentialProvider
+import com.fatwabot.app.auth.CurrentActivityHolder
+import com.fatwabot.app.auth.GoogleCredentialProvider
+import com.fatwabot.core.network.ProviderCredentialProviding
+import com.fatwabot.core.network.AuthService
+import com.fatwabot.core.network.AuthTokenProviding
+import com.fatwabot.core.network.AuthenticatedApiClient
+import com.fatwabot.core.network.AuthenticatedApiClientProtocol
 import com.fatwabot.core.network.ClientContext
+import com.fatwabot.core.network.DeviceInfo
+import com.fatwabot.core.network.EncryptedPrefsAuthTokenStore
+import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.AuthTokenStoring
+import com.fatwabot.core.common.GamificationWidgetSnapshotStore
+import com.fatwabot.core.common.OnboardingCompletionStore
+import com.fatwabot.core.common.SearchHistoryRecording
+import com.fatwabot.feature.gamification.ActivityEventQueueStoring
+import com.fatwabot.feature.gamification.FileActivityEventQueueStore
+import com.fatwabot.feature.gamification.GamificationEventRecorder
+import com.fatwabot.feature.gamification.GamificationViewModel
+import com.fatwabot.feature.searchhistory.SearchHistoryRecorder
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
 import com.fatwabot.core.prayer.PrayerNotificationPreferences
@@ -14,6 +36,9 @@ import com.fatwabot.core.prayer.WidgetSnapshotStore
 import com.fatwabot.feature.prayer.LocationProviding
 import com.fatwabot.feature.prayer.PrayerNotificationScheduler
 import com.fatwabot.feature.prayer.PrayerViewModel
+import com.fatwabot.widget.DailyChallengeWidget
+import com.fatwabot.widget.GamificationWidgetSnapshotAccess
+import com.fatwabot.widget.StreakWidget
 import com.fatwabot.app.tasbeeh.SystemHaptics
 import com.fatwabot.core.common.HapticsProviding
 import com.fatwabot.core.content.ContentFileStore
@@ -62,7 +87,7 @@ abstract class AppModule {
         fun provideApiClient(): ApiClientProtocol = ApiClient(
             // Placeholder until the Supabase project exists (OPEN_QUESTIONS Q8);
             // offline-first means the app is fully functional without it.
-            baseUrl = "https://api.invalid/functions/v1/api",
+            baseUrl = "https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api",
             context = ClientContext(
                 appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
                 locale = Locale.getDefault().language,
@@ -70,8 +95,112 @@ abstract class AppModule {
         )
 
         @Provides
-        fun provideNotificationPreferences(): PrayerNotificationPreferences =
-            PrayerNotificationPreferences()
+        @Singleton
+        fun provideAuthTokenStore(@ApplicationContext context: Context): AuthTokenStoring =
+            EncryptedPrefsAuthTokenStore(context)
+
+        @Provides
+        @Singleton
+        fun provideAuthService(
+            @ApplicationContext context: Context,
+            store: AuthTokenStoring,
+        ): AuthTokenProviding = AuthService(
+            // Placeholder until the Supabase project exists (OPEN_QUESTIONS Q8).
+            baseUrl = "https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api",
+            device = DeviceInfo(
+                platform = "android",
+                appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
+                locale = Locale.getDefault().language,
+                timezone = java.util.TimeZone.getDefault().id,
+            ),
+            store = store,
+            nowEpochSeconds = { System.currentTimeMillis() / 1000 },
+        )
+
+        @Provides
+        @Singleton
+        fun provideAuthenticatedApiClient(tokens: AuthTokenProviding): AuthenticatedApiClientProtocol =
+            AuthenticatedApiClient(
+                baseUrl = "https://nbeobnlgsbokomvkmzeq.supabase.co/functions/v1/api",
+                context = ClientContext(
+                    appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
+                    locale = Locale.getDefault().language,
+                ),
+                tokens = tokens,
+            )
+
+        @Provides
+        @Singleton
+        fun provideAccountService(client: AuthenticatedApiClientProtocol): AccountServicing =
+            AccountService(client)
+
+        /** Real Google Sign-In via Credential Manager; Apple has no native
+         * Android SDK so the composite reports it unconfigured and the UI
+         * hides that button. */
+        @Provides
+        @Singleton
+        fun provideProviderCredential(
+            @ApplicationContext context: Context,
+            activityHolder: CurrentActivityHolder,
+        ): ProviderCredentialProviding =
+            CompositeCredentialProvider(
+                google = GoogleCredentialProvider(context, activityHolder),
+            )
+
+        @Provides
+        @Singleton
+        fun provideActivityEventQueueStore(
+            @ApplicationContext context: Context,
+        ): ActivityEventQueueStoring = FileActivityEventQueueStore(File(context.filesDir, "gamification-event-queue.json"))
+
+        @Provides
+        @Singleton
+        fun provideGamificationEventRecorder(
+            queueStore: ActivityEventQueueStoring,
+            client: AuthenticatedApiClientProtocol,
+        ): GamificationEventRecorder = GamificationEventRecorder(queueStore, client)
+
+        @Provides
+        @Singleton
+        fun provideActivityEventRecording(recorder: GamificationEventRecorder): ActivityEventRecording = recorder
+
+        @Provides
+        @Singleton
+        fun provideSearchHistoryRecorder(client: AuthenticatedApiClientProtocol): SearchHistoryRecorder =
+            SearchHistoryRecorder(client)
+
+        @Provides
+        @Singleton
+        fun provideSearchHistoryRecording(recorder: SearchHistoryRecorder): SearchHistoryRecording = recorder
+
+        @Provides
+        @Singleton
+        fun provideGamificationWidgetStore(
+            @ApplicationContext context: Context,
+        ): GamificationWidgetSnapshotStore = GamificationWidgetSnapshotAccess.store(context)
+
+        @Provides
+        fun provideGamificationWidgetRefresh(
+            @ApplicationContext context: Context,
+        ): GamificationViewModel.WidgetRefresh = GamificationViewModel.WidgetRefresh {
+            CoroutineScope(Dispatchers.Default).launch {
+                StreakWidget().updateAll(context)
+                DailyChallengeWidget().updateAll(context)
+            }
+        }
+
+        @Provides
+        @Singleton
+        fun provideOnboardingCompletionStore(
+            @ApplicationContext context: Context,
+        ): OnboardingCompletionStore = OnboardingCompletionStore(File(context.filesDir, "onboarding-completion.json"))
+
+        @Provides
+        @Singleton
+        fun provideNotificationPreferenceStore(
+            @ApplicationContext context: Context,
+        ): com.fatwabot.feature.prayer.NotificationPreferenceStore =
+            com.fatwabot.feature.prayer.NotificationPreferenceStore(context)
 
         @Provides
         @Singleton

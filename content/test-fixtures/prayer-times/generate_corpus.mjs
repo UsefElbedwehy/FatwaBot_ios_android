@@ -2,8 +2,11 @@
 // Reference implementation: adhan-js (Batoul Apps). The Swift/Kotlin ports must
 // reproduce these UTC timestamps within ±90s in golden-file tests on both platforms.
 // Regenerate: deno run --allow-write generate_corpus.mjs
-// M1 TODO: spot-validate corpus rows against official published timetables
-// (Umm al-Qura, Egyptian General Authority, Diyanet) before release.
+// This corpus proves the Swift/Kotlin ports match adhan-js. Authority validation
+// (that our Umm al-Qura matches the OFFICIAL published timetable) is now handled
+// separately by aladhan-umm-al-qura.json + the AlAdhanValidationTests on both
+// platforms, which assert our output matches the AlAdhan Umm al-Qura authority
+// to the minute. (Closes the former "spot-validate before release" TODO.)
 
 import adhan from "npm:adhan@4.4.3";
 

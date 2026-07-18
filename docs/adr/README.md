@@ -19,5 +19,6 @@ All ADRs 0001–0015 were **Accepted 2026-07-04** with the stakeholder's final a
 | [0013](ADR-0013-notification-campaign-engine.md) | Admin-managed notification campaign engine | **New requirement (2nd pass)** |
 | [0014](ADR-0014-multi-locale-content-strategy.md) | Multi-locale content strategy (16+ language ambition) | **From design review** |
 | [0015](ADR-0015-configurable-by-default-and-tenancy-readiness.md) | Configurable-by-default principle; tenancy-ready schemas | **Stakeholder directive** |
+| [0016](ADR-0016-live-activity-prayer-countdown.md) | iOS Live Activity prayer countdown, local-only ActivityKit | **Accepted 2026-07-08, M4** |
 
 Convention: one decision per file, `Status: Proposed → Accepted → (Superseded by ADR-XXXX)`. New ADR whenever a decision with real alternatives is made.

@@ -27,10 +27,24 @@ class PrayerViewModel @Inject constructor(
     private val locationProvider: LocationProviding,
     private val clock: Clock,
     private val scheduler: PrayerNotificationScheduler?,
-    private val notificationPreferences: PrayerNotificationPreferences,
+    private val notificationPreferenceStore: NotificationPreferenceStore?,
     private val widgetStore: WidgetSnapshotStore?,
     private val onWidgetSnapshotWritten: WidgetRefresh?,
 ) : ViewModel() {
+
+    /** User's notification preferences (per-type toggles + offsets); editable
+     * from Settings and persisted via [notificationPreferenceStore]. */
+    private var notificationPreferences: PrayerNotificationPreferences =
+        notificationPreferenceStore?.load() ?: PrayerNotificationPreferences()
+
+    fun currentNotificationPreferences(): PrayerNotificationPreferences = notificationPreferences
+
+    /** Persist edited preferences and rebuild the schedule. */
+    fun updateNotificationPreferences(preferences: PrayerNotificationPreferences) {
+        notificationPreferences = preferences
+        notificationPreferenceStore?.save(preferences)
+        rescheduleNotifications()
+    }
 
     /** App-supplied hook to trigger Glance updateAll after a new snapshot. */
     fun interface WidgetRefresh {
@@ -52,7 +66,11 @@ class PrayerViewModel @Inject constructor(
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     init {
-        locationProvider.cached()?.let(::apply)
+        // Instant first paint from cache; start() refines asynchronously and
+        // re-applies with updateWidget = true — skip the widget-snapshot
+        // write (disk write + updateAll IPC) here so it isn't on the
+        // synchronous cold-start path.
+        locationProvider.cached()?.let { apply(it, updateWidget = false) }
     }
 
     fun start() {
@@ -122,7 +140,7 @@ class PrayerViewModel @Inject constructor(
     private fun localToday(): LocalDate =
         java.time.Instant.ofEpochSecond(clock.now().epochSeconds).atZone(ZoneId.systemDefault()).toLocalDate()
 
-    private fun apply(location: UserLocation) {
+    private fun apply(location: UserLocation, updateWidget: Boolean = true) {
         val settings = _state.value.settings
         val today = localToday()
         val days = runCatching {
@@ -140,7 +158,9 @@ class PrayerViewModel @Inject constructor(
             nextPrayer = PrayerEngine.nextPrayer(clock.now(), days[0], days[1]),
             hijri = HijriDateUi.from(today, settings.clampedHijriOffset),
         )
-        writeWidgetSnapshot(location, today, settings)
+        if (updateWidget) {
+            writeWidgetSnapshot(location, today, settings)
+        }
     }
 
     /** Precomputes a 48h widget snapshot into the shared store (parity with iOS). */

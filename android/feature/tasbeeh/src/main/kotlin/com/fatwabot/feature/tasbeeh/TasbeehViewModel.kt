@@ -1,7 +1,9 @@
 package com.fatwabot.feature.tasbeeh
 
 import androidx.lifecycle.ViewModel
+import com.fatwabot.core.common.ActivityEventRecording
 import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopActivityEventRecording
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
@@ -21,6 +23,7 @@ class TasbeehViewModel @Inject constructor(
     private val haptics: HapticsProviding,
     private val store: TasbeehHistoryStoring,
     private val clock: Clock,
+    private val activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
 ) : ViewModel() {
 
     data class UiState(
@@ -83,5 +86,6 @@ class TasbeehViewModel @Inject constructor(
         val newHistory = current.history + entry
         store.save(newHistory)
         _state.update { it.copy(count = 0, justReachedTarget = false, history = newHistory) }
+        activityEvents.record(eventType = "tasbeeh_session_completed")
     }
 }

@@ -73,3 +73,27 @@ export interface AuditLogRepo {
   record(ctx: AppContext, entry: AuditEntry): Promise<void>;
   list(ctx: AppContext, collection?: string): Promise<(AuditEntry & { createdAtEpochSeconds: number })[]>;
 }
+
+/** Read-only view of identity.users for the dashboard's Users domain
+ * (docs/06_DESIGN... M3 task 37) — distinct from AdminContentRow since users
+ * are real account data, not admin-authored draft/publish content. */
+export interface AdminUserRow {
+  id: string;
+  kind: "anonymous" | "account";
+  provider: "anonymous" | "apple" | "google";
+  displayName: string | null;
+  countryCode: string | null;
+  createdAtEpochSeconds: number;
+  linkedAtEpochSeconds: number | null;
+}
+
+export interface AdminUsersRepo {
+  /** `query` matches display_name or id (case-insensitive substring); most
+   * recently created first. `before` paginates by createdAtEpochSeconds. */
+  list(
+    ctx: AppContext,
+    query: string | null,
+    limit: number,
+    before: number | null,
+  ): Promise<AdminUserRow[]>;
+}

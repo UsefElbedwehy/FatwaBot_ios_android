@@ -1,6 +1,9 @@
 package com.fatwabot.feature.awrad
 
 import androidx.lifecycle.ViewModel
+import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopActivityEventRecording
 import com.fatwabot.core.content.ContentService
 import com.fatwabot.core.content.WirdTemplate
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,6 +27,8 @@ class AwradViewModel @Inject constructor(
     private val contentService: ContentService?,
     private val store: WirdStoring,
     private val clock: Clock,
+    private val haptics: HapticsProviding,
+    private val activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
 ) : ViewModel() {
 
     data class UiState(
@@ -90,6 +95,7 @@ class AwradViewModel @Inject constructor(
     /** Increments unconditionally — ticking past target does not error. */
     fun tick(wirdId: String, amount: Int = 1) {
         val key = todayKey()
+        val countBefore = todayCount(wirdId)
         val current = _state.value.progress
         val index = current.indexOfFirst { it.wirdId == wirdId && it.dateKey == key }
         val updated = if (index >= 0) {
@@ -99,6 +105,15 @@ class AwradViewModel @Inject constructor(
         }
         store.saveProgress(updated)
         _state.update { it.copy(progress = updated) }
+        activityEvents.record(eventType = "wird_ticked")
+
+        val target = _state.value.wirds.firstOrNull { it.id == wirdId }?.target
+        val countAfter = countBefore + amount
+        if (target != null && countBefore < target && countAfter >= target) {
+            haptics.targetReached()
+        } else {
+            haptics.tick()
+        }
     }
 
     /** Records today's completion only if every *active* wird has reached its
@@ -112,6 +127,8 @@ class AwradViewModel @Inject constructor(
         val record = WirdDayCompletionRecord(key, clock.now().epochSeconds)
         store.recordDayCompletion(record)
         _state.update { it.copy(dayCompletions = it.dayCompletions + record) }
+        activityEvents.record(eventType = "wird_day_completed")
+        haptics.targetReached()
         return true
     }
 

@@ -3,9 +3,10 @@ import SwiftUI
 import WidgetKit
 
 // Brand colors (widgets can't fetch the server theme; use bundled brand values
-// matching DesignSystemKit.DesignTokens.bundledDefault).
-private let brandPrimary = Color(red: 0x7A / 255, green: 0x2A / 255, blue: 0x2A / 255)
-private let brandSurface = Color(red: 0xFA / 255, green: 0xF3 / 255, blue: 0xEC / 255)
+// matching DesignSystemKit.DesignTokens.bundledDefault). Shared across every
+// widget in this extension (see GamificationWidgets.swift).
+let brandPrimary = Color(red: 0x7A / 255, green: 0x2A / 255, blue: 0x2A / 255)
+let brandSurface = Color(red: 0xFA / 255, green: 0xF3 / 255, blue: 0xEC / 255)
 
 // MARK: - Next Prayer
 
@@ -35,6 +36,7 @@ struct NextPrayerView: View {
                     .foregroundStyle(brandPrimary)
                 Text(next.time, style: .timer)
                     .font(.headline.monospacedDigit())
+                    .foregroundStyle(brandPrimary)
                 Spacer()
                 Text(next.time, style: .time)
                     .font(.caption)
@@ -75,7 +77,9 @@ struct PrayerTimelineView: View {
             let next = snapshot.nextEntry(after: entry.date)
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text(snapshot.locationName).font(.caption.weight(.medium))
+                    Text(snapshot.locationName)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(brandPrimary)
                     Spacer()
                     Text("\(snapshot.hijriMonthName) \(snapshot.hijriDay)")
                         .font(.caption).foregroundStyle(.secondary)
@@ -89,6 +93,7 @@ struct PrayerTimelineView: View {
                             Text(item.time, style: .time)
                                 .font(.caption2.monospacedDigit())
                                 .fontWeight(item.prayer == next?.prayer ? .bold : .regular)
+                                .foregroundStyle(item.prayer == next?.prayer ? brandPrimary : .secondary)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -124,7 +129,9 @@ struct HijriDateView: View {
                 Text("\(snapshot.hijriDay)")
                     .font(.system(size: 44, weight: .bold))
                     .foregroundStyle(brandPrimary)
-                Text(snapshot.hijriMonthName).font(.headline)
+                Text(snapshot.hijriMonthName)
+                    .font(.headline)
+                    .foregroundStyle(brandPrimary)
                 Text(verbatim: "\(snapshot.hijriYear) هـ").font(.caption).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,5 +159,7 @@ struct FatwaBotWidgets: WidgetBundle {
         NextPrayerWidget()
         PrayerTimelineWidget()
         HijriDateWidget()
+        StreakWidget()
+        DailyChallengeWidget()
     }
 }

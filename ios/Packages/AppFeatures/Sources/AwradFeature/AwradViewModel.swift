@@ -16,6 +16,7 @@ public final class AwradViewModel {
 
     private let contentService: ContentService?
     private let store: WirdStoring
+    private let haptics: HapticsProviding
     private let activityEvents: ActivityEventRecording
     private let now: @Sendable () -> Date
     private let calendar: Calendar
@@ -23,12 +24,14 @@ public final class AwradViewModel {
     public init(
         contentService: ContentService? = nil,
         store: WirdStoring,
+        haptics: HapticsProviding = NoopHaptics(),
         activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
         now: @escaping @Sendable () -> Date = { Date() },
         calendar: Calendar = .current
     ) {
         self.contentService = contentService
         self.store = store
+        self.haptics = haptics
         self.activityEvents = activityEvents
         self.now = now
         self.calendar = calendar
@@ -76,12 +79,19 @@ public final class AwradViewModel {
     /// Increments unconditionally — ticking past target does not error.
     public func tick(wirdId: String, amount: Int = 1) {
         let key = todayKey
+        let countBefore = todayCount(for: wirdId)
         if let index = progress.firstIndex(where: { $0.wirdId == wirdId && $0.dateKey == key }) {
             progress[index].count += amount
         } else {
             progress.append(WirdDailyProgress(wirdId: wirdId, dateKey: key, count: amount))
         }
         store.saveProgress(progress)
+        let target = wirds.first { $0.id == wirdId }?.target ?? 0
+        if countBefore < target, todayCount(for: wirdId) >= target {
+            haptics.targetReached()
+        } else {
+            haptics.tick()
+        }
         activityEvents.record(eventType: "wird_ticked", metadata: ["wird_id": wirdId])
     }
 
@@ -97,6 +107,7 @@ public final class AwradViewModel {
         let record = WirdDayCompletionRecord(dateKey: key, completedAt: now())
         dayCompletions.append(record)
         store.recordDayCompletion(record)
+        haptics.targetReached()
         activityEvents.record(eventType: "wird_day_completed", metadata: [:])
         return true
     }

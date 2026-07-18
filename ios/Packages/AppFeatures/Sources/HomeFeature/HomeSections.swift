@@ -116,9 +116,14 @@ struct AskSectionView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("home.ask.title")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Color(hexToken: tokens.accent))
+                Text("home.ask.title")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+            }
             HStack {
                 Image(systemName: "magnifyingglass")
                 Text("home.ask.placeholder")
@@ -126,7 +131,11 @@ struct AskSectionView: View {
             }
             .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
             .padding(14)
-            .background(Color(hexToken: tokens.surfaceElevated), in: RoundedRectangle(cornerRadius: 14))
+            .background(Color(hexToken: tokens.surface), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color(hexToken: tokens.outline).opacity(0.6), lineWidth: 1)
+            )
             HStack(spacing: 8) {
                 intentChip("home.ask.intent.fatwa", icon: "text.magnifyingglass")
                 intentChip("home.ask.intent.hadith", icon: "book")
@@ -134,7 +143,7 @@ struct AskSectionView: View {
             }
             if !enabled {
                 Label { Text("home.ask.coming_soon") } icon: { Image(systemName: "sparkles") }
-                    .font(.caption)
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(Color(hexToken: tokens.accent))
             }
             Text("home.ask.trust_line")
@@ -142,7 +151,14 @@ struct AskSectionView: View {
                 .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .opacity(enabled ? 1 : 0.75)
+        .padding(18)
+        .background(Color(hexToken: tokens.surfaceElevated), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color(hexToken: tokens.outline).opacity(0.6), lineWidth: 1)
+        )
+        .shadow(color: Color(hexToken: tokens.primary).opacity(0.06), radius: 12, x: 0, y: 6)
+        .opacity(enabled ? 1 : 0.85)
     }
 
     private func intentChip(_ key: LocalizedStringKey, icon: String) -> some View {
@@ -170,16 +186,28 @@ struct QuickActionsGrid: View {
                 Button {
                     onTap(action)
                 } label: {
-                    VStack(spacing: 6) {
-                        Image(systemName: action.icon)
-                            .font(.title3)
+                    VStack(spacing: 8) {
+                        ZStack {
+                            Circle().fill(Color(hexToken: tokens.primaryContainer))
+                            Image(systemName: action.icon)
+                                .font(.title3)
+                                .foregroundStyle(Color(hexToken: tokens.primary))
+                        }
+                        .frame(width: 46, height: 46)
                         Text(action.titleKey)
-                            .font(.caption2)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(Color(hexToken: tokens.onSurface))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(hexToken: tokens.surfaceElevated), in: RoundedRectangle(cornerRadius: 14))
-                    .foregroundStyle(Color(hexToken: tokens.primary))
+                    .padding(.vertical, 14)
+                    .background(Color(hexToken: tokens.surfaceElevated), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color(hexToken: tokens.outline).opacity(0.5), lineWidth: 1)
+                    )
+                    .shadow(color: Color(hexToken: tokens.primary).opacity(0.05), radius: 8, x: 0, y: 3)
                 }
                 .buttonStyle(.plain)
             }

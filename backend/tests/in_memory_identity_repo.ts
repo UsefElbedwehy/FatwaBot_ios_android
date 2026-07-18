@@ -17,7 +17,7 @@ interface UserRecord {
 
 export class InMemoryIdentityRepo implements IdentityRepo {
   users = new Map<string, UserRecord>();
-  devices = new Map<string, { userId: string; registration: DeviceRegistration }>();
+  devices = new Map<string, { userId: string; registration: DeviceRegistration; pushToken?: string | null }>();
   tokens = new Map<string, RefreshTokenRecord & { hash: string }>();
   private providerIndex = new Map<string, string>(); // `${provider}:${subject}` -> userId
   private counter = 0;
@@ -89,6 +89,21 @@ export class InMemoryIdentityRepo implements IdentityRepo {
     const user = this.users.get(userId);
     if (user) user.displayName = displayName;
     return Promise.resolve();
+  }
+
+  updatePushToken(userId: string, token: string | null): Promise<void> {
+    for (const device of this.devices.values()) {
+      if (device.userId === userId) device.pushToken = token;
+    }
+    return Promise.resolve();
+  }
+
+  listPushTargets(_ctx: AppContext): Promise<{ userId: string; token: string }[]> {
+    const targets: { userId: string; token: string }[] = [];
+    for (const device of this.devices.values()) {
+      if (device.pushToken) targets.push({ userId: device.userId, token: device.pushToken });
+    }
+    return Promise.resolve(targets);
   }
 
   storeRefreshToken(hash: string, userId: string, deviceId: string, expiresAt: Date, rotatedFrom?: string) {

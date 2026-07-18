@@ -16,6 +16,9 @@ let package = Package(
         .library(name: "AwradFeature", targets: ["AwradFeature"]),
         .library(name: "HadithFeature", targets: ["HadithFeature"]),
         .library(name: "GamificationFeature", targets: ["GamificationFeature"]),
+        .library(name: "LeaderboardFeature", targets: ["LeaderboardFeature"]),
+        .library(name: "SearchHistoryFeature", targets: ["SearchHistoryFeature"]),
+        .library(name: "OnboardingFeature", targets: ["OnboardingFeature"]),
     ],
     dependencies: [
         .package(path: "../FatwaBotKit"),
@@ -112,5 +115,37 @@ let package = Package(
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
         .testTarget(name: "GamificationFeatureTests", dependencies: ["GamificationFeature"]),
+        .target(
+            name: "LeaderboardFeature",
+            dependencies: [
+                .product(name: "CoreKit", package: "FatwaBotKit"),
+                .product(name: "NetworkingKit", package: "FatwaBotKit"),
+                .product(name: "DesignSystemKit", package: "FatwaBotKit"),
+                .product(name: "Factory", package: "Factory"),
+            ],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+        ),
+        .testTarget(name: "LeaderboardFeatureTests", dependencies: ["LeaderboardFeature"]),
+        .target(
+            name: "SearchHistoryFeature",
+            dependencies: [
+                .product(name: "CoreKit", package: "FatwaBotKit"),
+                .product(name: "NetworkingKit", package: "FatwaBotKit"),
+                .product(name: "DesignSystemKit", package: "FatwaBotKit"),
+                .product(name: "Factory", package: "Factory"),
+            ],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+        ),
+        .testTarget(name: "SearchHistoryFeatureTests", dependencies: ["SearchHistoryFeature"]),
+        .target(
+            name: "OnboardingFeature",
+            dependencies: [
+                .product(name: "CoreKit", package: "FatwaBotKit"),
+                .product(name: "DesignSystemKit", package: "FatwaBotKit"),
+                .product(name: "Factory", package: "Factory"),
+            ],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+        ),
+        .testTarget(name: "OnboardingFeatureTests", dependencies: ["OnboardingFeature"]),
     ]
 )

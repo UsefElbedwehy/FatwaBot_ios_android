@@ -8,17 +8,26 @@ import { SupabaseContentRepo } from "./supabase_content_repo.ts";
 import {
   SupabaseAdminAuthRepo,
   SupabaseAdminContentRepo,
+  SupabaseAdminUsersRepo,
   SupabaseAuditLogRepo,
 } from "./supabase_admin_repo.ts";
-import { DevIdentityProviderVerifier } from "./auth/provider_verify.ts";
+import { verifierFromEnv } from "./auth/provider_verify.ts";
 import { SupabaseGamificationRepo } from "./supabase_gamification_repo.ts";
 import { SupabaseLeaderboardRepo } from "./supabase_leaderboard_repo.ts";
 import { SupabaseSearchHistoryRepo } from "./supabase_search_repo.ts";
 import { SupabaseDeliveryLogRepo, SupabaseNotificationPrefsRepo } from "./supabase_notification_repo.ts";
+import { FcmSender, parseServiceAccount } from "./fcm_sender.ts";
 
 const client = supabaseClientFromEnv();
 const jwtSecret = Deno.env.get("API_JWT_SECRET");
 if (!jwtSecret) throw new Error("API_JWT_SECRET not set");
+
+// Optional: the FCM sender only exists once the Firebase service account is
+// provisioned as a secret; campaign dispatch returns 503 until then.
+const fcmServiceAccount = Deno.env.get("FCM_SERVICE_ACCOUNT");
+const pushSender = fcmServiceAccount
+  ? new FcmSender(parseServiceAccount(fcmServiceAccount))
+  : undefined;
 
 const deps = {
   repo: new SupabaseConfigRepo(client),
@@ -26,16 +35,19 @@ const deps = {
   content: new SupabaseContentRepo(client),
   adminContent: new SupabaseAdminContentRepo(client),
   adminAuth: new SupabaseAdminAuthRepo(client),
+  adminUsers: new SupabaseAdminUsersRepo(client),
   auditLog: new SupabaseAuditLogRepo(client),
   jwtSecret,
-  // docs/features/accounts.md: swap for real Apple/Google JWKS verification
-  // once Q8's OAuth credentials are provisioned — no contract change needed.
-  verifier: new DevIdentityProviderVerifier(),
+  // Real Apple/Google ID-token verification (signature via each provider's
+  // JWKS + issuer/audience/expiry). Set AUTH_VERIFIER=dev to fall back to the
+  // stub on a staging project.
+  verifier: verifierFromEnv((key) => Deno.env.get(key)),
   gamification: new SupabaseGamificationRepo(client),
   leaderboard: new SupabaseLeaderboardRepo(client),
   searchHistory: new SupabaseSearchHistoryRepo(client),
   notificationPrefs: new SupabaseNotificationPrefsRepo(client),
   deliveryLog: new SupabaseDeliveryLogRepo(client),
+  pushSender,
 };
 
 Deno.serve((req) => route(req, deps));

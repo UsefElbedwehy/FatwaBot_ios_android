@@ -52,6 +52,7 @@ public struct QiblaScreen: View {
     @State private var heading: Double = 0
     @State private var accuracy: Double = -1
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(location: UserLocation, provider: HeadingProviding) {
         self.bearing = PrayerCalculator().qiblaBearing(
@@ -61,21 +62,29 @@ public struct QiblaScreen: View {
     }
 
     public var body: some View {
-        VStack(spacing: 24) {
-            if !provider.supportsHeading {
-                staticFallback
-            } else {
-                compass
-                accuracyIndicator
+        ScrollView {
+            VStack(spacing: 24) {
+                if !provider.supportsHeading {
+                    staticFallback
+                } else {
+                    compassCard
+                    accuracyNotice
+                }
             }
+            .padding(20)
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(hexToken: tokens.surface))
+        .brandScreenBackground(tokens)
         .task {
             for await update in provider.headings() {
-                withAnimation(.interactiveSpring) {
+                if reduceMotion {
                     heading = update.heading
                     accuracy = update.accuracy
+                } else {
+                    withAnimation(.interactiveSpring) {
+                        heading = update.heading
+                        accuracy = update.accuracy
+                    }
                 }
             }
         }
@@ -93,6 +102,41 @@ public struct QiblaScreen: View {
         let delta = abs((needleAngle.truncatingRemainder(dividingBy: 360) + 540)
             .truncatingRemainder(dividingBy: 360) - 180)
         return (180 - delta) < 5 || delta < 5
+    }
+
+    /// The compass housed in an elevated circular card carrying the mihrab motif.
+    private var compassCard: some View {
+        VStack(spacing: 18) {
+            compass
+                .padding(28)
+                .background(
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(hexToken: tokens.surfaceElevated),
+                                        Color(hexToken: tokens.primaryContainer).opacity(0.5),
+                                    ],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                            )
+                        // Faint mihrab motif oriented toward the qibla needle.
+                        MihrabArchShape(archRatio: 0.6)
+                            .fill(Color(hexToken: tokens.primary).opacity(0.05))
+                            .frame(width: 150, height: 180)
+                            .rotationEffect(.degrees(needleAngle))
+                            .allowsHitTesting(false)
+                    }
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color(hexToken: tokens.primary).opacity(0.15), lineWidth: 1)
+                )
+                .shadow(color: Color(hexToken: tokens.primary).opacity(0.12), radius: 18, x: 0, y: 10)
+
+            bearingReadout
+        }
     }
 
     private var compass: some View {
@@ -119,29 +163,54 @@ public struct QiblaScreen: View {
         .accessibilityValue(Text(verbatim: "\(Int(bearing))°"))
     }
 
-    private var accuracyIndicator: some View {
-        Group {
-            if accuracy < 0 {
-                Label { Text("qibla.calibrating") } icon: { Image(systemName: "gyroscope") }
-            } else if accuracy > 25 {
-                Label { Text("qibla.interference") } icon: { Image(systemName: "exclamationmark.triangle") }
-            } else {
-                Text(verbatim: "\(Int(bearing))°")
-                    .font(.title3.weight(.semibold))
-                    .monospacedDigit()
-            }
+    /// Prominent qibla bearing readout below the compass.
+    private var bearingReadout: some View {
+        VStack(spacing: 2) {
+            Text(verbatim: "\(Int(bearing))°")
+                .font(.system(size: 40, weight: .heavy, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Color(hexToken: isAligned ? tokens.accent : tokens.primary))
+                .contentTransition(.numericText())
+            Text("qibla.compass_a11y")
+                .font(.caption)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
         }
-        .font(.subheadline)
-        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var accuracyNotice: some View {
+        if accuracy < 0 {
+            noticeCard(icon: "gyroscope", titleKey: "qibla.calibrating", tint: tokens.accent)
+        } else if accuracy > 25 {
+            noticeCard(icon: "exclamationmark.triangle", titleKey: "qibla.interference", tint: tokens.accent)
+        }
+    }
+
+    /// Subtle branded notice card for calibration / interference states.
+    private func noticeCard(icon: String, titleKey: LocalizedStringKey, tint: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color(hexToken: tint))
+            Text(titleKey)
+                .font(.subheadline)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            Spacer(minLength: 0)
+        }
+        .brandCard(tokens)
     }
 
     private var staticFallback: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "safari")
-                .font(.system(size: 48))
-                .foregroundStyle(Color(hexToken: tokens.primary))
+        VStack(spacing: 18) {
+            ArchIconBadge(systemImage: "safari", tokens: tokens)
             Text("qibla.static_bearing \(Int(bearing))")
-                .font(.title3)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color(hexToken: tokens.onSurface))
+                .multilineTextAlignment(.center)
         }
+        .padding(.vertical, 20)
+        .brandCard(tokens, padding: 24)
+        .accessibilityElement(children: .combine)
     }
 }

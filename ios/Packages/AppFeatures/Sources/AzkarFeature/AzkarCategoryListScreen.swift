@@ -19,40 +19,98 @@ public struct AzkarCategoryListScreen: View {
     }
 
     public var body: some View {
-        Group {
-            if viewModel.categories.isEmpty {
-                emptyState
-            } else {
-                List(viewModel.categories) { category in
-                    NavigationLink {
-                        AzkarSessionScreen(viewModel: viewModel, category: category)
-                    } label: {
-                        row(for: category)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                if viewModel.categories.isEmpty {
+                    if viewModel.isLoadingCategories {
+                        loadingState
+                    } else {
+                        emptyState
+                    }
+                } else {
+                    BrandSectionHeader(
+                        "worship.azkar",
+                        systemImage: "book.closed.fill",
+                        tokens: tokens
+                    )
+                    VStack(spacing: 12) {
+                        ForEach(viewModel.categories) { category in
+                            NavigationLink {
+                                AzkarSessionScreen(viewModel: viewModel, category: category)
+                            } label: {
+                                row(for: category)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }
+            .padding(20)
         }
+        .brandScreenBackground(tokens)
+        .motionAnimation(.easeInOut(duration: MotionTokens.standardDuration), value: viewModel.categories.isEmpty)
         .task { await viewModel.loadCategories(locale: locale) }
     }
 
     private func row(for category: AzkarCategory) -> some View {
-        HStack {
-            Text(category.name)
-            Spacer()
-            if viewModel.isCompletedToday(category.id) {
+        let done = viewModel.isCompletedToday(category.id)
+        return HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(done
+                          ? Color(hexToken: tokens.primary).opacity(0.14)
+                          : Color(hexToken: tokens.primaryContainer))
+                Image(systemName: done ? "checkmark.seal.fill" : "book.closed")
+                    .font(.title3)
+                    .foregroundStyle(Color(hexToken: tokens.primary))
+            }
+            .frame(width: 46, height: 46)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(category.name)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+                Text("\(category.items.count)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            }
+
+            Spacer(minLength: 8)
+
+            if done {
                 Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
                     .foregroundStyle(Color(hexToken: tokens.primary))
                     .accessibilityLabel(Text("azkar.completed_today_a11y"))
+            } else {
+                Image(systemName: "chevron.forward")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary).opacity(0.7))
+                    .accessibilityHidden(true)
             }
         }
+        .brandCard(tokens)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var loadingState: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .tint(Color(hexToken: tokens.primary))
+            Text("azkar.loading")
+                .font(.subheadline)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
     }
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            ProgressView()
-            Text("azkar.loading")
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        BrandEmptyState(
+            systemImage: "book.closed",
+            messageKey: "azkar.empty_state",
+            tokens: tokens
+        )
     }
 }

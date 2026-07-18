@@ -2,9 +2,7 @@ package com.fatwabot.app.navigation
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -19,7 +17,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -97,7 +94,8 @@ fun RootScaffold() {
                     destination = worshipDestination,
                     onDestinationChange = { worshipDestination = it },
                 )
-                AppTab.JOURNEY, AppTab.SETTINGS -> ComingSoon(selected)
+                AppTab.JOURNEY -> JourneyTab()
+                AppTab.SETTINGS -> SettingsScreen(prayerViewModel = prayerViewModel)
             }
         }
     }
@@ -157,20 +155,4 @@ private fun handleQuickAction(
         QuickAction.HISTORY -> return
     }
     switchToWorship()
-}
-
-@Composable
-private fun ComingSoon(tab: AppTab) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(tab.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Text(
-            stringResource(com.fatwabot.app.R.string.common_coming_soon),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
 }

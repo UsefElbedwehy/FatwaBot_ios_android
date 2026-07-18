@@ -1,7 +1,9 @@
 package com.fatwabot.feature.azkar
 
 import androidx.lifecycle.ViewModel
+import com.fatwabot.core.common.ActivityEventRecording
 import com.fatwabot.core.common.HapticsProviding
+import com.fatwabot.core.common.NoopActivityEventRecording
 import com.fatwabot.core.content.AzkarCategory
 import com.fatwabot.core.content.AzkarItem
 import com.fatwabot.core.content.ContentService
@@ -27,10 +29,12 @@ class AzkarViewModel @Inject constructor(
     private val haptics: HapticsProviding,
     private val store: AzkarStoring,
     private val clock: Clock,
+    private val activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
 ) : ViewModel() {
 
     data class UiState(
         val categories: List<AzkarCategory> = emptyList(),
+        val hasLoadedCategories: Boolean = false,
         val items: List<AzkarItem> = emptyList(),
         val categoryId: String? = null,
         val currentItemIndex: Int = 0,
@@ -57,7 +61,7 @@ class AzkarViewModel @Inject constructor(
 
     fun loadCategories(locale: String) {
         val categories = contentService?.azkar(locale)?.categories.orEmpty()
-        _state.update { it.copy(categories = categories) }
+        _state.update { it.copy(categories = categories, hasLoadedCategories = true) }
     }
 
     fun isCompletedToday(categoryId: String): Boolean = _state.value.completedCategoryIdsToday.contains(categoryId)
@@ -117,6 +121,7 @@ class AzkarViewModel @Inject constructor(
         _state.update {
             it.copy(isSessionComplete = true, completedCategoryIdsToday = it.completedCategoryIdsToday + categoryId)
         }
+        activityEvents.record(eventType = "azkar_completed")
     }
 
     private fun persistState() {

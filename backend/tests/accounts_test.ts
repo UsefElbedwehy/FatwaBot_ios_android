@@ -6,6 +6,7 @@ import { InMemoryContentRepo } from "./in_memory_content_repo.ts";
 import {
   InMemoryAdminAuthRepo,
   InMemoryAdminContentRepo,
+  InMemoryAdminUsersRepo,
   InMemoryAuditLogRepo,
 } from "./in_memory_admin_repo.ts";
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
@@ -24,6 +25,7 @@ function deps() {
     identity: new InMemoryIdentityRepo(),
     content: new InMemoryContentRepo(),
     adminContent: new InMemoryAdminContentRepo(),
+    adminUsers: new InMemoryAdminUsersRepo(),
     adminAuth: new InMemoryAdminAuthRepo(),
     auditLog: new InMemoryAuditLogRepo(),
     jwtSecret: SECRET,
@@ -170,4 +172,31 @@ Deno.test("account linking never resets the user_id gamification/state would key
   // Re-linking the SAME identity to the SAME already-linked user is a no-op success, not a conflict.
   assertEquals(relinkAttempt.status, 200);
   assertNotEquals(relinkAttempt.status, 409);
+});
+
+Deno.test("push-token registers and clears the device's FCM token", async () => {
+  const d = deps();
+  const anonRes = await route(post("/v1/auth/anonymous", { device: DEVICE }), d);
+  const anon = await anonRes.json();
+  const auth = { authorization: `Bearer ${anon.access_token}` };
+
+  // Register a token.
+  const reg = await route(patch("/v1/me/push-token", { push_token: "fcm-token-abc" }, auth), d);
+  assertEquals(reg.status, 200);
+  assertEquals((await reg.json()).registered, true);
+  const device = [...d.identity.devices.values()].find((x) => x.userId === anon.user_id);
+  assertEquals(device?.pushToken, "fcm-token-abc");
+
+  // Clear it.
+  const clear = await route(patch("/v1/me/push-token", { push_token: null }, auth), d);
+  assertEquals(clear.status, 200);
+  assertEquals((await clear.json()).registered, false);
+  const cleared = [...d.identity.devices.values()].find((x) => x.userId === anon.user_id);
+  assertEquals(cleared?.pushToken, null);
+});
+
+Deno.test("push-token requires a bearer token", async () => {
+  const d = deps();
+  const res = await route(patch("/v1/me/push-token", { push_token: "x" }), d);
+  assertEquals(res.status, 401);
 });

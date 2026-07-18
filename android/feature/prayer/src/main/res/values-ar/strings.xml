@@ -7,6 +7,8 @@
     <string name="prayer_maghrib">المغرب</string>
     <string name="prayer_isha">العشاء</string>
     <string name="prayer_pick_city">اختر مدينتك</string>
+    <string name="prayer_previous_day">اليوم السابق</string>
+    <string name="prayer_next_day">اليوم التالي</string>
     <string name="city_makkah">مكة المكرمة</string>
     <string name="city_madinah">المدينة المنورة</string>
     <string name="city_riyadh">الرياض</string>
@@ -32,4 +34,12 @@
     <string name="notif_pre_adhan_title_maghrib">اقترب موعد أذان المغرب</string>
     <string name="notif_pre_adhan_title_isha">اقترب موعد أذان العشاء</string>
     <string name="notif_pre_adhan_body">استعدّ للصلاة</string>
+    <string name="notif_iqama_title_fajr">إقامة صلاة الفجر</string>
+    <string name="notif_iqama_title_dhuhr">إقامة صلاة الظهر</string>
+    <string name="notif_iqama_title_asr">إقامة صلاة العصر</string>
+    <string name="notif_iqama_title_maghrib">إقامة صلاة المغرب</string>
+    <string name="notif_iqama_title_isha">إقامة صلاة العشاء</string>
+    <string name="notif_iqama_body">اقتربت إقامة الصلاة</string>
+    <string name="notif_last_third_title">الثلث الأخير من الليل</string>
+    <string name="notif_last_third_body">وقت مبارك للتهجد والدعاء</string>
 </resources>

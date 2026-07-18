@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -53,6 +54,10 @@ dependencies {
     implementation(project(":feature:dua"))
     implementation(project(":feature:awrad"))
     implementation(project(":feature:hadith"))
+    implementation(project(":feature:gamification"))
+    implementation(project(":feature:leaderboard"))
+    implementation(project(":feature:searchhistory"))
+    implementation(project(":feature:onboarding"))
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
@@ -68,6 +73,13 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.datetime)
     implementation(libs.glance.appwidget)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+    // Google Sign-In via Credential Manager (returns a Google ID token that the
+    // backend verifies against Google's JWKS).
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)

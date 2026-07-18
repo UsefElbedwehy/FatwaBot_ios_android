@@ -7,8 +7,10 @@ import Factory
 import GamificationFeature
 import HadithFeature
 import HomeFeature
+import LeaderboardFeature
 import PrayerFeature
 import PrayerKit
+import SearchHistoryFeature
 import SwiftUI
 import TasbeehFeature
 
@@ -19,8 +21,6 @@ enum WorshipDestination: Hashable {
 }
 
 struct RootTabView: View {
-    @Environment(ThemeStore.self) private var theme
-    @Environment(\.colorScheme) private var colorScheme
     @State private var selection: AppTab = .home
     @State private var prayerViewModel = Container.shared.prayerViewModel()
     @State private var worshipPath = NavigationPath()
@@ -60,12 +60,28 @@ struct RootTabView: View {
             NavigationStack {
                 GamificationScreen(viewModel: Container.shared.gamificationViewModel())
                     .navigationTitle(Text("tabs.journey"))
+                    .toolbar {
+                        ToolbarItem(placement: .primaryAction) {
+                            NavigationLink {
+                                LeaderboardScreen(viewModel: Container.shared.leaderboardViewModel())
+                            } label: {
+                                Label("leaderboard.title", systemImage: "trophy")
+                            }
+                        }
+                        ToolbarItem(placement: .secondaryAction) {
+                            NavigationLink {
+                                SearchHistoryScreen(viewModel: Container.shared.searchHistoryViewModel())
+                            } label: {
+                                Label("search_history.title", systemImage: "clock.arrow.circlepath")
+                            }
+                        }
+                    }
             }
             .tabItem { Label("tabs.journey", systemImage: AppTab.journey.systemImage) }
             .tag(AppTab.journey)
 
             NavigationStack {
-                placeholder(tab: .settings)
+                SettingsScreen(prayerViewModel: prayerViewModel)
                     .navigationTitle(Text("tabs.settings"))
             }
             .tabItem { Label("tabs.settings", systemImage: AppTab.settings.systemImage) }
@@ -135,51 +151,77 @@ struct RootTabView: View {
         }
     }
 
-    private func placeholder(tab: AppTab) -> some View {
-        let colors = theme.current(for: colorScheme)
-        return VStack(spacing: 12) {
-            Image(systemName: tab.systemImage)
-                .font(.system(size: 40))
-                .foregroundStyle(Color(hexToken: colors.primary))
-            Text("common.coming_soon")
-                .foregroundStyle(Color(hexToken: colors.onSurfaceSecondary))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(hexToken: colors.surface))
-    }
 }
 
 struct WorshipTabView: View {
     let prayerViewModel: PrayerViewModel
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var tokens: ColorTokens {
+        colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
+    }
+
+    private let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
 
     var body: some View {
-        List {
-            NavigationLink {
-                PrayerScreen(viewModel: prayerViewModel)
-                    .navigationTitle(Text("worship.prayer_times"))
-            } label: {
-                Label("worship.prayer_times", systemImage: "clock")
-            }
-            if prayerViewModel.location != nil {
-                NavigationLink(value: WorshipDestination.qibla) {
-                    Label("worship.qibla", systemImage: "safari")
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 16) {
+                NavigationLink {
+                    PrayerScreen(viewModel: prayerViewModel)
+                        .navigationTitle(Text("worship.prayer_times"))
+                } label: {
+                    WorshipTile(icon: "clock.fill", titleKey: "worship.prayer_times", tokens: tokens)
+                }
+                if prayerViewModel.location != nil {
+                    NavigationLink(value: WorshipDestination.qibla) {
+                        WorshipTile(icon: "safari.fill", titleKey: "worship.qibla", tokens: tokens)
+                    }
+                }
+                NavigationLink(value: WorshipDestination.tasbeeh) {
+                    WorshipTile(icon: "circle.grid.3x3.fill", titleKey: "worship.tasbeeh", tokens: tokens)
+                }
+                NavigationLink(value: WorshipDestination.azkar) {
+                    WorshipTile(icon: "book.closed.fill", titleKey: "worship.azkar", tokens: tokens)
+                }
+                NavigationLink(value: WorshipDestination.dua) {
+                    WorshipTile(icon: "hands.sparkles.fill", titleKey: "worship.dua", tokens: tokens)
+                }
+                NavigationLink(value: WorshipDestination.awrad) {
+                    WorshipTile(icon: "leaf.fill", titleKey: "worship.awrad", tokens: tokens)
+                }
+                NavigationLink(value: WorshipDestination.hadith) {
+                    WorshipTile(icon: "text.book.closed.fill", titleKey: "worship.hadith", tokens: tokens)
                 }
             }
-            NavigationLink(value: WorshipDestination.tasbeeh) {
-                Label("worship.tasbeeh", systemImage: "circle.grid.3x3")
-            }
-            NavigationLink(value: WorshipDestination.azkar) {
-                Label("worship.azkar", systemImage: "book.closed")
-            }
-            NavigationLink(value: WorshipDestination.dua) {
-                Label("worship.dua", systemImage: "hands.sparkles")
-            }
-            NavigationLink(value: WorshipDestination.awrad) {
-                Label("worship.awrad", systemImage: "leaf")
-            }
-            NavigationLink(value: WorshipDestination.hadith) {
-                Label("worship.hadith", systemImage: "text.book.closed")
-            }
+            .padding(16)
         }
+        .background(Color(hexToken: tokens.surface))
+    }
+}
+
+private struct WorshipTile: View {
+    let icon: String
+    let titleKey: LocalizedStringKey
+    let tokens: ColorTokens
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(hexToken: tokens.primaryContainer))
+                Image(systemName: icon)
+                    .font(.system(size: 30, weight: .medium))
+                    .foregroundStyle(Color(hexToken: tokens.primary))
+            }
+            .frame(height: 88)
+            .accessibilityHidden(true)
+            Text(titleKey)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color(hexToken: tokens.onSurface))
+                .multilineTextAlignment(.center)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(Color(hexToken: tokens.surfaceElevated), in: RoundedRectangle(cornerRadius: 20))
     }
 }

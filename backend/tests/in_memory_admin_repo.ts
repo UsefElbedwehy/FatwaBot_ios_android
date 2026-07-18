@@ -3,6 +3,8 @@ import type {
   AdminAuthRepo,
   AdminContentRepo,
   AdminContentRow,
+  AdminUserRow,
+  AdminUsersRepo,
   AuditEntry,
   AuditLogRepo,
 } from "../functions/api/admin_types.ts";
@@ -66,6 +68,26 @@ export class InMemoryAdminContentRepo implements AdminContentRepo {
     next[index] = updated;
     this.rows.set(collection, next);
     return Promise.resolve(updated);
+  }
+}
+
+export class InMemoryAdminUsersRepo implements AdminUsersRepo {
+  users: AdminUserRow[] = [];
+
+  seed(users: AdminUserRow[]) {
+    this.users = users;
+  }
+
+  list(_ctx: AppContext, query: string | null, limit: number, before: number | null): Promise<AdminUserRow[]> {
+    let filtered = this.users;
+    if (before !== null) filtered = filtered.filter((u) => u.createdAtEpochSeconds < before);
+    if (query) {
+      const needle = query.toLowerCase();
+      filtered = filtered.filter((u) => u.id === query || (u.displayName?.toLowerCase().includes(needle) ?? false));
+    }
+    return Promise.resolve(
+      [...filtered].sort((a, b) => b.createdAtEpochSeconds - a.createdAtEpochSeconds).slice(0, limit),
+    );
   }
 }
 
