@@ -185,8 +185,12 @@ private struct AccountSection: View {
 
     private var signInButtons: some View {
         VStack(spacing: 10) {
-            signInButton(.apple, title: "settings.account.sign_in_apple", systemImage: "apple.logo")
-            signInButton(.google, title: "settings.account.sign_in_google", systemImage: "g.circle.fill")
+            if viewModel.isAvailable(.apple) {
+                signInButton(.apple, title: "settings.account.sign_in_apple", systemImage: "apple.logo")
+            }
+            if viewModel.isAvailable(.google) {
+                signInButton(.google, title: "settings.account.sign_in_google", systemImage: "g.circle.fill")
+            }
         }
     }
 

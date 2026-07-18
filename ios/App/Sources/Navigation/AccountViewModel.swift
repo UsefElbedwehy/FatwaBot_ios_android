@@ -29,6 +29,12 @@ final class AccountViewModel: ObservableObject {
 
     var isSignedIn: Bool { profile?.isSignedIn ?? false }
 
+    /// Only offer a provider whose real SDK/entitlement is wired — otherwise the
+    /// button would fail against the backend's real token verification.
+    func isAvailable(_ provider: AccountProvider) -> Bool {
+        credentials.isConfigured(provider)
+    }
+
     func load() async {
         guard profile == nil else { return }
         isLoading = true

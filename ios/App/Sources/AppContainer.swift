@@ -98,10 +98,17 @@ extension Container {
         self { AccountService(client: self.authenticatedClient()) }.singleton
     }
 
-    /// Provider identity-token source. Stub today (works against the backend's
-    /// dev verifier); swap to native Apple/Google once credentials exist.
+    /// Provider identity-token source. Apple is the real system sheet now that
+    /// the Developer Program + entitlement are provisioned; Google still uses
+    /// the dev stub until the GoogleSignIn SDK is added.
     var providerCredential: Factory<ProviderCredentialProviding> {
-        self { StubProviderCredentialProvider() }.singleton
+        self {
+            CompositeCredentialProvider(
+                apple: AppleCredentialProvider(),
+                google: StubProviderCredentialProvider()
+            )
+        }
+        .singleton
     }
 
     /// Concrete recorder, shared by GamificationViewModel (to flush before a
