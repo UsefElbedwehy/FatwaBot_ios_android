@@ -11,7 +11,7 @@ import {
   SupabaseAdminUsersRepo,
   SupabaseAuditLogRepo,
 } from "./supabase_admin_repo.ts";
-import { DevIdentityProviderVerifier } from "./auth/provider_verify.ts";
+import { verifierFromEnv } from "./auth/provider_verify.ts";
 import { SupabaseGamificationRepo } from "./supabase_gamification_repo.ts";
 import { SupabaseLeaderboardRepo } from "./supabase_leaderboard_repo.ts";
 import { SupabaseSearchHistoryRepo } from "./supabase_search_repo.ts";
@@ -38,9 +38,10 @@ const deps = {
   adminUsers: new SupabaseAdminUsersRepo(client),
   auditLog: new SupabaseAuditLogRepo(client),
   jwtSecret,
-  // docs/features/accounts.md: swap for real Apple/Google JWKS verification
-  // once Q8's OAuth credentials are provisioned — no contract change needed.
-  verifier: new DevIdentityProviderVerifier(),
+  // Real Apple/Google ID-token verification (signature via each provider's
+  // JWKS + issuer/audience/expiry). Set AUTH_VERIFIER=dev to fall back to the
+  // stub on a staging project.
+  verifier: verifierFromEnv((key) => Deno.env.get(key)),
   gamification: new SupabaseGamificationRepo(client),
   leaderboard: new SupabaseLeaderboardRepo(client),
   searchHistory: new SupabaseSearchHistoryRepo(client),
