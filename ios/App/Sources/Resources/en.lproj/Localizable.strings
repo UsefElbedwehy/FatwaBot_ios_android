@@ -171,6 +171,10 @@
 "onboarding.notifications.body" = "Get gentle reminders for adhan and your daily azkar — fully customizable in Settings.";
 "onboarding.allow" = "Allow";
 "onboarding.not_now" = "Not now";
+"onboarding.signin.title" = "Save your progress";
+"onboarding.signin.body" = "Sign in to keep your streaks and favourites safe and synced across your devices. You can always do this later.";
+"onboarding.signin.guest" = "Continue as guest";
+"onboarding.signin.failed" = "That didn't complete. You can try again or continue as a guest.";
 "notif.iqama.title.fajr" = "Iqama for Fajr";
 "notif.iqama.title.dhuhr" = "Iqama for Dhuhr";
 "notif.iqama.title.asr" = "Iqama for Asr";

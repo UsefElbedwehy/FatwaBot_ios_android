@@ -171,6 +171,10 @@
 "onboarding.notifications.body" = "احصل على تذكيرات لطيفة للأذان وأذكارك اليومية — قابلة للتخصيص بالكامل من الإعدادات.";
 "onboarding.allow" = "السماح";
 "onboarding.not_now" = "ليس الآن";
+"onboarding.signin.title" = "احفظ تقدّمك";
+"onboarding.signin.body" = "سجّل الدخول للحفاظ على سلاسلك ومفضّلاتك ومزامنتها بين أجهزتك. يمكنك فعل ذلك لاحقاً في أي وقت.";
+"onboarding.signin.guest" = "المتابعة كضيف";
+"onboarding.signin.failed" = "لم تكتمل العملية. يمكنك المحاولة مرة أخرى أو المتابعة كضيف.";
 "notif.iqama.title.fajr" = "إقامة صلاة الفجر";
 "notif.iqama.title.dhuhr" = "إقامة صلاة الظهر";
 "notif.iqama.title.asr" = "إقامة صلاة العصر";

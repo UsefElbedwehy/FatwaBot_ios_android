@@ -64,7 +64,68 @@ public struct OnboardingScreen: View {
                 },
                 onSkip: { viewModel.skip() }
             )
+        case .signIn:
+            SignInStepView(viewModel: viewModel, tokens: tokens)
         }
+    }
+}
+
+/// Optional account step — last, and always escapable via "Continue as guest"
+/// (docs/features/accounts.md: sign-in is never a wall).
+private struct SignInStepView: View {
+    let viewModel: OnboardingViewModel
+    let tokens: ColorTokens
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            ArchIconBadge(systemImage: "person.crop.circle.badge.checkmark", tokens: tokens)
+            Text("onboarding.signin.title")
+                .font(.title.weight(.bold))
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+            Text("onboarding.signin.body")
+                .font(.body)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                .multilineTextAlignment(.center)
+            Spacer()
+
+            if viewModel.signInFailed {
+                Text("onboarding.signin.failed")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+            }
+
+            ForEach(viewModel.signInOptions) { option in
+                Button {
+                    Task { await viewModel.signIn(with: option.id) }
+                } label: {
+                    Group {
+                        if viewModel.isSigningIn {
+                            ProgressView().tint(.white)
+                        } else {
+                            Label(LocalizedStringKey(option.titleKey), systemImage: option.systemImage)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(Color(hexToken: tokens.primary))
+                .disabled(viewModel.isSigningIn)
+            }
+
+            Button("onboarding.signin.guest") { viewModel.continueAsGuest() }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                .disabled(viewModel.isSigningIn)
+        }
+        .padding(24)
     }
 }
 

@@ -96,4 +96,72 @@ final class OnboardingViewModelTests: XCTestCase {
         XCTAssertFalse(spy.locationRequested, "declining must never call the permission API")
         XCTAssertEqual(viewModel.step, .notificationPriming, "must not be a dead end")
     }
+
+    // MARK: - Optional sign-in step (docs/features/accounts.md)
+
+    private func makeSignInViewModel(
+        spy: Spy,
+        store: OnboardingCompletionStore,
+        options: [OnboardingSignInOption] = [OnboardingSignInOption(id: "apple", titleKey: "t", systemImage: "apple.logo")],
+        result: @escaping @Sendable (String) async -> Bool = { _ in true }
+    ) -> OnboardingViewModel {
+        OnboardingViewModel(
+            requestLocation: { spy.locationRequested = true },
+            requestNotifications: { spy.notificationsRequested = true },
+            signInOptions: options,
+            performSignIn: result,
+            completionStore: store,
+            onFinished: { spy.finished = true }
+        )
+    }
+
+    /// Sign-in comes after the permission steps, never before.
+    func testSignInIsTheLastStepWhenProvidersExist() async {
+        let spy = Spy()
+        let viewModel = makeSignInViewModel(spy: spy, store: store())
+        viewModel.advance(); viewModel.advance(); viewModel.advance()
+        XCTAssertEqual(viewModel.step, .notificationPriming)
+        await viewModel.allowNotifications()
+        XCTAssertEqual(viewModel.step, .signIn)
+        XCTAssertFalse(spy.finished, "sign-in must not be skipped past")
+    }
+
+    /// With nothing wired we must not show an empty screen.
+    func testStepIsSkippedEntirelyWhenNoProvidersAreConfigured() async {
+        let spy = Spy()
+        let viewModel = makeSignInViewModel(spy: spy, store: store(), options: [])
+        viewModel.advance(); viewModel.advance(); viewModel.advance()
+        await viewModel.allowNotifications()
+        XCTAssertTrue(spy.finished)
+        XCTAssertNotEqual(viewModel.step, .signIn)
+    }
+
+    func testSuccessfulSignInFinishesOnboarding() async {
+        let spy = Spy()
+        let viewModel = makeSignInViewModel(spy: spy, store: store(), result: { _ in true })
+        await viewModel.signIn(with: "apple")
+        XCTAssertTrue(spy.finished)
+        XCTAssertFalse(viewModel.signInFailed)
+        XCTAssertFalse(viewModel.isSigningIn)
+    }
+
+    /// A failed/cancelled sign-in must NOT drop the user into the app silently.
+    func testFailedSignInKeepsTheUserOnTheStep() async {
+        let spy = Spy()
+        let viewModel = makeSignInViewModel(spy: spy, store: store(), result: { _ in false })
+        await viewModel.signIn(with: "apple")
+        XCTAssertFalse(spy.finished)
+        XCTAssertTrue(viewModel.signInFailed)
+        XCTAssertFalse(viewModel.isSigningIn)
+    }
+
+    /// The account is always optional.
+    func testContinueAsGuestFinishesWithoutSigningIn() async {
+        let spy = Spy()
+        var signInCalled = false
+        let viewModel = makeSignInViewModel(spy: spy, store: store(), result: { _ in signInCalled = true; return true })
+        viewModel.continueAsGuest()
+        XCTAssertTrue(spy.finished)
+        XCTAssertFalse(signInCalled)
+    }
 }
