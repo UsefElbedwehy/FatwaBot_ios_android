@@ -353,11 +353,15 @@ private fun AccountSection(viewModel: AccountViewModel = hiltViewModel()) {
         }
 
         if (!state.isSignedIn) {
-            SignInButton(R.string.settings_account_sign_in_apple, enabled = !state.isBusy) {
-                scope.launch { viewModel.signIn(AccountProvider.APPLE) }
+            if (viewModel.isAvailable(AccountProvider.APPLE)) {
+                SignInButton(R.string.settings_account_sign_in_apple, enabled = !state.isBusy) {
+                    scope.launch { viewModel.signIn(AccountProvider.APPLE) }
+                }
             }
-            SignInButton(R.string.settings_account_sign_in_google, enabled = !state.isBusy) {
-                scope.launch { viewModel.signIn(AccountProvider.GOOGLE) }
+            if (viewModel.isAvailable(AccountProvider.GOOGLE)) {
+                SignInButton(R.string.settings_account_sign_in_google, enabled = !state.isBusy) {
+                    scope.launch { viewModel.signIn(AccountProvider.GOOGLE) }
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 package com.fatwabot.app.account
 
 import androidx.lifecycle.ViewModel
+import com.fatwabot.app.auth.SignInCancelledException
 import com.fatwabot.core.network.AccountException
 import com.fatwabot.core.network.AccountProfile
 import com.fatwabot.core.network.AccountProvider
@@ -33,6 +34,10 @@ class AccountViewModel @Inject constructor(
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
+    /** Only offer providers whose real SDK is wired — Apple has no native
+     * Android sign-in, so its button is hidden rather than failing. */
+    fun isAvailable(provider: AccountProvider): Boolean = credentials.isConfigured(provider)
+
     suspend fun load() {
         if (_state.value.profile != null) return
         _state.update { it.copy(isLoading = true) }
@@ -58,7 +63,12 @@ class AccountViewModel @Inject constructor(
         }.fold(
             onSuccess = { p -> _state.update { it.copy(profile = p, isBusy = false) } },
             onFailure = { error ->
-                val message = if (error is AccountException.AlreadyLinked) Message.ALREADY_LINKED else Message.GENERIC
+                val message = when (error) {
+                    // User dismissed the provider sheet — not an error.
+                    is SignInCancelledException -> Message.NONE
+                    is AccountException.AlreadyLinked -> Message.ALREADY_LINKED
+                    else -> Message.GENERIC
+                }
                 _state.update { it.copy(isBusy = false, message = message) }
             },
         )

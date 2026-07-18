@@ -75,6 +75,11 @@ dependencies {
     implementation(libs.glance.appwidget)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    // Google Sign-In via Credential Manager (returns a Google ID token that the
+    // backend verifies against Google's JWKS).
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)

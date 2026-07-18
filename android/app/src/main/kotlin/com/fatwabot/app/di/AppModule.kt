@@ -8,9 +8,10 @@ import com.fatwabot.core.network.AccountService
 import com.fatwabot.core.network.AccountServicing
 import com.fatwabot.core.network.ApiClient
 import com.fatwabot.core.network.ApiClientProtocol
+import com.fatwabot.app.auth.CompositeCredentialProvider
+import com.fatwabot.app.auth.CurrentActivityHolder
+import com.fatwabot.app.auth.GoogleCredentialProvider
 import com.fatwabot.core.network.ProviderCredentialProviding
-import com.fatwabot.core.network.StubProviderCredentialProvider
-import com.fatwabot.core.network.SubjectStore
 import com.fatwabot.core.network.AuthService
 import com.fatwabot.core.network.AuthTokenProviding
 import com.fatwabot.core.network.AuthenticatedApiClient
@@ -133,18 +134,18 @@ abstract class AppModule {
         fun provideAccountService(client: AuthenticatedApiClientProtocol): AccountServicing =
             AccountService(client)
 
+        /** Real Google Sign-In via Credential Manager; Apple has no native
+         * Android SDK so the composite reports it unconfigured and the UI
+         * hides that button. */
         @Provides
         @Singleton
         fun provideProviderCredential(
             @ApplicationContext context: Context,
-        ): ProviderCredentialProviding {
-            val prefs = context.getSharedPreferences("fatwabot_account", Context.MODE_PRIVATE)
-            val store = object : SubjectStore {
-                override fun load(): String? = prefs.getString("stub_subject", null)
-                override fun save(value: String) { prefs.edit().putString("stub_subject", value).apply() }
-            }
-            return StubProviderCredentialProvider(store)
-        }
+            activityHolder: CurrentActivityHolder,
+        ): ProviderCredentialProviding =
+            CompositeCredentialProvider(
+                google = GoogleCredentialProvider(context, activityHolder),
+            )
 
         @Provides
         @Singleton
