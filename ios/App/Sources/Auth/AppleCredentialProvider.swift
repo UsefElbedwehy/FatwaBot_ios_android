@@ -81,16 +81,10 @@ final class CompositeCredentialProvider: ProviderCredentialProviding, @unchecked
         self.google = google
     }
 
-    /// Google is intentionally reported unconfigured until the GoogleSignIn SDK
-    /// replaces the stub — the backend now verifies real tokens, so a stub
-    /// Google token would 401. Removing this line is the only change needed
-    /// once the SDK lands.
-    private let googleSDKWired = false
-
     func isConfigured(_ provider: AccountProvider) -> Bool {
         switch provider {
         case .apple: return apple.isConfigured(.apple)
-        case .google: return googleSDKWired && google.isConfigured(.google)
+        case .google: return google.isConfigured(.google)
         case .anonymous: return false
         }
     }

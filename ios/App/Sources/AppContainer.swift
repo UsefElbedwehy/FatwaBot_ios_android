@@ -98,14 +98,14 @@ extension Container {
         self { AccountService(client: self.authenticatedClient()) }.singleton
     }
 
-    /// Provider identity-token source. Apple is the real system sheet now that
-    /// the Developer Program + entitlement are provisioned; Google still uses
-    /// the dev stub until the GoogleSignIn SDK is added.
+    /// Provider identity-token source — both real now: Apple via
+    /// ASAuthorizationController, Google via the GoogleSignIn SDK. Each returns
+    /// a signed token the backend verifies against the provider's JWKS.
     var providerCredential: Factory<ProviderCredentialProviding> {
         self {
             CompositeCredentialProvider(
                 apple: AppleCredentialProvider(),
-                google: StubProviderCredentialProvider()
+                google: GoogleCredentialProvider()
             )
         }
         .singleton
