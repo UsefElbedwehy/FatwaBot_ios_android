@@ -29,8 +29,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,7 +49,7 @@ private fun brandTokens(): ColorTokens = if (isSystemInDarkTheme()) DarkTokens e
 // MARK: Screen background
 
 /**
- * Warm cream wash + a faint mihrab-arch watermark in the top-end corner.
+ * Warm cream wash + a soft brand glow in the top-end corner.
  * Apply to the root container of a scrollable screen.
  */
 fun Modifier.brandScreenBackground(tokens: ColorTokens): Modifier =
@@ -62,19 +60,21 @@ fun Modifier.brandScreenBackground(tokens: ColorTokens): Modifier =
             ),
         )
         .drawBehind {
-            // Faint mihrab-arch watermark hanging from the top-trailing corner.
-            // Rotated 180° so the *curve* bleeds into view; otherwise the arch's
-            // straight jambs + flat base read as a stray square in the corner.
-            val w = size.width * 0.82f
-            val h = size.height * 0.34f
-            val path = mihrabArchPath(Size(w, h))
-            val left = size.width - w * 0.45f
-            val top = -h * 0.40f
-            rotate(degrees = 180f, pivot = Offset(left + w / 2f, top + h / 2f)) {
-                translate(left = left, top = top) {
-                    drawPath(path, color = tokens.primary.copy(alpha = 0.04f))
-                }
-            }
+            // Soft corner glow instead of a clipped arch silhouette. Any
+            // hard-edged shape bled into the corner reads as a stray
+            // square/rectangle (its straight jambs and flat base stay on-screen
+            // while the curve goes off it) — rotating it wasn't enough. A radial
+            // gradient has no edges at all, so it can only read as brand warmth.
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        tokens.primary.copy(alpha = 0.07f),
+                        tokens.primary.copy(alpha = 0f),
+                    ),
+                    center = Offset(size.width, 0f),
+                    radius = size.minDimension * 1.1f,
+                ),
+            )
         }
 
 // MARK: Card

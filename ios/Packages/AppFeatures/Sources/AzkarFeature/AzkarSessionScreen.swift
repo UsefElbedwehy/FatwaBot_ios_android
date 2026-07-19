@@ -38,7 +38,13 @@ public struct AzkarSessionScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .onAppear {
-            if viewModel.currentItem == nil, !viewModel.isSessionComplete {
+            // The view model is shared across categories, so a finished session
+            // must not leak its state onto the next category opened: always
+            // re-initialise when this screen is for a different category.
+            // (Guarding only on `!isSessionComplete` made every category opened
+            // after a completed one render as already-completed.)
+            if viewModel.categoryId != category.id
+                || (viewModel.currentItem == nil && !viewModel.isSessionComplete) {
                 viewModel.startSession(categoryId: category.id, items: category.items)
             }
         }

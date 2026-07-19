@@ -66,7 +66,15 @@ fun AzkarSessionScreen(
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
 
     LaunchedEffect(category.id) {
-        if (state.currentItem == null && !state.isSessionComplete) {
+        // The view model is shared across categories, so a finished session must
+        // not leak its state onto the next category opened: always re-initialise
+        // when this screen is for a different category. (Guarding only on
+        // !isSessionComplete made every category opened after a completed one
+        // render as already-completed.)
+        val current = viewModel.state.value
+        if (current.categoryId != category.id ||
+            (current.currentItem == null && !current.isSessionComplete)
+        ) {
             viewModel.startSession(category.id, category.items)
         }
     }
