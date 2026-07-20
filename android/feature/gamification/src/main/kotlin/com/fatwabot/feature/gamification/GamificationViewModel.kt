@@ -39,6 +39,8 @@ class GamificationViewModel @Inject constructor(
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
+    /** Refreshes the profile, keeping the current one visible while the fetch is
+     * in flight (the spinner only shows while the profile is still empty). */
     suspend fun load() {
         _state.update { it.copy(isLoading = true, error = null) }
         // Flush any queued events first so a fresh profile reflects them.

@@ -24,6 +24,13 @@ struct RootTabView: View {
     @State private var selection: AppTab = .home
     @State private var prayerViewModel = Container.shared.prayerViewModel()
     @State private var worshipPath = NavigationPath()
+    // Hoisted so they're created ONCE and survive tab switches. Previously
+    // built inline in `body` (recreated on every re-eval → the Journey tab
+    // reset to an empty profile and re-ran a full network reload on every
+    // visit, which is the lag). Mirrors `prayerViewModel` above.
+    @State private var gamificationViewModel = Container.shared.gamificationViewModel()
+    @State private var leaderboardViewModel = Container.shared.leaderboardViewModel()
+    @State private var searchHistoryViewModel = Container.shared.searchHistoryViewModel()
 
     var body: some View {
         TabView(selection: $selection) {
@@ -58,19 +65,19 @@ struct RootTabView: View {
             .tag(AppTab.worship)
 
             NavigationStack {
-                GamificationScreen(viewModel: Container.shared.gamificationViewModel())
+                GamificationScreen(viewModel: gamificationViewModel)
                     .navigationTitle(Text("tabs.journey"))
                     .toolbar {
                         ToolbarItem(placement: .primaryAction) {
                             NavigationLink {
-                                LeaderboardScreen(viewModel: Container.shared.leaderboardViewModel())
+                                LeaderboardScreen(viewModel: leaderboardViewModel)
                             } label: {
                                 Label("leaderboard.title", systemImage: "trophy")
                             }
                         }
                         ToolbarItem(placement: .secondaryAction) {
                             NavigationLink {
-                                SearchHistoryScreen(viewModel: Container.shared.searchHistoryViewModel())
+                                SearchHistoryScreen(viewModel: searchHistoryViewModel)
                             } label: {
                                 Label("search_history.title", systemImage: "clock.arrow.circlepath")
                             }
