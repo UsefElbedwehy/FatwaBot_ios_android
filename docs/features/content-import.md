@@ -1,4 +1,34 @@
-# Hadith import pipeline
+# Content import pipeline (hadith · azkar · dua)
+
+Three importers share `scripts/import_common.ts` and the same philosophy — **offline,
+reviewable, idempotent**: import a vetted dataset once into your own DB (+ regenerate
+the apps' bundled offline JSON), never call a third-party content API at runtime.
+
+| Type | Script | Test |
+|---|---|---|
+| Hadith | `scripts/hadith_import.ts` | `tests/hadith_import_test.ts` |
+| Azkar  | `scripts/azkar_import.ts`  | `tests/azkar_import_test.ts` |
+| Dua    | `scripts/dua_import.ts`    | `tests/dua_import_test.ts` |
+
+## Datasets imported so far (2026-07)
+- **Azkar** — [Seen-Arabic/Morning-And-Evening-Adhkar-DB](https://github.com/Seen-Arabic/Morning-And-Evening-Adhkar-DB)
+  (MIT): 26 morning + 24 evening, with Albānī gradings, English translation + transliteration.
+  Adapter: `fromSeenArabic`.
+- **Dua** — [rn0x/Adhkar-json](https://github.com/rn0x/Adhkar-json), the Arabic-native
+  full Hisn al-Muslim: 132 categories / 267 duas. **Arabic matn + Arabic titles only**
+  (public domain), attributed `حصن المسلم`; translations/transliterations deliberately
+  omitted (those editions are typically copyrighted). Adapter: `fromHisnAlMuslimAr`.
+- **Hadith** — not yet imported; adapter ready for the fawazahmed0 editions.
+
+> ⚠️ Imported **verbatim** from the sources above. The Arabic matn is public domain,
+> but a **scholarly diacritics proofread is recommended before public launch**, and
+> only **rights-cleared** translations should be added. `published` defaults to false
+> for exactly this reason — the two datasets above were published because they carry
+> real references, but you can unpublish/regenerate anytime.
+
+---
+
+## Hadith importer
 
 Imports hadith collections into `content.hadith_collections` + `content.hadith_entries`
 so they're served by the existing content API (`/v1/content/hadith-collections`)

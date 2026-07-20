@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## [Unreleased]
 
+### 2026-07-20 — Strong azkar + dua datasets (real sources, offline)
+- **Azkar**: replaced the 14-item placeholder with **50 real items** (26 morning + 24 evening) imported from the MIT-licensed Seen-Arabic Morning-And-Evening-Adhkar-DB — Qur'anic verses, references with Albānī gradings, English translation + transliteration.
+- **Dua**: replaced the 2-category placeholder with the **full Hisn al-Muslim** (132 categories / 267 duas) from the Arabic-native rn0x/Adhkar-json — Arabic matn + Arabic titles (public domain), attributed حصن المسلم; translations omitted (copyright-uncertain).
+- New importers `scripts/azkar_import.ts` + `scripts/dua_import.ts` (+ shared `import_common.ts`): idempotent upsert SQL (delete-then-insert per category) and app bundled-JSON regeneration per locale with stable deterministic ids. Adapters `fromSeenArabic` / `fromHisnAlMuslimAr`. 11 new tests; suite 136 green. iOS ContentKit tests (decode the bundled resources) pass.
+- Regenerated all content copies (content/seed + iOS ContentKit + Android core:content) and backend import SQL (`supabase/imports/`). Docs consolidated into `docs/features/content-import.md`.
+- ⚠️ Imported verbatim — Arabic is public domain but a scholarly diacritics proofread is recommended before public launch. Old placeholder `after_prayer` azkar category dropped (source is morning/evening only).
+
 ### 2026-07-14 — Sign in + Account (iOS + Android client)
 - **Account section in Settings** on both platforms replaces the "sign-in coming soon" placeholder: shows Guest vs "Signed in with Apple/Google", an editable **display name** (works today via `PATCH /v1/me/profile`), and Sign in with Apple / Continue with Google buttons when a guest.
 - **`AccountService`** (iOS `NetworkingKit`, Android `core/network`): `me()` / `updateDisplayName()` / `link()` (HTTP 409 → `alreadyLinked`); `AccountViewModel` drives the UI on each platform.
