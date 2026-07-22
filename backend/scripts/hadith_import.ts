@@ -8,6 +8,8 @@
 // Pure transform functions are exported for testing; the CLI at the bottom runs
 // only when executed directly.
 
+import { deterministicUuid, resolveLocale } from "./import_common.ts";
+
 export interface Translations {
   [locale: string]: string;
 }
@@ -39,6 +41,14 @@ export interface BuildOptions {
   published?: boolean;
   /** Provenance recorded on every row (e.g. "fawazahmed0 ara-bukhari"). */
   sourceDataset?: string;
+  /** Review state stamped on every entry. Migration 0014 enforces
+   * `not published or review_status = 'approved'`, so publishing without an
+   * approved status would fail the check constraint. Defaults to 'approved'
+   * when published (paired with reviewedBy), else 'pending'. */
+  reviewStatus?: "pending" | "approved" | "rejected";
+  /** Who approved the rows (e.g. "auto:trusted-import"). Defaults to
+   * 'auto:trusted-import' when published, else null. */
+  reviewedBy?: string;
   /** Rows per INSERT statement (keeps generated statements a sane size). */
   chunkSize?: number;
 }
@@ -106,6 +116,12 @@ export function buildSql(dataset: HadithDataset, options: BuildOptions = {}): st
   }
   const published = options.published ?? false;
   const sourceDataset = options.sourceDataset ?? "";
+  // 0014 enforces `not published or review_status = 'approved'`, so a published
+  // row must carry an approved status or the insert fails the check constraint.
+  const reviewStatus = options.reviewStatus ?? (published ? "approved" : "pending");
+  const reviewedBy = options.reviewedBy ?? (published ? "auto:trusted-import" : "");
+  const reviewedByLiteral = reviewedBy ? sqlString(reviewedBy) : "null";
+  const reviewedAtLiteral = reviewStatus === "approved" ? "now()" : "null";
   const chunkSize = options.chunkSize ?? 500;
   const c = dataset.collection;
 
@@ -119,6 +135,9 @@ export function buildSql(dataset: HadithDataset, options: BuildOptions = {}): st
       jsonbLiteral(e.benefit ?? {}),
       sqlString(e.source ?? ""),
       sqlString(sourceDataset),
+      sqlString(reviewStatus),
+      reviewedByLiteral,
+      reviewedAtLiteral,
       String(published),
     ].join(", ") +
     ")"
@@ -126,7 +145,7 @@ export function buildSql(dataset: HadithDataset, options: BuildOptions = {}): st
 
   const insertStatements = chunk(entryValues, chunkSize).map((rows) =>
     `  insert into content.hadith_entries
-    (collection_id, number, arabic_text, translation_translations, grading, benefit_note_translations, source, source_dataset, published)
+    (collection_id, number, arabic_text, translation_translations, grading, benefit_note_translations, source, source_dataset, review_status, reviewed_by, reviewed_at, published)
   values
 ${rows.join(",\n")}
   on conflict (app_id, collection_id, number) do update set
@@ -136,6 +155,9 @@ ${rows.join(",\n")}
     benefit_note_translations = excluded.benefit_note_translations,
     source = excluded.source,
     source_dataset = excluded.source_dataset,
+    review_status = excluded.review_status,
+    reviewed_by = excluded.reviewed_by,
+    reviewed_at = excluded.reviewed_at,
     published = excluded.published,
     updated_at = now();`
   ).join("\n\n");
@@ -144,7 +166,9 @@ ${rows.join(",\n")}
 -- Collection: ${c.slug} (${dataset.entries.length} entries, published=${published})
 -- Idempotent: re-applying updates existing rows.
 
-do $$
+-- Dollar-quote tag $fb$ (not $$): some matn contains a literal "$$" that would
+-- otherwise close the block early.
+do $fb$
 declare col_id uuid;
 begin
   insert into content.hadith_collections
@@ -160,7 +184,7 @@ begin
   returning id into col_id;
 
 ${insertStatements}
-end $$;
+end $fb$;
 `;
 }
 
@@ -189,9 +213,19 @@ export function fromFawazEdition(
       englishByNumber.set(h.hadithnumber, h.text);
     }
   }
+  // The DB key is `number int` and unique per collection. fawaz uses fractional
+  // hadithnumbers (e.g. 402.2) for secondary narrations whose integer part
+  // collides with the primary — key on the integer canonical number and skip the
+  // fractional variants (the primary narration is always retained). The caller
+  // can compare entries.length against the raw count to report how many were
+  // skipped — nothing is dropped silently.
   const entries: HadithEntryInput[] = [];
+  const seen = new Set<number>();
   for (const h of arabicEdition.hadiths ?? []) {
-    if (typeof h.hadithnumber !== "number" || typeof h.text !== "string" || h.text.trim() === "") continue;
+    if (typeof h.hadithnumber !== "number" || !Number.isInteger(h.hadithnumber)) continue;
+    if (typeof h.text !== "string" || h.text.trim() === "") continue;
+    if (seen.has(h.hadithnumber)) continue;
+    seen.add(h.hadithnumber);
     const en = englishByNumber.get(h.hadithnumber);
     const grade = h.grades?.map((g) => g.grade).filter(Boolean).join(" · ") ?? "";
     entries.push({
@@ -204,6 +238,49 @@ export function fromFawazEdition(
   return {
     collection: { slug, name: names, description: options.description, sortOrder: options.sortOrder },
     entries,
+  };
+}
+
+// --- Bundled offline JSON (mirrors the app's ContentKit / core:content shapes) -
+// One detail file per collection per locale (hadith-<slug>.<locale>.json) plus a
+// single collections index (hadith-collections.<locale>.json). Deterministic ids
+// so re-runs and the ar/en files stay in lockstep. Only compact collections are
+// bundled; large ones are catalogued in the index and fetched on demand (sync).
+
+/** The per-collection detail file the app loads for `hadith-<slug>.<locale>`. */
+export function toBundledJson(dataset: HadithDataset, locale: string): unknown {
+  const c = dataset.collection;
+  return {
+    version: 1,
+    slug: c.slug,
+    name: resolveLocale(c.name, locale),
+    description: resolveLocale(c.description, locale),
+    entries: dataset.entries.map((e) => ({
+      id: deterministicUuid(`hadith:${c.slug}:${e.number}`),
+      number: e.number,
+      arabicText: e.arabic.trim(),
+      translation: resolveLocale(e.translation, locale) || null,
+      grading: e.grading ?? "",
+      benefitNote: resolveLocale(e.benefit, locale) || null,
+      source: e.source ?? "",
+    })),
+  };
+}
+
+/** The catalogue file (`hadith-collections.<locale>`): lightweight summaries for
+ * every collection, whether or not its detail is bundled. */
+export function collectionsIndex(
+  datasets: HadithDataset[],
+  locale: string,
+): unknown {
+  return {
+    collections: datasets.map((d) => ({
+      id: deterministicUuid(`hadith:${d.collection.slug}`),
+      slug: d.collection.slug,
+      name: resolveLocale(d.collection.name, locale),
+      description: resolveLocale(d.collection.description, locale),
+      entryCount: d.entries.length,
+    })),
   };
 }
 
