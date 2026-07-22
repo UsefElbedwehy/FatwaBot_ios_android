@@ -54,6 +54,13 @@ Deno.test("buildSql throws on invalid data instead of emitting broken SQL", () =
   assertThrows(() => buildSql({ categories: [] }), Error, "Invalid azkar dataset");
 });
 
+Deno.test("buildSql records provenance and defaults to unpublished (pending review)", () => {
+  const sql = buildSql(DATASET, { sourceDataset: "Seen-Arabic (MIT)" });
+  assertStringIncludes(sql, "source_dataset");
+  assertStringIncludes(sql, "'Seen-Arabic (MIT)'");
+  assertStringIncludes(sql, ", false)"); // published defaults to false -> stays pending review
+});
+
 Deno.test("toBundledJson matches the app's ContentKit shape and localises", () => {
   const ar = toBundledJson(DATASET, "ar") as { version: number; categories: Array<Record<string, unknown>> };
   assertEquals(ar.version, 1);

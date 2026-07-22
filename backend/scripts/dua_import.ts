@@ -61,7 +61,10 @@ export function validate(dataset: DuaDataset): string[] {
 }
 
 export interface BuildOptions {
+  /** Default false — new imports stay unpublished until a reviewer approves. */
   published?: boolean;
+  /** Provenance recorded on every row. */
+  sourceDataset?: string;
   chunkSize?: number;
 }
 
@@ -69,6 +72,7 @@ export function buildSql(dataset: DuaDataset, options: BuildOptions = {}): strin
   const errors = validate(dataset);
   if (errors.length > 0) throw new Error(`Invalid dua dataset:\n - ${errors.join("\n - ")}`);
   const published = options.published ?? false;
+  const sourceDataset = options.sourceDataset ?? "";
   const chunkSize = options.chunkSize ?? 500;
 
   const blocks = dataset.categories.map((c) => {
@@ -81,12 +85,13 @@ export function buildSql(dataset: DuaDataset, options: BuildOptions = {}): strin
         jsonbLiteral(it.transliteration ?? {}),
         jsonbLiteral(it.translation ?? {}),
         sqlString(it.source ?? ""),
+        sqlString(sourceDataset),
         String(published),
       ].join(", ") + ")"
     );
     const inserts = chunk(rows, chunkSize).map((part) =>
       `  insert into content.duas
-    (category_id, sort_order, title_translations, arabic_text, transliteration_translations, translation_translations, source, published)
+    (category_id, sort_order, title_translations, arabic_text, transliteration_translations, translation_translations, source, source_dataset, published)
   values
 ${part.join(",\n")};`
     ).join("\n\n");
@@ -183,7 +188,7 @@ if (import.meta.main) {
   }
   const sqlOut = get("--sql");
   if (sqlOut) {
-    await Deno.writeTextFile(sqlOut, buildSql(dataset, { published: publish }));
+    await Deno.writeTextFile(sqlOut, buildSql(dataset, { published: publish, sourceDataset: get("--source-dataset") }));
     console.error(`Wrote SQL → ${sqlOut} (published=${publish})`);
   }
   const bundledDir = get("--bundled-dir");

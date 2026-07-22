@@ -37,6 +37,8 @@ export interface BuildOptions {
   /** Whether the imported rows are immediately visible to the app. Defaults to
    * false so nothing goes live unreviewed. */
   published?: boolean;
+  /** Provenance recorded on every row (e.g. "fawazahmed0 ara-bukhari"). */
+  sourceDataset?: string;
   /** Rows per INSERT statement (keeps generated statements a sane size). */
   chunkSize?: number;
 }
@@ -103,6 +105,7 @@ export function buildSql(dataset: HadithDataset, options: BuildOptions = {}): st
     throw new Error(`Invalid hadith dataset:\n - ${errors.join("\n - ")}`);
   }
   const published = options.published ?? false;
+  const sourceDataset = options.sourceDataset ?? "";
   const chunkSize = options.chunkSize ?? 500;
   const c = dataset.collection;
 
@@ -115,6 +118,7 @@ export function buildSql(dataset: HadithDataset, options: BuildOptions = {}): st
       sqlString(e.grading ?? ""),
       jsonbLiteral(e.benefit ?? {}),
       sqlString(e.source ?? ""),
+      sqlString(sourceDataset),
       String(published),
     ].join(", ") +
     ")"
@@ -122,7 +126,7 @@ export function buildSql(dataset: HadithDataset, options: BuildOptions = {}): st
 
   const insertStatements = chunk(entryValues, chunkSize).map((rows) =>
     `  insert into content.hadith_entries
-    (collection_id, number, arabic_text, translation_translations, grading, benefit_note_translations, source, published)
+    (collection_id, number, arabic_text, translation_translations, grading, benefit_note_translations, source, source_dataset, published)
   values
 ${rows.join(",\n")}
   on conflict (app_id, collection_id, number) do update set
@@ -131,6 +135,7 @@ ${rows.join(",\n")}
     grading = excluded.grading,
     benefit_note_translations = excluded.benefit_note_translations,
     source = excluded.source,
+    source_dataset = excluded.source_dataset,
     published = excluded.published,
     updated_at = now();`
   ).join("\n\n");
@@ -204,19 +209,20 @@ export function fromFawazEdition(
 
 // --- CLI ---------------------------------------------------------------------
 
-function parseArgs(args: string[]): { input?: string; out?: string; publish: boolean } {
-  const result: { input?: string; out?: string; publish: boolean } = { publish: false };
+function parseArgs(args: string[]): { input?: string; out?: string; publish: boolean; sourceDataset?: string } {
+  const result: { input?: string; out?: string; publish: boolean; sourceDataset?: string } = { publish: false };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--publish") result.publish = true;
     else if (a === "--in") result.input = args[++i];
     else if (a === "--out") result.out = args[++i];
+    else if (a === "--source-dataset") result.sourceDataset = args[++i];
   }
   return result;
 }
 
 if (import.meta.main) {
-  const { input, out, publish } = parseArgs(Deno.args);
+  const { input, out, publish, sourceDataset } = parseArgs(Deno.args);
   if (!input) {
     console.error(
       "Usage: deno run --allow-read --allow-write scripts/hadith_import.ts --in <dataset.json> [--out <file.sql>] [--publish]\n" +
@@ -230,7 +236,7 @@ if (import.meta.main) {
     console.error(`Validation failed:\n - ${errors.join("\n - ")}`);
     Deno.exit(1);
   }
-  const sql = buildSql(dataset, { published: publish });
+  const sql = buildSql(dataset, { published: publish, sourceDataset });
   const outPath = out ?? `supabase/imports/hadith_${dataset.collection.slug}.sql`;
   await Deno.mkdir(new URL("./", `file://${Deno.cwd()}/${outPath}`).pathname, { recursive: true }).catch(() => {});
   await Deno.writeTextFile(outPath, sql);

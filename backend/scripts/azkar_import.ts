@@ -69,7 +69,10 @@ export function validate(dataset: AzkarDataset): string[] {
 }
 
 export interface BuildOptions {
+  /** Default false — new imports stay unpublished until a reviewer approves. */
   published?: boolean;
+  /** Provenance recorded on every row (e.g. "Seen-Arabic (MIT)"). */
+  sourceDataset?: string;
   chunkSize?: number;
 }
 
@@ -81,6 +84,7 @@ export function buildSql(dataset: AzkarDataset, options: BuildOptions = {}): str
   const errors = validate(dataset);
   if (errors.length > 0) throw new Error(`Invalid azkar dataset:\n - ${errors.join("\n - ")}`);
   const published = options.published ?? false;
+  const sourceDataset = options.sourceDataset ?? "";
   const chunkSize = options.chunkSize ?? 500;
 
   const blocks = dataset.categories.map((c) => {
@@ -94,12 +98,13 @@ export function buildSql(dataset: AzkarDataset, options: BuildOptions = {}): str
         jsonbLiteral(it.virtue ?? {}),
         sqlString(it.source ?? ""),
         String(it.repeatCount ?? 1),
+        sqlString(sourceDataset),
         String(published),
       ].join(", ") + ")"
     );
     const inserts = chunk(rows, chunkSize).map((part) =>
       `  insert into content.azkar_items
-    (category_id, sort_order, arabic_text, transliteration_translations, translation_translations, virtue_note_translations, source, repeat_count, published)
+    (category_id, sort_order, arabic_text, transliteration_translations, translation_translations, virtue_note_translations, source, repeat_count, source_dataset, published)
   values
 ${part.join(",\n")};`
     ).join("\n\n");
@@ -264,7 +269,7 @@ if (import.meta.main) {
   }
   const sqlOut = get("--sql");
   if (sqlOut) {
-    await Deno.writeTextFile(sqlOut, buildSql(dataset, { published: publish }));
+    await Deno.writeTextFile(sqlOut, buildSql(dataset, { published: publish, sourceDataset: get("--source-dataset") }));
     console.error(`Wrote SQL → ${sqlOut} (published=${publish})`);
   }
   const bundledDir = get("--bundled-dir");

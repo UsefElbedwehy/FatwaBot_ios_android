@@ -43,6 +43,13 @@ Deno.test("buildSql throws on invalid data", () => {
   assertThrows(() => buildSql({ categories: [] }), Error, "Invalid dua dataset");
 });
 
+Deno.test("buildSql records provenance and defaults to unpublished (pending review)", () => {
+  const sql = buildSql(DATASET, { sourceDataset: "Hisn al-Muslim (rn0x/Adhkar-json)" });
+  assertStringIncludes(sql, "source_dataset");
+  assertStringIncludes(sql, "'Hisn al-Muslim (rn0x/Adhkar-json)'");
+  assertStringIncludes(sql, ", false)"); // published defaults to false -> stays pending review
+});
+
 Deno.test("toBundledJson matches app shape; title is a string (never null)", () => {
   const ar = toBundledJson(DATASET, "ar") as { categories: Array<Record<string, unknown>> };
   const cat = ar.categories[0];

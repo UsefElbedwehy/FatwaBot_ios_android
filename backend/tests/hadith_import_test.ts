@@ -82,6 +82,13 @@ Deno.test("buildSql respects the published flag (default false)", () => {
   assert(!published.includes(", false)"));
 });
 
+Deno.test("buildSql records provenance in source_dataset (both the row and the do-update-set)", () => {
+  const sql = buildSql(SAMPLE, { sourceDataset: "fawazahmed0 ara-bukhari" });
+  assertStringIncludes(sql, "source_dataset");
+  assertStringIncludes(sql, "'fawazahmed0 ara-bukhari'");
+  assertStringIncludes(sql, "source_dataset = excluded.source_dataset"); // carried on re-import
+});
+
 Deno.test("buildSql chunks large entry sets into multiple inserts", () => {
   const many: HadithDataset = {
     collection: SAMPLE.collection,
