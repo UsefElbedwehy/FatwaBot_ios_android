@@ -2,6 +2,7 @@ import { assert, assertEquals, assertStringIncludes, assertThrows } from "jsr:@s
 import {
   type AzkarDataset,
   buildSql,
+  fromHisnCategories,
   fromHisnCategory,
   type HisnCategoryRaw,
   fromSeenArabic,
@@ -100,6 +101,20 @@ Deno.test("fromHisnCategory maps a Hisn al-Muslim category, Arabic-only + count"
   assertEquals(out.items[1].repeatCount, 33);
   assertEquals(out.items[0].source, "حصن المسلم");
   assertEquals(out.items[0].translation, undefined); // no copyrighted translation pulled
+  assertEquals(validate({ categories: [out] }), []);
+});
+
+Deno.test("fromHisnCategories merges several categories into one, in order", () => {
+  const cats: HisnCategoryRaw[] = [
+    { id: 95, category: "دعاء الركوب", array: [{ id: 1, text: "بِسْمِ اللَّهِ" }] },
+    { id: 96, category: "دعاء السفر", array: [{ id: 1, text: "اللَّهُ أَكْبَرُ", count: 3 }, { id: 2, text: "سُبْحَانَ" }] },
+  ];
+  const out = fromHisnCategories(cats, "travel", { ar: "أذكار السفر", en: "Travel" }, 5);
+  assertEquals(out.slug, "travel");
+  assertEquals(out.items.length, 3); // 1 + 2, concatenated in order
+  assertEquals(out.items[0].arabic, "بِسْمِ اللَّهِ");
+  assertEquals(out.items[1].repeatCount, 3);
+  assertEquals(out.items.every((i) => i.source === "حصن المسلم"), true);
   assertEquals(validate({ categories: [out] }), []);
 });
 

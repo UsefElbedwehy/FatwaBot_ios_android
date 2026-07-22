@@ -225,6 +225,23 @@ export function fromHisnCategory(
   };
 }
 
+/** Merges several rn0x categories into one azkar category (their items are
+ * concatenated in the given order). Used to group related Hisn al-Muslim
+ * chapters — e.g. riding + journey + return → a single "travel" category. */
+export function fromHisnCategories(
+  cats: HisnCategoryRaw[],
+  slug: string,
+  name: Translations,
+  sortOrder: number,
+): AzkarCategoryInput {
+  return {
+    slug,
+    name,
+    sortOrder,
+    items: cats.flatMap((c) => fromHisnCategory(c, slug, name, sortOrder).items),
+  };
+}
+
 // --- CLI ---------------------------------------------------------------------
 
 if (import.meta.main) {
