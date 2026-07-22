@@ -2,6 +2,8 @@ import { assert, assertEquals, assertStringIncludes, assertThrows } from "jsr:@s
 import {
   type AzkarDataset,
   buildSql,
+  fromHisnCategory,
+  type HisnCategoryRaw,
   fromSeenArabic,
   type SeenArabicItem,
   toBundledJson,
@@ -78,6 +80,27 @@ Deno.test("deterministicUuid is stable and UUID-shaped (v4)", () => {
   assertEquals(a, deterministicUuid("azkar:morning:0"));
   assert(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(a), a);
   assert(a !== deterministicUuid("azkar:morning:1"));
+});
+
+Deno.test("fromHisnCategory maps a Hisn al-Muslim category, Arabic-only + count", () => {
+  const cat: HisnCategoryRaw = {
+    id: 27,
+    category: "الأذكار بعد السلام من الصلاة",
+    array: [
+      { id: 1, text: "أَسْتَغْفِرُ اللَّهَ", count: 3 },
+      { id: 2, text: "سُبْحَانَ اللَّهِ", count: 33 },
+      { id: 3, text: "   " }, // blank dropped
+    ],
+  };
+  const out = fromHisnCategory(cat, "after_prayer", { ar: "أذكار بعد السلام من الصلاة", en: "After-Prayer" }, 2);
+  assertEquals(out.slug, "after_prayer");
+  assertEquals(out.sortOrder, 2);
+  assertEquals(out.items.length, 2);
+  assertEquals(out.items[0].repeatCount, 3);
+  assertEquals(out.items[1].repeatCount, 33);
+  assertEquals(out.items[0].source, "حصن المسلم");
+  assertEquals(out.items[0].translation, undefined); // no copyrighted translation pulled
+  assertEquals(validate({ categories: [out] }), []);
 });
 
 Deno.test("fromSeenArabic splits by type (0=both,1=morning,2=evening) and merges en", () => {

@@ -194,6 +194,37 @@ export function fromSeenArabic(ar: SeenArabicItem[], en: SeenArabicItem[]): Azka
   };
 }
 
+// --- Adapter: a single rn0x/Adhkar-json (Hisn al-Muslim) category ------------
+// For azkar categories that source has but Seen-Arabic doesn't (after-prayer,
+// sleep, waking). Arabic matn only, attributed حصن المسلم (translations of that
+// edition are typically copyrighted).
+
+export interface HisnCategoryRaw {
+  id: number;
+  category: string;
+  array: Array<{ id: number; text: string; count?: number }>;
+}
+
+export function fromHisnCategory(
+  cat: HisnCategoryRaw,
+  slug: string,
+  name: Translations,
+  sortOrder: number,
+): AzkarCategoryInput {
+  return {
+    slug,
+    name,
+    sortOrder,
+    items: cat.array
+      .filter((i) => typeof i.text === "string" && i.text.trim() !== "")
+      .map((i) => ({
+        arabic: i.text.trim(),
+        repeatCount: i.count && i.count > 0 ? i.count : 1,
+        source: "حصن المسلم",
+      })),
+  };
+}
+
 // --- CLI ---------------------------------------------------------------------
 
 if (import.meta.main) {
