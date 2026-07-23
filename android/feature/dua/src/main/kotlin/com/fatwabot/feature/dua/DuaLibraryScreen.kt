@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,6 +47,7 @@ import com.fatwabot.core.designsystem.ColorTokens
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.feature.dua.R
 
 /** Library browse/search home (docs/features/dua.md screen 1) — mirror of
  * iOS DuaLibraryScreen. */
@@ -79,12 +81,12 @@ fun DuaLibraryScreen(
                 if (results.isEmpty()) {
                     BrandEmptyState(
                         icon = Icons.Filled.Search,
-                        message = "لا توجد نتائج مطابقة",
+                        message = stringResource(R.string.dua_no_results),
                         tokens = tokens,
                     )
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        BrandSectionHeader("نتائج البحث", icon = Icons.Filled.Search, tokens = tokens)
+                        BrandSectionHeader(stringResource(R.string.dua_search_results), icon = Icons.Filled.Search, tokens = tokens)
                         results.forEach { dua ->
                             DuaRowCard(
                                 dua = dua,
@@ -98,20 +100,20 @@ fun DuaLibraryScreen(
             } else if (state.categories.isEmpty() && state.favoriteDuas.isEmpty()) {
                 if (!state.hasLoadedCategories) {
                     Text(
-                        "جارٍ التحميل…",
+                        stringResource(R.string.dua_loading),
                         color = tokens.onSurfaceSecondary,
                     )
                 } else {
                     BrandEmptyState(
                         icon = Icons.Filled.AutoAwesome,
-                        message = "لا توجد أدعية متاحة حالياً. يرجى المحاولة لاحقاً.",
+                        message = stringResource(R.string.dua_empty),
                         tokens = tokens,
                     )
                 }
             } else {
                 if (state.favoriteDuas.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        BrandSectionHeader("المفضلة", icon = Icons.Filled.Favorite, tokens = tokens)
+                        BrandSectionHeader(stringResource(R.string.dua_favorites), icon = Icons.Filled.Favorite, tokens = tokens)
                         state.favoriteDuas.forEach { dua ->
                             DuaRowCard(
                                 dua = dua,
@@ -165,7 +167,7 @@ private fun SearchField(
         Box(modifier = Modifier.weight(1f)) {
             if (query.isEmpty()) {
                 Text(
-                    "ابحث في الأدعية…",
+                    stringResource(R.string.dua_search_hint),
                     style = MaterialTheme.typography.bodyLarge,
                     color = tokens.onSurfaceSecondary,
                 )

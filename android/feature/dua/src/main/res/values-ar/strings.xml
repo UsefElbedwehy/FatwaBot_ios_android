@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dua_search_hint">ابحث في الأدعية…</string>
+    <string name="dua_no_results">لا توجد نتائج مطابقة</string>
+    <string name="dua_search_results">نتائج البحث</string>
+    <string name="dua_loading">جارٍ التحميل…</string>
+    <string name="dua_empty">لا توجد أدعية متاحة حالياً. يرجى المحاولة لاحقاً.</string>
+    <string name="dua_favorites">المفضلة</string>
+    <string name="dua_favorite">مفضلة</string>
+    <string name="dua_share">مشاركة</string>
+    <string name="dua_show_transliteration">إظهار النطق</string>
+    <string name="dua_transliteration_label">النطق</string>
+</resources>

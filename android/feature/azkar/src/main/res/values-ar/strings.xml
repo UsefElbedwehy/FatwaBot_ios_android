@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="azkar_loading">جارٍ التحميل…</string>
+    <string name="azkar_empty_message">لا توجد أذكار متاحة حالياً. يرجى المحاولة لاحقاً.</string>
+    <string name="azkar_title">الأذكار</string>
+    <string name="azkar_done_today">أُنجز اليوم</string>
+    <string name="azkar_virtue">الفائدة</string>
+    <string name="azkar_tap_to_count">اضغط للعد</string>
+    <string name="azkar_tap_to_count_cd">اضغط للعد، %1$d من %2$d</string>
+    <string name="azkar_completed_title">أتممت الأذكار</string>
+    <string name="azkar_completed_subtitle">تقبّل الله منك</string>
+</resources>

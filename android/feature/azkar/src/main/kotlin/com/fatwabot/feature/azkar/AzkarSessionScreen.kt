@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +54,7 @@ import com.fatwabot.core.designsystem.MotionTokens
 import com.fatwabot.core.designsystem.RingProgress
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.motionAnimationSpec
+import com.fatwabot.feature.azkar.R
 
 /** The reading/counting session (docs/features/azkar.md screen 2) — mirror of
  * iOS AzkarSessionScreen. Completion is a calm confirmation, not a
@@ -182,7 +184,7 @@ private fun SessionView(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            "الفائدة",
+                            stringResource(R.string.azkar_virtue),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = tokens.primary,
@@ -218,6 +220,7 @@ private fun Counter(item: AzkarItem, currentCount: Int, tokens: ColorTokens, onT
         animationSpec = motionAnimationSpec(reduceMotion, MotionTokens.QUICK_MS),
         label = "azkarCount",
     )
+    val counterCd = stringResource(R.string.azkar_tap_to_count_cd, currentCount, item.repeatCount)
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         Surface(
@@ -226,7 +229,7 @@ private fun Counter(item: AzkarItem, currentCount: Int, tokens: ColorTokens, onT
             modifier = Modifier
                 .size(220.dp * fontScale)
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "اضغط للعد، $currentCount من ${item.repeatCount}"
+                    contentDescription = counterCd
                 },
             onClick = onTick,
         ) {
@@ -255,7 +258,7 @@ private fun Counter(item: AzkarItem, currentCount: Int, tokens: ColorTokens, onT
                         color = tokens.primary,
                     )
                     Text(
-                        "اضغط للعد",
+                        stringResource(R.string.azkar_tap_to_count),
                         style = MaterialTheme.typography.labelSmall,
                         color = tokens.onSurfaceSecondary,
                     )
@@ -278,14 +281,14 @@ private fun CompletionView(tokens: ColorTokens) {
         ArchIconBadge(icon = Icons.Filled.Check, size = 84.dp, tokens = tokens)
         Spacer(Modifier.height(20.dp))
         Text(
-            "أتممت الأذكار",
+            stringResource(R.string.azkar_completed_title),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             color = tokens.onSurface,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "تقبّل الله منك",
+            stringResource(R.string.azkar_completed_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = tokens.onSurfaceSecondary,
             textAlign = TextAlign.Center,

@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +44,7 @@ import com.fatwabot.core.designsystem.BrandSectionHeader
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.feature.azkar.R
 
 /** Category browser (docs/features/azkar.md screen 1) — mirror of iOS
  * AzkarCategoryListScreen. Loads from ContentKit (offline-first). */
@@ -66,12 +68,12 @@ fun AzkarCategoryListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     CircularProgressIndicator(color = tokens.primary)
-                    Text("جارٍ التحميل…", color = tokens.onSurfaceSecondary)
+                    Text(stringResource(R.string.azkar_loading), color = tokens.onSurfaceSecondary)
                 }
             } else {
                 BrandEmptyState(
                     icon = Icons.Filled.MenuBook,
-                    message = "لا توجد أذكار متاحة حالياً. يرجى المحاولة لاحقاً.",
+                    message = stringResource(R.string.azkar_empty_message),
                     modifier = Modifier.align(Alignment.Center),
                     tokens = tokens,
                 )
@@ -84,7 +86,7 @@ fun AzkarCategoryListScreen(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                BrandSectionHeader("الأذكار", icon = Icons.Filled.MenuBook, tokens = tokens)
+                BrandSectionHeader(stringResource(R.string.azkar_title), icon = Icons.Filled.MenuBook, tokens = tokens)
                 state.categories.forEach { category ->
                     CategoryRow(
                         category = category,
@@ -148,7 +150,7 @@ private fun CategoryRow(
             if (done) {
                 Icon(
                     Icons.Filled.CheckCircle,
-                    contentDescription = "أُنجز اليوم",
+                    contentDescription = stringResource(R.string.azkar_done_today),
                     tint = tokens.primary,
                 )
             } else {

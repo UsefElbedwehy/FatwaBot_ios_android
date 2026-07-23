@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -151,7 +152,7 @@ private fun Compass(bearing: Double, heading: Double, isAligned: Boolean, tokens
         }
         Icon(
             Icons.Filled.NearMe,
-            contentDescription = "بوصلة القبلة",
+            contentDescription = stringResource(R.string.qibla_compass_desc),
             tint = if (isAligned) tokens.accent else tokens.primary,
             modifier = Modifier.size(64.dp).rotate(animatedAngle),
         )
@@ -179,8 +180,8 @@ private fun isAlignedTo(needleAngle: Double): Boolean {
 @Composable
 private fun AccuracyNotice(accuracy: Double, tokens: ColorTokens) {
     val notice: Pair<ImageVector, String>? = when {
-        accuracy < 0 -> Icons.Filled.Explore to "جارٍ المعايرة… حرّك جهازك على شكل ٨"
-        accuracy > 25 -> Icons.Filled.WarningAmber to "تشويش مغناطيسي — ابتعد عن الأجسام المعدنية"
+        accuracy < 0 -> Icons.Filled.Explore to stringResource(R.string.qibla_calibrating)
+        accuracy > 25 -> Icons.Filled.WarningAmber to stringResource(R.string.qibla_magnetic_interference)
         else -> null
     }
     notice?.let { (icon, text) ->
@@ -207,7 +208,7 @@ private fun StaticFallback(bearing: Double, tokens: ColorTokens) {
         ) {
             ArchIconBadge(icon = Icons.Filled.Explore, tokens = tokens)
             Text(
-                "اتجاه القبلة: ${bearing.toInt()}°",
+                stringResource(R.string.qibla_direction, bearing.toInt()),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = tokens.onSurface,

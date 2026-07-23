@@ -30,14 +30,14 @@ class StreakWidget : GlanceAppWidget() {
         val snapshot = GamificationWidgetSnapshotAccess.read(context)
         provideContent {
             GlanceTheme {
-                StreakContent(snapshot)
+                StreakContent(context, snapshot)
             }
         }
     }
 }
 
 @Composable
-private fun StreakContent(snapshot: GamificationWidgetSnapshot?) {
+private fun StreakContent(context: Context, snapshot: GamificationWidgetSnapshot?) {
     val streak = snapshot?.topStreak
     Column(
         modifier = GlanceModifier.fillMaxSize().padding(12.dp),
@@ -51,11 +51,11 @@ private fun StreakContent(snapshot: GamificationWidgetSnapshot?) {
                 style = TextStyle(color = ColorProvider(BrandPrimary), fontSize = 32.sp, fontWeight = FontWeight.Bold),
             )
             Text(
-                if (streak.graceRemaining > 0) "متبقٍ ${streak.graceRemaining} يوم رحمة" else "الأفضل: ${streak.longestLength}",
+                if (streak.graceRemaining > 0) context.getString(R.string.widget_streak_grace, streak.graceRemaining) else context.getString(R.string.widget_streak_best, streak.longestLength),
                 style = TextStyle(fontSize = 11.sp),
             )
         } else {
-            Text("افتح التطبيق", style = TextStyle(color = ColorProvider(BrandPrimary)))
+            Text(context.getString(R.string.widget_open_app), style = TextStyle(color = ColorProvider(BrandPrimary)))
         }
     }
 }

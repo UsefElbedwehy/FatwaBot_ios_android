@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="leaderboard_empty">No leaderboards available yet.</string>
+    <string name="leaderboard_my_rank">My rank: #%1$d</string>
+    <string name="leaderboard_leave">Leave board</string>
+    <string name="leaderboard_join">Join</string>
+    <string name="leaderboard_entry_cd">Rank %1$d, %2$s, %3$d</string>
+    <string name="leaderboard_join_title">Join the board</string>
+    <string name="leaderboard_publish_name">Publish my name instead of an alias</string>
+    <string name="leaderboard_city_placeholder">Your city</string>
+    <string name="leaderboard_cancel">Cancel</string>
+</resources>

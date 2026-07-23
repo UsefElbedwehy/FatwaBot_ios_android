@@ -29,14 +29,14 @@ class DailyChallengeWidget : GlanceAppWidget() {
         val snapshot = GamificationWidgetSnapshotAccess.read(context)
         provideContent {
             GlanceTheme {
-                DailyChallengeContent(snapshot)
+                DailyChallengeContent(context, snapshot)
             }
         }
     }
 }
 
 @Composable
-private fun DailyChallengeContent(snapshot: GamificationWidgetSnapshot?) {
+private fun DailyChallengeContent(context: Context, snapshot: GamificationWidgetSnapshot?) {
     val challenge = snapshot?.dailyChallenge
     Column(
         modifier = GlanceModifier.fillMaxSize().padding(12.dp),
@@ -50,7 +50,7 @@ private fun DailyChallengeContent(snapshot: GamificationWidgetSnapshot?) {
                 style = TextStyle(color = ColorProvider(BrandPrimary), fontSize = 24.sp, fontWeight = FontWeight.Bold),
             )
         } else {
-            Text("افتح التطبيق", style = TextStyle(color = ColorProvider(BrandPrimary)))
+            Text(context.getString(R.string.widget_open_app), style = TextStyle(color = ColorProvider(BrandPrimary)))
         }
     }
 }

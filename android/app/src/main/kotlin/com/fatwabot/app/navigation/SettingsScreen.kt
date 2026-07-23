@@ -2,7 +2,12 @@ package com.fatwabot.app.navigation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
@@ -92,21 +99,70 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
     ) {
         AccountSection()
 
+        LanguageSection()
+
         NotificationsSection(prayerViewModel)
 
         FeaturesGuideSection()
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            BrandSectionHeader("حول التطبيق", icon = Icons.Filled.Info)
+            BrandSectionHeader(stringResource(R.string.settings_about), icon = Icons.Filled.Info)
             BrandCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("الإصدار", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.settings_version), color = MaterialTheme.colorScheme.onSurface)
                     Text(BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+        }
+    }
+}
+
+/** Language row. Opens the OS-native per-app Language screen (Android 13+, via
+ * ACTION_APP_LOCALE_SETTINGS with the app's declared locales_config). On older
+ * versions there is no per-app language screen, so it falls back to App info. */
+@Composable
+private fun LanguageSection() {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BrandSectionHeader(stringResource(R.string.language_section), icon = Icons.Filled.Language)
+        BrandCard {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val uri = Uri.fromParts("package", context.packageName, null)
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            Intent(Settings.ACTION_APP_LOCALE_SETTINGS, uri)
+                        } else {
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri)
+                        }
+                        context.startActivity(intent)
+                    },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.language_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        stringResource(R.string.language_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
@@ -121,32 +177,32 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        BrandSectionHeader("الإشعارات", icon = Icons.Filled.NotificationsActive)
+        BrandSectionHeader(stringResource(R.string.settings_notifications), icon = Icons.Filled.NotificationsActive)
         BrandCard {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                ToggleRow("الأذان", "إشعار عند دخول وقت كل صلاة.", prefs.adhanEnabled) {
+                ToggleRow(stringResource(R.string.settings_notif_adhan_title), stringResource(R.string.settings_notif_adhan_subtitle), prefs.adhanEnabled) {
                     update(prefs.copy(adhanEnabled = it))
                 }
                 Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ToggleRow("تنبيه قبل الأذان", "تنبيه قبل الأذان بوقت تحدده.", prefs.preAdhanEnabled) {
+                ToggleRow(stringResource(R.string.settings_notif_pre_adhan_title), stringResource(R.string.settings_notif_pre_adhan_subtitle), prefs.preAdhanEnabled) {
                     update(prefs.copy(preAdhanEnabled = it))
                 }
                 if (prefs.preAdhanEnabled) {
-                    OffsetRow("دقائق قبل الأذان", prefs.preAdhanOffsetMinutes) {
+                    OffsetRow(stringResource(R.string.settings_notif_minutes_before), prefs.preAdhanOffsetMinutes) {
                         update(prefs.copy(preAdhanOffsetMinutes = it))
                     }
                 }
                 Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ToggleRow("تذكير بالإقامة", "تذكير بعد الأذان بوقت تحدده.", prefs.iqamaEnabled) {
+                ToggleRow(stringResource(R.string.settings_notif_iqama_title), stringResource(R.string.settings_notif_iqama_subtitle), prefs.iqamaEnabled) {
                     update(prefs.copy(iqamaEnabled = it))
                 }
                 if (prefs.iqamaEnabled) {
-                    OffsetRow("دقائق بعد الأذان", prefs.iqamaOffsetMinutes) {
+                    OffsetRow(stringResource(R.string.settings_notif_minutes_after), prefs.iqamaOffsetMinutes) {
                         update(prefs.copy(iqamaOffsetMinutes = it))
                     }
                 }
                 Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ToggleRow("الثلث الأخير من الليل", "تنبيه عند بدء الثلث الأخير من الليل.", prefs.lastThirdEnabled) {
+                ToggleRow(stringResource(R.string.settings_notif_last_third_title), stringResource(R.string.settings_notif_last_third_subtitle), prefs.lastThirdEnabled) {
                     update(prefs.copy(lastThirdEnabled = it))
                 }
             }
@@ -182,9 +238,9 @@ private fun OffsetRow(label: String, value: Int, onChange: (Int) -> Unit) {
         IconButton(
             onClick = { onChange((value - 1).coerceAtLeast(PrayerNotificationPreferences.OFFSET_MIN)) },
             enabled = value > PrayerNotificationPreferences.OFFSET_MIN,
-        ) { Icon(Icons.Filled.Remove, contentDescription = "إنقاص", tint = MaterialTheme.colorScheme.primary) }
+        ) { Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.settings_stepper_decrease), tint = MaterialTheme.colorScheme.primary) }
         Text(
-            "$value د",
+            stringResource(R.string.settings_minutes_value, value),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -194,7 +250,7 @@ private fun OffsetRow(label: String, value: Int, onChange: (Int) -> Unit) {
         IconButton(
             onClick = { onChange((value + 1).coerceAtMost(PrayerNotificationPreferences.OFFSET_MAX)) },
             enabled = value < PrayerNotificationPreferences.OFFSET_MAX,
-        ) { Icon(Icons.Filled.Add, contentDescription = "زيادة", tint = MaterialTheme.colorScheme.primary) }
+        ) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.settings_stepper_increase), tint = MaterialTheme.colorScheme.primary) }
     }
 }
 
@@ -203,14 +259,14 @@ private data class GuideItem(val icon: ImageVector, val title: String, val body:
 @Composable
 private fun FeaturesGuideSection() {
     val items = listOf(
-        GuideItem(Icons.Filled.Campaign, "الأذان", "يرسل إشعارًا عند دخول وقت كل صلاة من الصلوات الخمس حسب موقعك."),
-        GuideItem(Icons.Filled.NotificationsNone, "تنبيه قبل الأذان", "تنبيه مبكر قبل الأذان بعدد الدقائق الذي تحدده لتستعد للصلاة."),
-        GuideItem(Icons.Filled.Groups, "تذكير بالإقامة", "تذكير بعد الأذان بعدد الدقائق الذي تحدده — عند وقت الإقامة تقريبًا."),
-        GuideItem(Icons.Filled.NightsStay, "الثلث الأخير من الليل", "ينبهك عند بدء الثلث الأخير من الليل (من المغرب إلى الفجر) — وهو وقت محبوب للتهجد والدعاء."),
-        GuideItem(Icons.Filled.AutoAwesome, "التتابع", "يتتبع عدد الأيام المتتالية التي تحافظ فيها على كل عبادة. أكمل النشاط يوميًا ليكبر تتابعك."),
+        GuideItem(Icons.Filled.Campaign, stringResource(R.string.settings_notif_adhan_title), stringResource(R.string.settings_guide_adhan_body)),
+        GuideItem(Icons.Filled.NotificationsNone, stringResource(R.string.settings_notif_pre_adhan_title), stringResource(R.string.settings_guide_pre_adhan_body)),
+        GuideItem(Icons.Filled.Groups, stringResource(R.string.settings_notif_iqama_title), stringResource(R.string.settings_guide_iqama_body)),
+        GuideItem(Icons.Filled.NightsStay, stringResource(R.string.settings_notif_last_third_title), stringResource(R.string.settings_guide_last_third_body)),
+        GuideItem(Icons.Filled.AutoAwesome, stringResource(R.string.settings_guide_streak_title), stringResource(R.string.settings_guide_streak_body)),
     )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        BrandSectionHeader("دليل الميزات", icon = Icons.Filled.HelpOutline)
+        BrandSectionHeader(stringResource(R.string.settings_guide_title), icon = Icons.Filled.HelpOutline)
         BrandCard {
             Column {
                 items.forEachIndexed { index, item ->

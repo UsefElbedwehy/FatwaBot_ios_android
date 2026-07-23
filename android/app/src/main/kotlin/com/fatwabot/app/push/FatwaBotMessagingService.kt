@@ -56,7 +56,7 @@ class FatwaBotMessagingService : FirebaseMessagingService() {
         val manager = getSystemService<NotificationManager>() ?: return
         if (manager.getNotificationChannel(CHANNEL_ID) == null) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "التنبيهات العامة", NotificationManager.IMPORTANCE_HIGH),
+                NotificationChannel(CHANNEL_ID, getString(R.string.notification_channel_general), NotificationManager.IMPORTANCE_HIGH),
             )
         }
     }

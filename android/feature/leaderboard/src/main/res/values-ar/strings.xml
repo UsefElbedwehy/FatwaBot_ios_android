@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="leaderboard_empty">لا توجد لوحات متصدرين متاحة بعد.</string>
+    <string name="leaderboard_my_rank">ترتيبي: #%1$d</string>
+    <string name="leaderboard_leave">مغادرة اللوحة</string>
+    <string name="leaderboard_join">انضمام</string>
+    <string name="leaderboard_entry_cd">المركز %1$d، %2$s، %3$d</string>
+    <string name="leaderboard_join_title">الانضمام إلى اللوحة</string>
+    <string name="leaderboard_publish_name">نشر اسمي بدلاً من اسم مستعار</string>
+    <string name="leaderboard_city_placeholder">مدينتك</string>
+    <string name="leaderboard_cancel">إلغاء</string>
+</resources>

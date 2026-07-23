@@ -25,11 +25,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fatwabot.feature.hadith.R
 import com.fatwabot.core.content.HadithCollectionSummary
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.designsystem.BrandEmptyState
@@ -62,7 +64,7 @@ fun HadithCollectionsScreen(
             } else {
                 BrandEmptyState(
                     icon = Icons.AutoMirrored.Filled.MenuBook,
-                    message = "لا توجد مجموعات أحاديث متاحة حالياً. يرجى المحاولة لاحقاً.",
+                    message = stringResource(R.string.hadith_empty),
                     modifier = Modifier.align(Alignment.Center),
                     tokens = tokens,
                 )
@@ -111,7 +113,7 @@ private fun CollectionCard(
                 RingProgress(value = fraction, strokeWidth = 5.dp, modifier = Modifier.fillMaxSize())
                 Icon(
                     if (completed) Icons.Filled.Check else Icons.AutoMirrored.Filled.MenuBook,
-                    contentDescription = if (completed) "مكتمل" else null,
+                    contentDescription = if (completed) stringResource(R.string.hadith_completed) else null,
                     tint = if (completed) tokens.accent else tokens.primary,
                     modifier = Modifier.size(20.dp),
                 )
@@ -124,7 +126,7 @@ private fun CollectionCard(
                     color = tokens.onSurface,
                 )
                 Text(
-                    "${readCount}/${collection.entryCount} مقروء",
+                    stringResource(R.string.hadith_read_count, readCount, collection.entryCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = tokens.onSurfaceSecondary,
                 )

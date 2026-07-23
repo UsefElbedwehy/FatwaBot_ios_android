@@ -168,7 +168,7 @@ fun CityPicker(onSelect: (ManualCity, String) -> Unit) {
     ) {
         item {
             BrandSectionHeader(
-                title = "اختر مدينتك",
+                title = stringResource(R.string.prayer_pick_city),
                 icon = Icons.Filled.LocationCity,
                 modifier = Modifier.padding(bottom = 6.dp),
             )

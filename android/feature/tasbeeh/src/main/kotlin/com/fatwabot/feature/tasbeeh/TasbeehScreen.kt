@@ -40,12 +40,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fatwabot.feature.tasbeeh.R
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.designsystem.BrandEmptyState
 import com.fatwabot.core.designsystem.ColorTokens
@@ -75,7 +77,7 @@ fun TasbeehScreen(viewModel: TasbeehViewModel = hiltViewModel()) {
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 IconButton(onClick = { showHistory = true }) {
-                    Icon(Icons.Filled.History, contentDescription = "سجل التسبيح", tint = tokens.primary)
+                    Icon(Icons.Filled.History, contentDescription = stringResource(R.string.tasbeeh_history_title), tint = tokens.primary)
                 }
             }
             PresetChips(state, viewModel, tokens)
@@ -93,11 +95,11 @@ fun TasbeehScreen(viewModel: TasbeehViewModel = hiltViewModel()) {
     if (showResetConfirm) {
         AlertDialog(
             onDismissRequest = { showResetConfirm = false },
-            title = { Text("هل تريد إعادة التعيين؟ سيتم فقدان العدد الحالي") },
+            title = { Text(stringResource(R.string.tasbeeh_reset_confirm)) },
             confirmButton = {
-                TextButton(onClick = { viewModel.reset(); showResetConfirm = false }) { Text("إعادة التعيين") }
+                TextButton(onClick = { viewModel.reset(); showResetConfirm = false }) { Text(stringResource(R.string.tasbeeh_reset_confirm_action)) }
             },
-            dismissButton = { TextButton(onClick = { showResetConfirm = false }) { Text("إلغاء") } },
+            dismissButton = { TextButton(onClick = { showResetConfirm = false }) { Text(stringResource(R.string.tasbeeh_cancel)) } },
         )
     }
 
@@ -116,13 +118,13 @@ private fun PresetChips(state: TasbeehViewModel.UiState, viewModel: TasbeehViewM
             DhikrPreset.bundled.forEach { preset ->
                 Chip(preset.arabicText, state.selectedPreset.id == preset.id, tokens) { viewModel.select(preset) }
             }
-            Chip("مخصص", state.selectedPreset.id == DhikrPreset.CUSTOM.id, tokens) { viewModel.select(DhikrPreset.CUSTOM) }
+            Chip(stringResource(R.string.tasbeeh_custom), state.selectedPreset.id == DhikrPreset.CUSTOM.id, tokens) { viewModel.select(DhikrPreset.CUSTOM) }
         }
         if (state.selectedPreset.id == DhikrPreset.CUSTOM.id) {
             OutlinedTextField(
                 value = state.customText,
                 onValueChange = viewModel::updateCustomText,
-                placeholder = { Text("اكتب ذكرك الخاص") },
+                placeholder = { Text(stringResource(R.string.tasbeeh_custom_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -209,7 +211,7 @@ private fun TapTarget(state: TasbeehViewModel.UiState, viewModel: TasbeehViewMod
                     modifier = Modifier.padding(horizontal = 24.dp),
                 )
                 Text(
-                    "الهدف: ${state.target}",
+                    stringResource(R.string.tasbeeh_target, state.target),
                     style = MaterialTheme.typography.bodyMedium,
                     color = tokens.onSurfaceSecondary,
                 )
@@ -228,10 +230,10 @@ private fun ControlsRow(
 ) {
     var targetMenuOpen by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onResetTap, modifier = Modifier.weight(1f)) { Text("إعادة") }
+        OutlinedButton(onClick = onResetTap, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.tasbeeh_reset)) }
         Column(modifier = Modifier.weight(1f)) {
             OutlinedButton(onClick = { targetMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("الهدف: ${state.target}")
+                Text(stringResource(R.string.tasbeeh_target, state.target))
             }
             DropdownMenu(expanded = targetMenuOpen, onDismissRequest = { targetMenuOpen = false }) {
                 DhikrPreset.commonTargets.forEach { value ->
@@ -240,7 +242,7 @@ private fun ControlsRow(
             }
         }
         Button(onClick = onComplete, enabled = state.count > 0, modifier = Modifier.weight(1f)) {
-            Text("إنهاء الجولة")
+            Text(stringResource(R.string.tasbeeh_complete_set))
         }
     }
 }
@@ -249,16 +251,16 @@ private fun ControlsRow(
 private fun TasbeehHistorySheet(state: TasbeehViewModel.UiState, tokens: ColorTokens, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("تم") } },
-        title = { Text("سجل التسبيح") },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.tasbeeh_done)) } },
+        title = { Text(stringResource(R.string.tasbeeh_history_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    StatCard(state.stats.totalCount, "الإجمالي", tokens, Modifier.weight(1f))
-                    StatCard(state.stats.setsCompleted, "الجولات المكتملة", tokens, Modifier.weight(1f))
+                    StatCard(state.stats.totalCount, stringResource(R.string.tasbeeh_total), tokens, Modifier.weight(1f))
+                    StatCard(state.stats.setsCompleted, stringResource(R.string.tasbeeh_sets_completed), tokens, Modifier.weight(1f))
                 }
                 if (state.history.isEmpty()) {
-                    BrandEmptyState(Icons.Filled.History, "لا توجد جلسات بعد — أكمل جولة لتظهر هنا.", tokens = tokens)
+                    BrandEmptyState(Icons.Filled.History, stringResource(R.string.tasbeeh_history_empty), tokens = tokens)
                 } else {
                     BrandCard(tokens = tokens) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

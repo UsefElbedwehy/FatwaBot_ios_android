@@ -42,9 +42,9 @@ class HijriDateWidget : GlanceAppWidget() {
                             ),
                         )
                         Text(snapshot.hijriMonthName, style = TextStyle(fontSize = 16.sp))
-                        Text("${snapshot.hijriYear} هـ", style = TextStyle(fontSize = 12.sp))
+                        Text(context.getString(R.string.widget_hijri_year, snapshot.hijriYear), style = TextStyle(fontSize = 12.sp))
                     } else {
-                        Text("افتح التطبيق", style = TextStyle(color = ColorProvider(BrandPrimary)))
+                        Text(context.getString(R.string.widget_open_app), style = TextStyle(color = ColorProvider(BrandPrimary)))
                     }
                 }
             }

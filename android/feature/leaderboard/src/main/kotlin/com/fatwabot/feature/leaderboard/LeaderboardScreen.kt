@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +54,7 @@ import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.RankMedal
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.feature.leaderboard.R
 import kotlinx.coroutines.launch
 
 /** Leaderboards screen — mirror of iOS LeaderboardScreen
@@ -88,7 +90,7 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
             if (!state.isLoading && state.boards.isEmpty() && state.error == null) {
                 BrandEmptyState(
                     Icons.Filled.EmojiEvents,
-                    "لا توجد لوحات متصدرين متاحة بعد.",
+                    stringResource(R.string.leaderboard_empty),
                     tokens = tokens,
                 )
             }
@@ -154,7 +156,7 @@ private fun BoardCard(
                 }
                 board.myRank?.let { rank ->
                     Text(
-                        "ترتيبي: #$rank",
+                        stringResource(R.string.leaderboard_my_rank, rank),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = tokens.primary,
@@ -177,7 +179,7 @@ private fun BoardCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.primary),
                 ) {
-                    Text("مغادرة اللوحة", fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.leaderboard_leave), fontWeight = FontWeight.Medium)
                 }
             } else {
                 Button(
@@ -190,7 +192,7 @@ private fun BoardCard(
                 ) {
                     Icon(Icons.Filled.PersonAddAlt, contentDescription = null, modifier = Modifier.width(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("انضمام", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.leaderboard_join), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -199,6 +201,7 @@ private fun BoardCard(
 
 @Composable
 private fun EntryRow(entry: LeaderboardEntry, isMe: Boolean, tokens: ColorTokens) {
+    val entryDescription = stringResource(R.string.leaderboard_entry_cd, entry.rank, entry.displayName, entry.score.toInt())
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -206,7 +209,7 @@ private fun EntryRow(entry: LeaderboardEntry, isMe: Boolean, tokens: ColorTokens
             .background(if (isMe) tokens.primary.copy(alpha = 0.08f) else Color.Transparent)
             .padding(horizontal = 8.dp, vertical = 8.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "المركز ${entry.rank}، ${entry.displayName}، ${entry.score.toInt()}"
+                contentDescription = entryDescription
             },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -235,7 +238,7 @@ private fun JoinDialog(board: LeaderboardBoard, onDismiss: () -> Unit, onConfirm
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("الانضمام إلى اللوحة") },
+        title = { Text(stringResource(R.string.leaderboard_join_title)) },
         text = {
             Column {
                 Row(
@@ -243,11 +246,11 @@ private fun JoinDialog(board: LeaderboardBoard, onDismiss: () -> Unit, onConfirm
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
                 ) {
-                    Text("نشر اسمي بدلاً من اسم مستعار")
+                    Text(stringResource(R.string.leaderboard_publish_name))
                     Switch(checked = publishName, onCheckedChange = { publishName = it })
                 }
                 if (isCityScope) {
-                    OutlinedTextField(value = city, onValueChange = { city = it }, placeholder = { Text("مدينتك") })
+                    OutlinedTextField(value = city, onValueChange = { city = it }, placeholder = { Text(stringResource(R.string.leaderboard_city_placeholder)) })
                 }
             }
         },
@@ -255,8 +258,8 @@ private fun JoinDialog(board: LeaderboardBoard, onDismiss: () -> Unit, onConfirm
             TextButton(
                 onClick = { onConfirm(publishName, if (isCityScope) city else null) },
                 enabled = !isCityScope || city.isNotBlank(),
-            ) { Text("انضمام") }
+            ) { Text(stringResource(R.string.leaderboard_join)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.leaderboard_cancel)) } },
     )
 }

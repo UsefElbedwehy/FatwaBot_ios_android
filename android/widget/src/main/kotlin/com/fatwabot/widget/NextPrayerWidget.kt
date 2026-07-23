@@ -35,14 +35,14 @@ class NextPrayerWidget : GlanceAppWidget() {
         val snapshot = WidgetSnapshotAccess.read(context)
         provideContent {
             GlanceTheme {
-                NextPrayerContent(snapshot)
+                NextPrayerContent(context, snapshot)
             }
         }
     }
 }
 
 @Composable
-private fun NextPrayerContent(snapshot: PrayerWidgetSnapshot?) {
+private fun NextPrayerContent(context: Context, snapshot: PrayerWidgetSnapshot?) {
     val nowSeconds = System.currentTimeMillis() / 1000
     val next = snapshot?.nextEntry(nowSeconds)
 
@@ -53,7 +53,7 @@ private fun NextPrayerContent(snapshot: PrayerWidgetSnapshot?) {
     ) {
         if (next != null) {
             Text(
-                prayerLabel(next.prayer),
+                prayerLabel(context, next.prayer),
                 style = TextStyle(
                     color = ColorProvider(BrandPrimary),
                     fontSize = 22.sp,
@@ -65,18 +65,18 @@ private fun NextPrayerContent(snapshot: PrayerWidgetSnapshot?) {
                 style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
             )
         } else {
-            Text("افتح التطبيق", style = TextStyle(color = ColorProvider(BrandPrimary)))
+            Text(context.getString(R.string.widget_open_app), style = TextStyle(color = ColorProvider(BrandPrimary)))
         }
     }
 }
 
-internal fun prayerLabel(raw: String): String = when (raw) {
-    "fajr" -> "الفجر"
-    "sunrise" -> "الشروق"
-    "dhuhr" -> "الظهر"
-    "asr" -> "العصر"
-    "maghrib" -> "المغرب"
-    "isha" -> "العشاء"
+internal fun prayerLabel(context: Context, raw: String): String = when (raw) {
+    "fajr" -> context.getString(R.string.widget_prayer_fajr)
+    "sunrise" -> context.getString(R.string.widget_prayer_sunrise)
+    "dhuhr" -> context.getString(R.string.widget_prayer_dhuhr)
+    "asr" -> context.getString(R.string.widget_prayer_asr)
+    "maghrib" -> context.getString(R.string.widget_prayer_maghrib)
+    "isha" -> context.getString(R.string.widget_prayer_isha)
     else -> raw
 }
 

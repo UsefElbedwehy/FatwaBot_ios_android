@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_welcome_title">مرحباً بك في Fatwa Bot</string>
+    <string name="onboarding_welcome_body">رفيقك اليومي للصلاة والعبادة والعادات الثابتة.</string>
+    <string name="onboarding_get_started">ابدأ الآن</string>
+    <string name="onboarding_highlights_title">ماذا ستجد</string>
+    <string name="onboarding_highlight_prayer">أوقات الصلاة والقبلة</string>
+    <string name="onboarding_highlight_azkar">الأذكار والتسبيح والأوراد والأحاديث</string>
+    <string name="onboarding_highlight_streak">تتبع تتابعك</string>
+    <string name="onboarding_continue">متابعة</string>
+    <string name="onboarding_location_title">أوقات صلاة دقيقة</string>
+    <string name="onboarding_location_body">نستخدم موقعك لحساب أوقات الصلاة واتجاه القبلة بدقة حيث أنت.</string>
+    <string name="onboarding_notification_title">لا تفوّت صلاة أبداً</string>
+    <string name="onboarding_notification_body">احصل على تذكيرات لطيفة للأذان وأذكارك اليومية — قابلة للتخصيص بالكامل من الإعدادات.</string>
+    <string name="onboarding_allow">السماح</string>
+    <string name="onboarding_not_now">ليس الآن</string>
+    <string name="onboarding_sign_in_title">احفظ تقدّمك</string>
+    <string name="onboarding_sign_in_body">سجّل الدخول للحفاظ على سلاسلك ومفضّلاتك ومزامنتها بين أجهزتك. يمكنك فعل ذلك لاحقاً في أي وقت.</string>
+    <string name="onboarding_sign_in_failed">لم تكتمل العملية. يمكنك المحاولة مرة أخرى أو المتابعة كضيف.</string>
+    <string name="onboarding_sign_in_apple">تسجيل الدخول عبر Apple</string>
+    <string name="onboarding_sign_in_google">المتابعة عبر Google</string>
+    <string name="onboarding_continue_as_guest">المتابعة كضيف</string>
+</resources>

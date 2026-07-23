@@ -9,6 +9,10 @@
     <string name="prayer_pick_city">اختر مدينتك</string>
     <string name="prayer_previous_day">اليوم السابق</string>
     <string name="prayer_next_day">اليوم التالي</string>
+    <string name="qibla_compass_desc">بوصلة القبلة</string>
+    <string name="qibla_calibrating">جارٍ المعايرة… حرّك جهازك على شكل ٨</string>
+    <string name="qibla_magnetic_interference">تشويش مغناطيسي — ابتعد عن الأجسام المعدنية</string>
+    <string name="qibla_direction">اتجاه القبلة: %1$d°</string>
     <string name="city_makkah">مكة المكرمة</string>
     <string name="city_madinah">المدينة المنورة</string>
     <string name="city_riyadh">الرياض</string>

@@ -4,4 +4,14 @@
     <string name="widget_hijri">Hijri Date</string>
     <string name="widget_streak">Streak</string>
     <string name="widget_daily_challenge">Daily Challenge</string>
+    <string name="widget_open_app">Open the app</string>
+    <string name="widget_prayer_fajr">Fajr</string>
+    <string name="widget_prayer_sunrise">Sunrise</string>
+    <string name="widget_prayer_dhuhr">Dhuhr</string>
+    <string name="widget_prayer_asr">Asr</string>
+    <string name="widget_prayer_maghrib">Maghrib</string>
+    <string name="widget_prayer_isha">Isha</string>
+    <string name="widget_streak_best">Best: %1$d</string>
+    <string name="widget_streak_grace">%1$d grace day(s) left</string>
+    <string name="widget_hijri_year">%1$d AH</string>
 </resources>

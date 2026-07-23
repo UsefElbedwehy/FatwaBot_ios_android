@@ -29,12 +29,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fatwabot.feature.hadith.R
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
@@ -76,7 +78,7 @@ fun HadithReadingScreen(
                     shape = RoundedCornerShape(50),
                 ) {
                     Text(
-                        "الحديث رقم ${entry.number}",
+                        stringResource(R.string.hadith_number, entry.number),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
@@ -139,7 +141,7 @@ fun HadithReadingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = tokens.accent, modifier = Modifier.size(16.dp))
                         Text(
-                            "الفائدة",
+                            stringResource(R.string.hadith_benefit),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = tokens.accent,
@@ -174,12 +176,12 @@ fun HadithReadingScreen(
                 onClick = viewModel::previous,
                 enabled = state.currentIndex > 0,
                 modifier = Modifier.weight(1f),
-            ) { Text("السابق") }
+            ) { Text(stringResource(R.string.hadith_previous)) }
             Button(
                 onClick = viewModel::next,
                 enabled = detail != null && state.currentIndex < detail.entries.size - 1,
                 modifier = Modifier.weight(1f),
-            ) { Text("التالي") }
+            ) { Text(stringResource(R.string.hadith_next)) }
         }
     }
 }

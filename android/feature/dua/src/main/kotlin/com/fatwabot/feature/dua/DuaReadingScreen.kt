@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +51,7 @@ import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.feature.dua.R
 
 /** Reading view (docs/features/dua.md screen 3) — mirror of iOS
  * DuaReadingScreen: Arabic text, translation, source, favorite toggle, share. */
@@ -79,18 +81,18 @@ fun DuaReadingScreen(
                 IconButton(onClick = { viewModel.toggleFavorite(dua.id) }) {
                     Icon(
                         if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = "مفضلة",
+                        contentDescription = stringResource(R.string.dua_favorite),
                         tint = tokens.primary,
                     )
                 }
                 IconButton(onClick = { shareDua(context, dua) }) {
-                    Icon(Icons.Filled.Share, contentDescription = "مشاركة", tint = tokens.primary)
+                    Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.dua_share), tint = tokens.primary)
                 }
                 if (dua.transliteration != null) {
                     IconButton(onClick = { showTransliteration = !showTransliteration }) {
                         Icon(
                             Icons.Filled.TextFields,
-                            contentDescription = "إظهار النطق",
+                            contentDescription = stringResource(R.string.dua_show_transliteration),
                             tint = if (showTransliteration) tokens.primary else tokens.onSurfaceSecondary,
                         )
                     }
@@ -143,7 +145,7 @@ fun DuaReadingScreen(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Text(
-                            "النطق",
+                            stringResource(R.string.dua_transliteration_label),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = tokens.accent,

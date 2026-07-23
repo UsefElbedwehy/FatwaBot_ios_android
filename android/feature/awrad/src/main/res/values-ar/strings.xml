@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="awrad_my_stats">إحصائياتي</string>
+    <string name="awrad_add_wird">إضافة ورد</string>
+    <string name="awrad_my_awrad">أورادي</string>
+    <string name="awrad_stat_total_dhikr">مجموع الأذكار</string>
+    <string name="awrad_stat_completed_days">أيام مكتملة</string>
+    <string name="awrad_stat_quran_pages">صفحات القرآن</string>
+    <string name="awrad_stat_salawat">الصلاة على النبي</string>
+    <string name="awrad_empty_title">لا توجد أوراد بعد</string>
+    <string name="awrad_empty_subtitle">أضف وردك الأول لتبدأ رحلتك اليومية</string>
+    <string name="awrad_mark_day_complete">أتممت وردي اليوم</string>
+    <string name="awrad_done">تم</string>
+    <string name="awrad_new_wird">ورد جديد</string>
+    <string name="awrad_cancel">إلغاء</string>
+    <string name="awrad_choose_template">اختر من القوالب</string>
+    <string name="awrad_wird_name">اسم الورد</string>
+    <string name="awrad_custom_wird_default">ورد مخصص</string>
+    <string name="awrad_save_wird">حفظ الورد</string>
+    <string name="awrad_create_custom_wird">إنشاء ورد مخصص</string>
+</resources>

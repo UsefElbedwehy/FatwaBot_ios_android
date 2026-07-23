@@ -35,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,6 +47,7 @@ import com.fatwabot.core.designsystem.ColorTokens
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.feature.searchhistory.R
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -78,7 +80,7 @@ fun SearchHistoryScreen(viewModel: SearchHistoryViewModel = hiltViewModel()) {
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = { showingClearConfirmation = true }) {
-                        Text("مسح الكل", color = tokens.primary, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.searchhistory_clear_all), color = tokens.primary, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -108,7 +110,7 @@ fun SearchHistoryScreen(viewModel: SearchHistoryViewModel = hiltViewModel()) {
             if (!state.isLoading && state.entries.isEmpty() && state.error == null) {
                 BrandEmptyState(
                     Icons.Filled.History,
-                    "سيظهر سجل بحثك هنا.",
+                    stringResource(R.string.searchhistory_empty),
                     tokens = tokens,
                 )
             }
@@ -124,14 +126,14 @@ fun SearchHistoryScreen(viewModel: SearchHistoryViewModel = hiltViewModel()) {
     if (showingClearConfirmation) {
         AlertDialog(
             onDismissRequest = { showingClearConfirmation = false },
-            title = { Text("مسح كل سجل البحث؟") },
+            title = { Text(stringResource(R.string.searchhistory_clear_confirm_title)) },
             confirmButton = {
                 TextButton(onClick = {
                     showingClearConfirmation = false
                     scope.launch { viewModel.clearAll() }
-                }) { Text("مسح الكل", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.searchhistory_clear_all), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { showingClearConfirmation = false }) { Text("إلغاء") } },
+            dismissButton = { TextButton(onClick = { showingClearConfirmation = false }) { Text(stringResource(R.string.searchhistory_cancel)) } },
         )
     }
 }
@@ -168,7 +170,7 @@ private fun EntryRow(entry: SearchHistoryEntry, tokens: ColorTokens, onDelete: (
         IconButton(onClick = onDelete) {
             Icon(
                 Icons.Filled.Close,
-                contentDescription = "حذف",
+                contentDescription = stringResource(R.string.searchhistory_delete),
                 tint = tokens.onSurfaceSecondary,
                 modifier = Modifier.size(18.dp),
             )

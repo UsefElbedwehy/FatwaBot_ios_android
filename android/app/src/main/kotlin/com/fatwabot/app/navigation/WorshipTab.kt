@@ -30,7 +30,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.fatwabot.app.R
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,14 +65,14 @@ import com.fatwabot.feature.tasbeeh.TasbeehScreen
  * growing. `destination` is hoisted to RootScaffold so Home's quick actions
  * (task 26) can deep-link directly into a screen, not just the tab.
  */
-enum class WorshipDestination(val title: String) {
-    PRAYER("أوقات الصلاة"),
-    QIBLA("القبلة"),
-    TASBEEH("السُّبحة"),
-    AZKAR("الأذكار"),
-    DUA("الأدعية"),
-    AWRAD("أثرك"),
-    HADITH("الأحاديث"),
+enum class WorshipDestination(@StringRes val titleRes: Int) {
+    PRAYER(R.string.worship_prayer_times),
+    QIBLA(R.string.worship_qibla),
+    TASBEEH(R.string.worship_tasbeeh),
+    AZKAR(R.string.worship_azkar),
+    DUA(R.string.worship_dua),
+    AWRAD(R.string.worship_awrad),
+    HADITH(R.string.worship_hadith),
 }
 
 @Composable
@@ -86,23 +89,23 @@ fun WorshipTab(
             onSelect = onDestinationChange,
         )
         WorshipDestination.PRAYER -> WorshipDetailScaffold(
-            title = WorshipDestination.PRAYER.title,
+            title = stringResource(WorshipDestination.PRAYER.titleRes),
             onBack = { onDestinationChange(null) },
         ) { PrayerScreen(prayerViewModel) }
         WorshipDestination.QIBLA -> WorshipDetailScaffold(
-            title = WorshipDestination.QIBLA.title,
+            title = stringResource(WorshipDestination.QIBLA.titleRes),
             onBack = { onDestinationChange(null) },
         ) {
             prayerState.location?.let { location -> QiblaScreen(location = location) }
         }
         WorshipDestination.TASBEEH -> WorshipDetailScaffold(
-            title = WorshipDestination.TASBEEH.title,
+            title = stringResource(WorshipDestination.TASBEEH.titleRes),
             onBack = { onDestinationChange(null) },
         ) { TasbeehScreen(viewModel = hiltViewModel()) }
         WorshipDestination.AZKAR -> {
             var selectedCategory by remember { mutableStateOf<AzkarCategory?>(null) }
             WorshipDetailScaffold(
-                title = selectedCategory?.name ?: WorshipDestination.AZKAR.title,
+                title = selectedCategory?.name ?: stringResource(WorshipDestination.AZKAR.titleRes),
                 onBack = { if (selectedCategory != null) selectedCategory = null else onDestinationChange(null) },
             ) {
                 val category = selectedCategory
@@ -116,7 +119,7 @@ fun WorshipTab(
         WorshipDestination.DUA -> {
             var selectedDua by remember { mutableStateOf<Dua?>(null) }
             WorshipDetailScaffold(
-                title = selectedDua?.title ?: WorshipDestination.DUA.title,
+                title = selectedDua?.title ?: stringResource(WorshipDestination.DUA.titleRes),
                 onBack = { if (selectedDua != null) selectedDua = null else onDestinationChange(null) },
             ) {
                 val dua = selectedDua
@@ -128,13 +131,13 @@ fun WorshipTab(
             }
         }
         WorshipDestination.AWRAD -> WorshipDetailScaffold(
-            title = WorshipDestination.AWRAD.title,
+            title = stringResource(WorshipDestination.AWRAD.titleRes),
             onBack = { onDestinationChange(null) },
         ) { AwradBoardScreen(viewModel = hiltViewModel()) }
         WorshipDestination.HADITH -> {
             var selectedCollection by remember { mutableStateOf<HadithCollectionSummary?>(null) }
             WorshipDetailScaffold(
-                title = selectedCollection?.name ?: WorshipDestination.HADITH.title,
+                title = selectedCollection?.name ?: stringResource(WorshipDestination.HADITH.titleRes),
                 onBack = { if (selectedCollection != null) selectedCollection = null else onDestinationChange(null) },
             ) {
                 val collection = selectedCollection
@@ -201,7 +204,7 @@ private fun WorshipTile(destination: WorshipDestination, onClick: () -> Unit) {
             }
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 12.dp))
             Text(
-                destination.title,
+                stringResource(destination.titleRes),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
@@ -219,7 +222,7 @@ private fun WorshipDetailScaffold(title: String, onBack: () -> Unit, content: @C
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 },
             )

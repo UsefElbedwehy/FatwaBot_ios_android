@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +59,7 @@ import com.fatwabot.core.designsystem.MotionTokens
 import com.fatwabot.core.designsystem.RingProgress
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.motionAnimationSpec
+import com.fatwabot.feature.gamification.R
 
 /** Journey tab — mirror of iOS GamificationScreen. Renders server descriptors
  * verbatim (docs/features/gamification.md). */
@@ -88,24 +90,24 @@ fun GamificationScreen(viewModel: GamificationViewModel = hiltViewModel()) {
 
             if (profile.streaks.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("السلاسل", icon = Icons.Filled.CalendarMonth)
+                    BrandSectionHeader(stringResource(R.string.gamification_streaks), icon = Icons.Filled.CalendarMonth)
                     profile.streaks.forEach { StreakCard(it) }
                 }
             }
             if (profile.missions.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("المهام", icon = Icons.Filled.MilitaryTech)
+                    BrandSectionHeader(stringResource(R.string.gamification_missions), icon = Icons.Filled.MilitaryTech)
                     profile.missions.forEach { MissionCard(it) }
                 }
             }
             if (profile.badges.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("الأوسمة", icon = Icons.Filled.EmojiEvents)
+                    BrandSectionHeader(stringResource(R.string.gamification_badges), icon = Icons.Filled.EmojiEvents)
                     BadgeGrid(profile.badges)
                 }
             }
             if (!state.isLoading && isEmpty && state.error == null) {
-                BrandEmptyState(Icons.Filled.NightsStay, "ابدأ رحلتك — أكمل نشاطًا لرؤية تقدمك هنا")
+                BrandEmptyState(Icons.Filled.NightsStay, stringResource(R.string.gamification_empty))
             }
         }
         if (state.isLoading && isEmpty) {
@@ -158,11 +160,11 @@ private fun StreakHeroCard(streak: GamificationStreak) {
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(streak.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text("الأطول: ${streak.longestLength}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.gamification_longest, streak.longestLength), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (streak.graceRemaining > 0) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(14.dp))
-                    Text("سماحية متبقية: ${streak.graceRemaining}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    Text(stringResource(R.string.gamification_grace_remaining, streak.graceRemaining), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                 }
             }
         }
@@ -186,12 +188,12 @@ private fun StreakCard(streak: GamificationStreak) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(streak.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                 if (streak.graceRemaining > 0) {
-                    Text("سماحية متبقية: ${streak.graceRemaining}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.gamification_grace_remaining, streak.graceRemaining), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("${streak.currentLength}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                Text("الأطول: ${streak.longestLength}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.gamification_longest, streak.longestLength), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -253,6 +255,11 @@ private fun Modifier.heightForRows(count: Int): Modifier {
 
 @Composable
 private fun BadgeTile(badge: GamificationBadge) {
+    val badgeDescription = if (badge.isEarned) {
+        stringResource(R.string.gamification_badge_earned, badge.name)
+    } else {
+        stringResource(R.string.gamification_badge_not_earned, badge.name)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -261,7 +268,7 @@ private fun BadgeTile(badge: GamificationBadge) {
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(12.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = if (badge.isEarned) "${badge.name}، تم الحصول عليها" else "${badge.name}، لم يتم الحصول عليها بعد"
+                contentDescription = badgeDescription
             },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

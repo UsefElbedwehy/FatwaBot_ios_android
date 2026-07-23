@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +62,7 @@ import com.fatwabot.core.designsystem.MotionTokens
 import com.fatwabot.core.designsystem.RingProgress
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.motionAnimationSpec
+import com.fatwabot.feature.awrad.R
 
 /** Daily checklist (docs/features/awrad.md screen 1) — mirror of iOS
  * AwradBoardScreen. */
@@ -90,10 +92,10 @@ fun AwradBoardScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = { showStats = true }) {
-                    Icon(Icons.Filled.BarChart, contentDescription = "إحصائياتي", tint = tokens.primary)
+                    Icon(Icons.Filled.BarChart, contentDescription = stringResource(R.string.awrad_my_stats), tint = tokens.primary)
                 }
                 IconButton(onClick = { showCreateSheet = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = "إضافة ورد", tint = tokens.primary)
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.awrad_add_wird), tint = tokens.primary)
                 }
             }
 
@@ -103,7 +105,7 @@ fun AwradBoardScreen(
                 StatsGrid(stats = state.stats, tokens = tokens)
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("أورادي", icon = Icons.Filled.Spa, tokens = tokens)
+                    BrandSectionHeader(stringResource(R.string.awrad_my_awrad), icon = Icons.Filled.Spa, tokens = tokens)
                     state.activeWirds.forEach { wird ->
                         WirdCard(
                             wird = wird,
@@ -139,12 +141,12 @@ fun AwradBoardScreen(
 private fun StatsGrid(stats: WirdStats, tokens: ColorTokens) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("مجموع الأذكار", stats.totalDhikrCount, Icons.Filled.Spa, tokens, Modifier.weight(1f))
-            StatTile("أيام مكتملة", stats.completedDaysCount, Icons.Filled.Verified, tokens, Modifier.weight(1f))
+            StatTile(stringResource(R.string.awrad_stat_total_dhikr), stats.totalDhikrCount, Icons.Filled.Spa, tokens, Modifier.weight(1f))
+            StatTile(stringResource(R.string.awrad_stat_completed_days), stats.completedDaysCount, Icons.Filled.Verified, tokens, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("صفحات القرآن", stats.quranPagesCount, Icons.Filled.AutoStories, tokens, Modifier.weight(1f))
-            StatTile("الصلاة على النبي", stats.salawatCount, Icons.Filled.Favorite, tokens, Modifier.weight(1f))
+            StatTile(stringResource(R.string.awrad_stat_quran_pages), stats.quranPagesCount, Icons.Filled.AutoStories, tokens, Modifier.weight(1f))
+            StatTile(stringResource(R.string.awrad_stat_salawat), stats.salawatCount, Icons.Filled.Favorite, tokens, Modifier.weight(1f))
         }
     }
 }
@@ -195,18 +197,18 @@ private fun EmptyBoard(tokens: ColorTokens, onAddWird: () -> Unit) {
             modifier = Modifier.size(40.dp).semantics { invisibleToUser() },
         )
         Text(
-            "لا توجد أوراد بعد",
+            stringResource(R.string.awrad_empty_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = tokens.onSurface,
         )
         Text(
-            "أضف وردك الأول لتبدأ رحلتك اليومية",
+            stringResource(R.string.awrad_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = tokens.onSurfaceSecondary,
             textAlign = TextAlign.Center,
         )
-        Button(onClick = onAddWird) { Text("إضافة ورد") }
+        Button(onClick = onAddWird) { Text(stringResource(R.string.awrad_add_wird)) }
     }
 }
 
@@ -287,7 +289,7 @@ private fun MarkDayCompleteCard(done: Boolean, tokens: ColorTokens, onComplete: 
                 tint = Color.White,
             )
             Text(
-                "أتممت وردي اليوم",
+                stringResource(R.string.awrad_mark_day_complete),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
@@ -300,14 +302,14 @@ private fun MarkDayCompleteCard(done: Boolean, tokens: ColorTokens, onComplete: 
 private fun AwradStatsDialog(stats: WirdStats, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("تم") } },
-        title = { Text("إحصائياتي") },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.awrad_done)) } },
+        title = { Text(stringResource(R.string.awrad_my_stats)) },
         text = {
             Column {
-                statRow("مجموع الأذكار", stats.totalDhikrCount)
-                statRow("أيام مكتملة", stats.completedDaysCount)
-                statRow("صفحات القرآن", stats.quranPagesCount)
-                statRow("الصلاة على النبي", stats.salawatCount)
+                statRow(stringResource(R.string.awrad_stat_total_dhikr), stats.totalDhikrCount)
+                statRow(stringResource(R.string.awrad_stat_completed_days), stats.completedDaysCount)
+                statRow(stringResource(R.string.awrad_stat_quran_pages), stats.quranPagesCount)
+                statRow(stringResource(R.string.awrad_stat_salawat), stats.salawatCount)
             }
         },
     )
@@ -329,15 +331,16 @@ private fun AwradCreateDialog(viewModel: AwradViewModel, onDismiss: () -> Unit) 
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showCustomForm by remember { mutableStateOf(false) }
     var customName by remember { mutableStateOf("") }
+    val customWirdDefault = stringResource(R.string.awrad_custom_wird_default)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("ورد جديد") },
+        title = { Text(stringResource(R.string.awrad_new_wird)) },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.awrad_cancel)) } },
         text = {
             Column {
-                Text("اختر من القوالب", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.awrad_choose_template), style = MaterialTheme.typography.labelLarge)
                 state.templates.forEach { template ->
                     Surface(
                         onClick = {
@@ -360,13 +363,13 @@ private fun AwradCreateDialog(viewModel: AwradViewModel, onDismiss: () -> Unit) 
                     androidx.compose.material3.OutlinedTextField(
                         value = customName,
                         onValueChange = { customName = it },
-                        placeholder = { Text("اسم الورد") },
+                        placeholder = { Text(stringResource(R.string.awrad_wird_name)) },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
                     Button(
                         onClick = {
                             viewModel.createCustomWird(
-                                name = customName.ifEmpty { "ورد مخصص" },
+                                name = customName.ifEmpty { customWirdDefault },
                                 type = "custom",
                                 target = 1,
                                 unit = "times",
@@ -375,12 +378,12 @@ private fun AwradCreateDialog(viewModel: AwradViewModel, onDismiss: () -> Unit) 
                             onDismiss()
                         },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    ) { Text("حفظ الورد") }
+                    ) { Text(stringResource(R.string.awrad_save_wird)) }
                 } else {
                     OutlinedButton(
                         onClick = { showCustomForm = true },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    ) { Text("إنشاء ورد مخصص") }
+                    ) { Text(stringResource(R.string.awrad_create_custom_wird)) }
                 }
             }
         },
