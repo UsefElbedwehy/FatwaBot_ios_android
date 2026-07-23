@@ -124,16 +124,36 @@ export class SupabaseContentRepo implements ContentRepo {
     if (collectionError) throw collectionError;
     if (!collection) return null;
 
-    const { data: entries, error: entriesError } = await this.db
-      .schema("content").from("hadith_entries")
-      .select(
-        "id,number,arabic_text,translation_translations,grading,benefit_note_translations,source,version",
-      )
-      .eq("app_id", ctx.appId).eq("published", true).eq("collection_id", collection.id)
-      .order("number");
-    if (entriesError) throw entriesError;
+    // PostgREST caps a single response at ~1000 rows, so a large collection
+    // (e.g. Bukhari ~7500) would be silently truncated. Page through until a
+    // short page signals the end — the app expects the whole collection.
+    interface HadithEntryRow {
+      id: string;
+      number: number;
+      arabic_text: string;
+      translation_translations: Record<string, string> | null;
+      grading: string;
+      benefit_note_translations: Record<string, string> | null;
+      source: string;
+      version: number;
+    }
+    const PAGE = 1000;
+    const entries: HadithEntryRow[] = [];
+    for (let from = 0;; from += PAGE) {
+      const { data: page, error: entriesError } = await this.db
+        .schema("content").from("hadith_entries")
+        .select(
+          "id,number,arabic_text,translation_translations,grading,benefit_note_translations,source,version",
+        )
+        .eq("app_id", ctx.appId).eq("published", true).eq("collection_id", collection.id)
+        .order("number").range(from, from + PAGE - 1);
+      if (entriesError) throw entriesError;
+      if (!page || page.length === 0) break;
+      entries.push(...(page as HadithEntryRow[]));
+      if (page.length < PAGE) break;
+    }
 
-    const version = Math.max(collection.version, 0, ...(entries ?? []).map((e) => e.version));
+    const version = Math.max(collection.version, 0, ...entries.map((e) => e.version));
 
     return {
       version,
