@@ -7,6 +7,9 @@
 "tabs.settings" = "Settings";
 "common.coming_soon" = "Coming soon, in shaa Allah";
 "settings.prayer_section" = "Prayer";
+"settings.language_section" = "Language";
+"settings.language.title" = "App Language";
+"settings.language.subtitle" = "Change the app's language in System Settings";
 "settings.live_activity.title" = "Prayer countdown on Lock Screen";
 "settings.live_activity.subtitle" = "Shows the time remaining until the next prayer on your Lock Screen and Dynamic Island.";
 "settings.profile.guest_name" = "Guest";

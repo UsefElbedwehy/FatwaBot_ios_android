@@ -7,6 +7,9 @@
 "tabs.settings" = "الإعدادات";
 "common.coming_soon" = "قريباً إن شاء الله";
 "settings.prayer_section" = "الصلاة";
+"settings.language_section" = "اللغة";
+"settings.language.title" = "لغة التطبيق";
+"settings.language.subtitle" = "غيّر لغة التطبيق من إعدادات النظام";
 "settings.live_activity.title" = "عداد الصلاة على شاشة القفل";
 "settings.live_activity.subtitle" = "يعرض الوقت المتبقي للصلاة القادمة على شاشة القفل والجزيرة الديناميكية.";
 "settings.profile.guest_name" = "ضيف";

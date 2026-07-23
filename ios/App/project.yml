@@ -42,6 +42,8 @@ targets:
         NSLocationWhenInUseUsageDescription: "لعرض أوقات الصلاة واتجاه القبلة لموقعك"
         NSSupportsLiveActivities: true
         CFBundleDisplayName: "Fatwa Bot"
+        # Declared so iOS shows the per-app Language picker in Settings (arabic-first).
+        CFBundleLocalizations: [ar, en]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait

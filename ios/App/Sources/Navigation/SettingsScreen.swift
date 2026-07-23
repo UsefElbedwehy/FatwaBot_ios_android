@@ -4,6 +4,7 @@ import NetworkingKit
 import PrayerFeature
 import PrayerKit
 import SwiftUI
+import UIKit
 
 /// Settings tab, restyled as a profile-first screen (stakeholder direction,
 /// 2026-07-11: "settings needs to be like profile as we will add login for
@@ -27,6 +28,8 @@ struct SettingsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 AccountSection(tokens: tokens)
+
+                LanguageSection(tokens: tokens)
 
                 VStack(alignment: .leading, spacing: 12) {
                     BrandSectionHeader("settings.prayer_section", systemImage: "moon.stars.fill", tokens: tokens)
@@ -277,6 +280,43 @@ private struct NotificationsSection: View {
 
 /// The "?" features guide (stakeholder direction, 2026-07-12): a per-item
 /// explanation of what each notification/feature does, so users understand them.
+/// Language row. iOS keeps per-app language in the system Settings app (the
+/// "Preferred Language" screen that appears once the app ships >1 localization),
+/// so the native, Apple-sanctioned way to switch is to deep-link there rather
+/// than build an in-app locale picker.
+private struct LanguageSection: View {
+    let tokens: ColorTokens
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BrandSectionHeader("settings.language_section", systemImage: "globe", tokens: tokens)
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("settings.language.title")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(Color(hexToken: tokens.onSurface))
+                        Text("settings.language.subtitle")
+                            .font(.caption)
+                            .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "arrow.up.forward.app.fill")
+                        .foregroundStyle(Color(hexToken: tokens.primary))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .brandCard(tokens)
+            .accessibilityHint(Text("settings.language.subtitle"))
+        }
+    }
+}
+
 private struct FeaturesGuideSection: View {
     let tokens: ColorTokens
 
