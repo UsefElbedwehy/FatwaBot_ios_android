@@ -18,3 +18,6 @@
 "widget.streak.longest %lld" = "الأفضل: %lld";
 "widget.daily_challenge.name" = "التحدي اليومي";
 "widget.daily_challenge.desc" = "تقدم مهمة اليوم";
+"widget.dua.name" = "دعاء اليوم";
+"widget.dua.desc" = "دعاء يتجدد على مدار اليوم";
+"widget.dua.title" = "دعاء";

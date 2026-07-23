@@ -14,4 +14,7 @@
     <string name="widget_streak_best">الأفضل: %1$d</string>
     <string name="widget_streak_grace">متبقٍ %1$d يوم رحمة</string>
     <string name="widget_hijri_year">%1$d هـ</string>
+    <string name="widget_prayer_times">أوقات الصلاة</string>
+    <string name="widget_dua">دعاء اليوم</string>
+    <string name="widget_dua_title">دعاء</string>
 </resources>

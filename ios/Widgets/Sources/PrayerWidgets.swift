@@ -59,11 +59,12 @@ struct PrayerTimelineWidget: Widget {
         }
         .configurationDisplayName(Text("widget.timeline.name"))
         .description(Text("widget.timeline.desc"))
-        .supportedFamilies([.systemMedium])
+        .supportedFamilies([.systemMedium, .systemLarge])
     }
 }
 
 struct PrayerTimelineView: View {
+    @Environment(\.widgetFamily) private var family
     let entry: PrayerEntry
 
     private var todaysEntries: [PrayerWidgetSnapshot.Entry] {
@@ -75,7 +76,7 @@ struct PrayerTimelineView: View {
     var body: some View {
         if let snapshot = entry.snapshot {
             let next = snapshot.nextEntry(after: entry.date)
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: family == .systemLarge ? 10 : 8) {
                 HStack {
                     Text(snapshot.locationName)
                         .font(.caption.weight(.medium))
@@ -84,24 +85,107 @@ struct PrayerTimelineView: View {
                     Text("\(snapshot.hijriMonthName) \(snapshot.hijriDay)")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                HStack(spacing: 10) {
-                    ForEach(Array(todaysEntries.prefix(6)), id: \.time) { item in
-                        VStack(spacing: 3) {
-                            Text(PrayerWidgetSnapshot.title(for: item.prayer))
-                                .font(.caption2)
-                                .foregroundStyle(item.prayer == next?.prayer ? brandPrimary : .secondary)
-                            Text(item.time, style: .time)
-                                .font(.caption2.monospacedDigit())
-                                .fontWeight(item.prayer == next?.prayer ? .bold : .regular)
-                                .foregroundStyle(item.prayer == next?.prayer ? brandPrimary : .secondary)
+                if family == .systemLarge {
+                    // Full-day vertical list, the coming prayer highlighted.
+                    VStack(spacing: 0) {
+                        ForEach(Array(todaysEntries.prefix(6)), id: \.time) { item in
+                            let isNext = item.prayer == next?.prayer
+                            HStack {
+                                Image(systemName: isNext ? "chevron.right.circle.fill" : "circle")
+                                    .font(.caption2)
+                                    .foregroundStyle(isNext ? brandPrimary : .secondary.opacity(0.5))
+                                Text(PrayerWidgetSnapshot.title(for: item.prayer))
+                                    .font(.body)
+                                    .fontWeight(isNext ? .bold : .regular)
+                                    .foregroundStyle(isNext ? brandPrimary : .primary)
+                                Spacer()
+                                Text(item.time, style: .time)
+                                    .font(.body.monospacedDigit())
+                                    .fontWeight(isNext ? .bold : .regular)
+                                    .foregroundStyle(isNext ? brandPrimary : .secondary)
+                            }
+                            .padding(.vertical, 7)
+                            .padding(.horizontal, 10)
+                            .background(
+                                isNext ? brandPrimary.opacity(0.10) : .clear,
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            )
+                            if item.time != todaysEntries.prefix(6).last?.time {
+                                Divider().opacity(0.4)
+                            }
                         }
-                        .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    // Medium: compact row.
+                    HStack(spacing: 10) {
+                        ForEach(Array(todaysEntries.prefix(6)), id: \.time) { item in
+                            let isNext = item.prayer == next?.prayer
+                            VStack(spacing: 3) {
+                                Text(PrayerWidgetSnapshot.title(for: item.prayer))
+                                    .font(.caption2)
+                                    .foregroundStyle(isNext ? brandPrimary : .secondary)
+                                Text(item.time, style: .time)
+                                    .font(.caption2.monospacedDigit())
+                                    .fontWeight(isNext ? .bold : .regular)
+                                    .foregroundStyle(isNext ? brandPrimary : .secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
                     }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         } else {
             WidgetPlaceholder()
+        }
+    }
+}
+
+// MARK: - Lock Screen / Notification Center next-prayer (accessory families)
+
+struct NextPrayerAccessoryWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "NextPrayerAccessoryWidget", provider: PrayerTimelineProvider()) { entry in
+            NextPrayerAccessoryView(entry: entry)
+                .containerBackground(.clear, for: .widget)
+        }
+        .configurationDisplayName(Text("widget.next_prayer.name"))
+        .description(Text("widget.next_prayer.desc"))
+        .supportedFamilies([.accessoryRectangular, .accessoryInline, .accessoryCircular])
+    }
+}
+
+struct NextPrayerAccessoryView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: PrayerEntry
+
+    var body: some View {
+        let next = entry.snapshot?.nextEntry(after: entry.date)
+        switch family {
+        case .accessoryInline:
+            if let next {
+                Text("\(PrayerWidgetSnapshot.title(for: next.prayer)) • \(next.time, style: .time)")
+            } else {
+                Text("home.next_prayer")
+            }
+        case .accessoryCircular:
+            VStack(spacing: 1) {
+                Image(systemName: "moon.stars.fill").font(.caption2)
+                if let next {
+                    Text(next.time, style: .time).font(.caption2.monospacedDigit())
+                }
+            }
+        default: // accessoryRectangular
+            if let next {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("home.next_prayer").font(.caption2).foregroundStyle(.secondary)
+                    Text(PrayerWidgetSnapshot.title(for: next.prayer)).font(.headline)
+                    Text(next.time, style: .timer).font(.caption.monospacedDigit())
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            } else {
+                Text("widget.open_app").font(.caption2)
+            }
         }
     }
 }
@@ -158,8 +242,11 @@ struct FatwaBotWidgets: WidgetBundle {
     var body: some Widget {
         NextPrayerWidget()
         PrayerTimelineWidget()
+        RandomDuaWidget()
         HijriDateWidget()
         StreakWidget()
         DailyChallengeWidget()
+        NextPrayerAccessoryWidget()
+        DuaAccessoryWidget()
     }
 }

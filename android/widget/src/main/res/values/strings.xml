@@ -14,4 +14,7 @@
     <string name="widget_streak_best">Best: %1$d</string>
     <string name="widget_streak_grace">%1$d grace day(s) left</string>
     <string name="widget_hijri_year">%1$d AH</string>
+    <string name="widget_prayer_times">Prayer Times</string>
+    <string name="widget_dua">Daily Du\'a</string>
+    <string name="widget_dua_title">Du\'a</string>
 </resources>

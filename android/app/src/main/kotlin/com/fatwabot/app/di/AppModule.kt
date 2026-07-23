@@ -56,6 +56,7 @@ import com.fatwabot.feature.tasbeeh.FileTasbeehHistoryStore
 import com.fatwabot.feature.tasbeeh.TasbeehHistoryStoring
 import com.fatwabot.widget.HijriDateWidget
 import com.fatwabot.widget.NextPrayerWidget
+import com.fatwabot.widget.PrayerDayWidget
 import com.fatwabot.widget.WidgetSnapshotAccess
 import dagger.Binds
 import java.io.File
@@ -216,6 +217,7 @@ abstract class AppModule {
             CoroutineScope(Dispatchers.Default).launch {
                 NextPrayerWidget().updateAll(context)
                 HijriDateWidget().updateAll(context)
+                PrayerDayWidget().updateAll(context)
             }
         }
 
