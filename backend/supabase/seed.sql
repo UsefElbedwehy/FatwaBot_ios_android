@@ -109,27 +109,10 @@ insert into config.string_packs (locale, version, strings, published) values
 on conflict do nothing;
 
 -- ============================================================================
--- Content domain seed (M2+). Azkar, duas, and the hadith collections are seeded
--- by migrations (0013 azkar/dua; 0015-0021 hadith) with proper provenance and
--- review state, so they are NOT duplicated here — that also keeps this seed
--- compatible with the 0014 publish-requires-approval constraint. Only the wird
--- templates (no review gate) are seeded below for local dev.
+-- Content domain seed. Azkar/duas (0013), hadith (0015-0021) and the wird
+-- templates (0022) are all seeded by MIGRATIONS now, so nothing content-domain
+-- is duplicated here.
 -- ============================================================================
-
-do $$
-begin
-    -- Wird templates (guided creation options, per the Awrad feature)
-    insert into content.wird_templates (name_translations, description_translations, type, default_target, default_unit, default_frequency, sort_order, published) values
-    ('{"ar": "الصلاة على النبي ﷺ", "en": "Sending Blessings on the Prophet"}'::jsonb,
-     '{"ar": "وِرد يومي من الصلاة على النبي صلى الله عليه وسلم", "en": "A daily wird of sending blessings upon the Prophet"}'::jsonb,
-     'salawat', 100, 'times', 'daily', 0, true),
-    ('{"ar": "تلاوة القرآن الكريم", "en": "Quran Recitation"}'::jsonb,
-     '{"ar": "وِرد يومي من قراءة القرآن الكريم", "en": "A daily wird of Quran reading"}'::jsonb,
-     'quran_reading', 5, 'pages', 'daily', 1, true),
-    ('{"ar": "الاستغفار", "en": "Seeking Forgiveness"}'::jsonb,
-     '{"ar": "وِرد يومي من الاستغفار", "en": "A daily wird of seeking Allah''s forgiveness"}'::jsonb,
-     'istighfar', 100, 'times', 'daily', 2, true);
-end $$;
 
 -- Bootstrap dev admin (docs/features/admin-dashboard-v1.md). DEV-ONLY credentials —
 -- rotate the password (or delete this row) before any non-local deployment.

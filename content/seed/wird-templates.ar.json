@@ -1,32 +1,86 @@
 {
-  "version": 1,
+  "version": 2,
   "templates": [
     {
-      "id": "00000000-0000-4000-a000-000000003001",
+      "id": "0dbf1bd2-5a0a-4334-8ca4-da1c7e560ee1",
       "type": "salawat",
       "defaultTarget": 100,
       "defaultUnit": "times",
       "defaultFrequency": "daily",
       "name": "الصلاة على النبي ﷺ",
-      "description": "وِرد يومي من الصلاة على النبي صلى الله عليه وسلم"
+      "description": "«من صلى عليَّ صلاةً صلى الله عليه بها عشراً». وِرد يومي مئة مرة."
     },
     {
-      "id": "00000000-0000-4000-a000-000000003002",
+      "id": "302b45f3-779a-4353-aa25-e9c65adf0b12",
+      "type": "dhikr",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ",
+      "description": "كان النبي ﷺ يستغفر الله في اليوم أكثر من سبعين مرة. وِرد مئة مرة."
+    },
+    {
+      "id": "5c877243-8fd2-4c14-9766-f029970a8c2d",
+      "type": "dhikr",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+      "description": "«من قالها مئة مرة في اليوم حُطَّت خطاياه وإن كانت مثل زبد البحر». رواه مسلم."
+    },
+    {
+      "id": "b4bf44ce-0fb1-4736-aa3e-2e83a79a0e91",
+      "type": "dhikr",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ",
+      "description": "قولها مئة مرة تعدل عتق عشر رقاب، وتُكتب مئة حسنة، وتُمحى مئة سيئة. متفق عليه."
+    },
+    {
+      "id": "8305be3b-a65a-471c-b2ff-e2cab474cec0",
+      "type": "dhikr",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ",
+      "description": "«كلمتان خفيفتان على اللسان، ثقيلتان في الميزان، حبيبتان إلى الرحمن». متفق عليه."
+    },
+    {
+      "id": "860b6a03-0c5c-4c8f-9fc2-03a665ac0afa",
+      "type": "dhikr",
+      "defaultTarget": 100,
+      "defaultUnit": "times",
+      "defaultFrequency": "daily",
+      "name": "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
+      "description": "«كنزٌ من كنوز الجنة». متفق عليه. وِرد يومي."
+    },
+    {
+      "id": "649f0217-3653-41ed-9ab9-3e3e1c928cc4",
       "type": "quran_reading",
       "defaultTarget": 5,
       "defaultUnit": "pages",
       "defaultFrequency": "daily",
-      "name": "تلاوة القرآن الكريم",
-      "description": "وِرد يومي من قراءة القرآن الكريم"
+      "name": "وِرد القرآن اليومي",
+      "description": "خمس صفحات كل يوم للمداومة على تلاوة القرآن."
     },
     {
-      "id": "00000000-0000-4000-a000-000000003003",
-      "type": "istighfar",
-      "defaultTarget": 100,
+      "id": "7dfcd8d7-bcee-4442-a9e5-666d842213a7",
+      "type": "quran_reading",
+      "defaultTarget": 20,
+      "defaultUnit": "pages",
+      "defaultFrequency": "daily",
+      "name": "جزء من القرآن يومياً",
+      "description": "جزء (نحو عشرين صفحة) يومياً لختم القرآن في شهر."
+    },
+    {
+      "id": "d443eb6b-2370-4822-8995-6fb8d608cc33",
+      "type": "quran_reading",
+      "defaultTarget": 1,
       "defaultUnit": "times",
       "defaultFrequency": "daily",
-      "name": "الاستغفار",
-      "description": "وِرد يومي من الاستغفار"
+      "name": "تلاوة سورة الملك",
+      "description": "سورة تشفع لصاحبها حتى يُغفر له، تُقرأ كل ليلة."
     }
   ]
 }
