@@ -1,5 +1,6 @@
 package com.fatwabot.app.navigation
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -66,7 +68,11 @@ fun SearchHome() {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(24.dp))
-        BrandMark(modifier = Modifier.size(96.dp), color = cs.primary)
+        Image(
+            painter = painterResource(R.drawable.fatwabot_logo),
+            contentDescription = null,
+            modifier = Modifier.width(104.dp).height(148.dp),
+        )
         Text(
             "FATWA BOT",
             fontFamily = FontFamily.Serif,

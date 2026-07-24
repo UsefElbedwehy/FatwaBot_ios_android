@@ -41,7 +41,7 @@ struct SearchHomeScreen: View {
                 Image("LaunchLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 120, height: 120)
+                    .frame(width: 104, height: 148)
                     .accessibilityHidden(true)
 
                 Text(verbatim: "FATWA BOT")

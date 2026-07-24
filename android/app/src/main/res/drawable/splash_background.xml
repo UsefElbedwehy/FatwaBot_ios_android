@@ -4,6 +4,6 @@
     <item
         android:width="140dp"
         android:height="140dp"
-        android:drawable="@drawable/brand_logo_splash"
+        android:drawable="@drawable/fatwabot_logo"
         android:gravity="center" />
 </layer-list>

@@ -2,6 +2,11 @@ package com.fatwabot.app.navigation
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.res.painterResource
+import com.fatwabot.app.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -134,10 +139,14 @@ private fun HomeBarItem(active: Boolean, cs: androidx.compose.material3.ColorSch
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            modifier = Modifier.size(58.dp).clip(CircleShape).background(cs.primary),
+            modifier = Modifier.size(60.dp).clip(CircleShape).background(cs.surface),
             contentAlignment = Alignment.Center,
         ) {
-            BrandMark(modifier = Modifier.size(26.dp), color = cs.onPrimary)
+            Image(
+                painter = painterResource(R.drawable.fatwabot_logo),
+                contentDescription = null,
+                modifier = Modifier.width(26.dp).height(34.dp),
+            )
         }
         Text(
             stringResource(AppTab.HOME.titleRes),

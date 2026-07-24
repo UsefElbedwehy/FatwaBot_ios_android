@@ -165,17 +165,14 @@ private struct FatwaBottomBar: View {
             VStack(spacing: 5) {
                 ZStack {
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.primary).opacity(0.82)],
-                                startPoint: .topLeading, endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 58, height: 58)
-                        .shadow(color: Color(hexToken: tokens.primary).opacity(0.35), radius: 8, x: 0, y: 4)
-                    MihrabArchShape()
-                        .stroke(Color(hexToken: tokens.onPrimary), lineWidth: 2)
-                        .frame(width: 24, height: 28)
+                        .fill(Color(hexToken: tokens.surfaceElevated))
+                        .frame(width: 60, height: 60)
+                        .overlay(Circle().stroke(Color(hexToken: tokens.primary).opacity(0.14), lineWidth: 1))
+                        .shadow(color: Color(hexToken: tokens.primary).opacity(0.22), radius: 8, x: 0, y: 3)
+                    Image("LaunchLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 26, height: 34)
                 }
                 Text(AppTab.home.titleKey)
                     .font(.caption2.weight(.semibold))
