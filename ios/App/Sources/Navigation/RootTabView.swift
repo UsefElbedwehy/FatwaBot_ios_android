@@ -17,7 +17,7 @@ import TasbeehFeature
 /// Destinations reachable from the Worship tab's own list *and* by deep link
 /// from Home's quick actions (task 26 wiring) — pushed onto `worshipPath`.
 enum WorshipDestination: Hashable {
-    case qibla, tasbeeh, azkar, dua, awrad, hadith
+    case qibla, tasbeeh, azkar, dua, awrad, hadith, journey
 }
 
 struct RootTabView: View {
@@ -32,28 +32,29 @@ struct RootTabView: View {
     @State private var leaderboardViewModel = Container.shared.leaderboardViewModel()
     @State private var searchHistoryViewModel = Container.shared.searchHistoryViewModel()
 
-    var body: some View {
-        TabView(selection: $selection) {
-            NavigationStack {
-                HomeScreen(
-                    viewModel: HomeViewModel(
-                        config: Container.shared.configService(),
-                        appVersion: AppEnvironment.appVersion
-                    ),
-                    heroContent: heroContent,
-                    onQuickAction: handleQuickAction
-                )
-                .navigationTitle(Text("tabs.home"))
-                .navigationBarTitleDisplayMode(.inline)
-                .task {
-                    _ = await Container.shared.notificationScheduler().requestAuthorization()
-                    await prayerViewModel.start()
-                    await Container.shared.configService().refresh(locales: ["ar", "en"])
-                }
-            }
-            .tabItem { Label("tabs.home", systemImage: AppTab.home.systemImage) }
-            .tag(AppTab.home)
+    @Environment(\.colorScheme) private var colorScheme
+    private var tokens: ColorTokens {
+        colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
+    }
 
+    var body: some View {
+        Group { content }
+            .safeAreaInset(edge: .bottom) {
+                FatwaBottomBar(selection: $selection, tokens: tokens)
+            }
+            .task {
+                _ = await Container.shared.notificationScheduler().requestAuthorization()
+                await prayerViewModel.start()
+                await Container.shared.configService().refresh(locales: ["ar", "en"])
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch selection {
+        case .home:
+            SearchHomeScreen()
+        case .worship:
             NavigationStack(path: $worshipPath) {
                 WorshipTabView(prayerViewModel: prayerViewModel)
                     .navigationTitle(Text("tabs.worship"))
@@ -61,70 +62,12 @@ struct RootTabView: View {
                         worshipDestinationView(destination)
                     }
             }
-            .tabItem { Label("tabs.worship", systemImage: AppTab.worship.systemImage) }
-            .tag(AppTab.worship)
-
-            NavigationStack {
-                GamificationScreen(viewModel: gamificationViewModel)
-                    .navigationTitle(Text("tabs.journey"))
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            NavigationLink {
-                                LeaderboardScreen(viewModel: leaderboardViewModel)
-                            } label: {
-                                Label("leaderboard.title", systemImage: "trophy")
-                            }
-                        }
-                        ToolbarItem(placement: .secondaryAction) {
-                            NavigationLink {
-                                SearchHistoryScreen(viewModel: searchHistoryViewModel)
-                            } label: {
-                                Label("search_history.title", systemImage: "clock.arrow.circlepath")
-                            }
-                        }
-                    }
-            }
-            .tabItem { Label("tabs.journey", systemImage: AppTab.journey.systemImage) }
-            .tag(AppTab.journey)
-
+        case .settings:
             NavigationStack {
                 SettingsScreen(prayerViewModel: prayerViewModel)
                     .navigationTitle(Text("tabs.settings"))
             }
-            .tabItem { Label("tabs.settings", systemImage: AppTab.settings.systemImage) }
-            .tag(AppTab.settings)
         }
-    }
-
-    private var heroContent: HomeHeroContent? {
-        guard let next = prayerViewModel.nextPrayer, let today = prayerViewModel.today else { return nil }
-        return HomeHeroContent(
-            nextPrayer: next.next,
-            nextTime: next.nextTime,
-            current: next.current,
-            today: today,
-            hijri: prayerViewModel.hijri,
-            locationName: prayerViewModel.location?.name
-        )
-    }
-
-    /// Deep-links from Home's quick actions (task 26): switches to Worship and
-    /// pushes the target screen directly — no extra tap required. `.history`
-    /// (Search History) has no content until AI Search ships (M5+), so it is
-    /// intentionally inert rather than routing to a hollow screen.
-    private func handleQuickAction(_ action: QuickAction) {
-        switch action {
-        case .qibla:
-            guard prayerViewModel.location != nil else { selection = .worship; return }
-            worshipPath.append(WorshipDestination.qibla)
-        case .tasbeeh:
-            worshipPath.append(WorshipDestination.tasbeeh)
-        case .azkar:
-            worshipPath.append(WorshipDestination.azkar)
-        case .history:
-            return
-        }
-        selection = .worship
     }
 
     @ViewBuilder
@@ -155,9 +98,94 @@ struct RootTabView: View {
             HadithCollectionsScreen(viewModel: Container.shared.hadithViewModel())
                 .navigationTitle(Text("worship.hadith"))
                 .navigationBarTitleDisplayMode(.inline)
+        case .journey:
+            GamificationScreen(viewModel: gamificationViewModel)
+                .navigationTitle(Text("tabs.journey"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        NavigationLink { LeaderboardScreen(viewModel: leaderboardViewModel) } label: {
+                            Label("leaderboard.title", systemImage: "trophy")
+                        }
+                    }
+                    ToolbarItem(placement: .secondaryAction) {
+                        NavigationLink { SearchHistoryScreen(viewModel: searchHistoryViewModel) } label: {
+                            Label("search_history.title", systemImage: "clock.arrow.circlepath")
+                        }
+                    }
+                }
         }
     }
 
+}
+
+/// Custom floating bottom bar (client redesign): Worship (left) · Home (center,
+/// raised) · Settings (right). Journey moved into the Worship grid. Forced LTR so
+/// the physical placement matches the mockup in both languages.
+private struct FatwaBottomBar: View {
+    @Binding var selection: AppTab
+    let tokens: ColorTokens
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 0) {
+            sideItem(.worship, icon: "square.grid.2x2.fill")
+            homeItem
+            sideItem(.settings, icon: "gearshape.fill")
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 12)
+        .padding(.bottom, 6)
+        .background(
+            Color(hexToken: tokens.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                .shadow(color: Color(hexToken: tokens.primary).opacity(0.14), radius: 18, x: 0, y: 2)
+        )
+        .padding(.horizontal, 16)
+        .environment(\.layoutDirection, .leftToRight)
+    }
+
+    private func sideItem(_ tab: AppTab, icon: String) -> some View {
+        let active = selection == tab
+        return Button { selection = tab } label: {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .medium))
+                Text(tab.titleKey)
+                    .font(.caption2.weight(.medium))
+            }
+            .foregroundStyle(active ? Color(hexToken: tokens.primary) : Color(hexToken: tokens.onSurfaceSecondary))
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var homeItem: some View {
+        let active = selection == .home
+        return Button { selection = .home } label: {
+            VStack(spacing: 5) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.primary).opacity(0.82)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 58, height: 58)
+                        .shadow(color: Color(hexToken: tokens.primary).opacity(0.35), radius: 8, x: 0, y: 4)
+                    MihrabArchShape()
+                        .stroke(Color(hexToken: tokens.onPrimary), lineWidth: 2)
+                        .frame(width: 24, height: 28)
+                }
+                Text(AppTab.home.titleKey)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(active ? Color(hexToken: tokens.primary) : Color(hexToken: tokens.onSurfaceSecondary))
+            }
+            .frame(maxWidth: .infinity)
+            .offset(y: -14)
+        }
+        .buttonStyle(.plain)
+    }
 }
 
 struct WorshipTabView: View {
@@ -198,6 +226,9 @@ struct WorshipTabView: View {
                 }
                 NavigationLink(value: WorshipDestination.hadith) {
                     WorshipTile(icon: "text.book.closed.fill", titleKey: "worship.hadith", tokens: tokens)
+                }
+                NavigationLink(value: WorshipDestination.journey) {
+                    WorshipTile(icon: "chart.line.uptrend.xyaxis", titleKey: "tabs.journey", tokens: tokens)
                 }
             }
             .padding(16)

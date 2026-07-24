@@ -209,3 +209,10 @@
 "settings.guide.last_third" = "Notifies you when the last third of the night begins (from Maghrib to Fajr) — a beloved time for tahajjud and supplication.";
 "settings.guide.live_activity" = "Shows a live countdown to the next prayer on your Lock Screen and Dynamic Island.";
 "settings.guide.streaks" = "Tracks how many days in a row you keep up each act of worship. Complete an activity each day to grow your streak.";
+"home.card.question" = "General question";
+"home.card.hadith" = "Find hadith";
+"home.card.fatwa" = "Search a fatwa";
+"home.search_placeholder" = "Type your question here…";
+"home.tagline" = "Answers in light of the way of Ahl as-Sunnah wa al-Jama\'ah";
+"home.coming_soon.title" = "Coming soon, in shaa Allah";
+"home.coming_soon.body" = "Smart search for fatwas and hadith is on its way.";
