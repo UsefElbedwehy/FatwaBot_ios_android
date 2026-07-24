@@ -19,14 +19,22 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.fatwabot.core.designsystem.BrandMark
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -91,64 +99,96 @@ fun RootScaffold() {
     }
 }
 
-/** Custom floating bottom bar (client redesign): Worship (left) · Home (raised
- * center) · Settings (right). Journey lives in the Worship grid now. Forced LTR
- * so placement matches the mockup in both languages. */
+/** Maroon cradle nav (client mockup, design/homeDesign.jpeg): a full-bleed maroon
+ * band with a scooped top edge cradling a raised cream Home button (mihrab logo +
+ * "الرئيسية"). A "⋯" (Settings) sits left, a 2×2 grid (Worship) right — white on
+ * maroon. Forced LTR so placement matches the mockup in both languages. */
 @Composable
 private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
     val cs = MaterialTheme.colorScheme
+    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val barHeight = 84.dp
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(30.dp))
-                .background(cs.surface)
-                .padding(horizontal = 22.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            BarItem(AppTab.WORSHIP, selected, cs, Modifier.weight(1f)) { onSelect(it) }
-            HomeBarItem(selected == AppTab.HOME, cs, Modifier.weight(1f)) { onSelect(AppTab.HOME) }
-            BarItem(AppTab.SETTINGS, selected, cs, Modifier.weight(1f)) { onSelect(it) }
-        }
-    }
-}
-
-@Composable
-private fun BarItem(tab: AppTab, selected: AppTab, cs: androidx.compose.material3.ColorScheme, modifier: Modifier, onClick: (AppTab) -> Unit) {
-    val active = tab == selected
-    val tint = if (active) cs.primary else cs.onSurfaceVariant
-    Column(
-        modifier = modifier.clickable { onClick(tab) }.padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(tab.icon, contentDescription = null, tint = tint)
-        Text(stringResource(tab.titleRes), style = MaterialTheme.typography.labelSmall, color = tint)
-    }
-}
-
-@Composable
-private fun HomeBarItem(active: Boolean, cs: androidx.compose.material3.ColorScheme, modifier: Modifier, onClick: () -> Unit) {
-    Column(
-        modifier = modifier.clickable(onClick = onClick).offset(y = (-14).dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
         Box(
-            modifier = Modifier.size(60.dp).clip(CircleShape).background(cs.surface),
-            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(barHeight + bottomInset)
+                .drawBehind {
+                    drawPath(cradlePath(size, 58.dp.toPx(), 30.dp.toPx(), 18.dp.toPx()), cs.primary)
+                },
         ) {
-            Image(
-                painter = painterResource(R.drawable.fatwabot_logo),
-                contentDescription = null,
-                modifier = Modifier.width(26.dp).height(34.dp),
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(barHeight)
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 40.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                SideItem(AppTab.SETTINGS, Icons.Filled.MoreHoriz, selected, cs) { onSelect(AppTab.SETTINGS) }
+                SideItem(AppTab.WORSHIP, Icons.Filled.GridView, selected, cs) { onSelect(AppTab.WORSHIP) }
+            }
+            HomeCircle(cs, Modifier.align(Alignment.TopCenter).offset(y = (-30).dp)) { onSelect(AppTab.HOME) }
         }
+    }
+}
+
+/** Maroon band path: rises from the screen edges to a shoulder each side of
+ * center, then scoops down into a shallow cradle for the Home button. */
+private fun cradlePath(size: Size, cradleHalf: Float, dip: Float, sideDrop: Float): Path {
+    val w = size.width
+    val cx = w / 2f
+    val top = 0f
+    return Path().apply {
+        moveTo(0f, top + sideDrop)
+        quadraticBezierTo(w * 0.22f, top + sideDrop, cx - cradleHalf, top)
+        quadraticBezierTo(cx - cradleHalf * 0.5f, top, cx, top + dip)
+        quadraticBezierTo(cx + cradleHalf * 0.5f, top, cx + cradleHalf, top)
+        quadraticBezierTo(w * 0.78f, top + sideDrop, w, top + sideDrop)
+        lineTo(w, size.height)
+        lineTo(0f, size.height)
+        close()
+    }
+}
+
+@Composable
+private fun SideItem(tab: AppTab, icon: ImageVector, selected: AppTab, cs: androidx.compose.material3.ColorScheme, onClick: () -> Unit) {
+    val active = tab == selected
+    Box(
+        modifier = Modifier.size(54.dp).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = stringResource(tab.titleRes),
+            tint = cs.onPrimary.copy(alpha = if (active) 1f else 0.78f),
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+@Composable
+private fun HomeCircle(cs: androidx.compose.material3.ColorScheme, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(
+        modifier = modifier
+            .size(90.dp)
+            .clip(CircleShape)
+            .background(cs.surface)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.fatwabot_logo),
+            contentDescription = null,
+            modifier = Modifier.width(30.dp).height(40.dp),
+        )
         Text(
             stringResource(AppTab.HOME.titleRes),
             style = MaterialTheme.typography.labelSmall,
-            color = if (active) cs.primary else cs.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
+            color = cs.primary,
+            modifier = Modifier.padding(top = 1.dp),
         )
     }
 }

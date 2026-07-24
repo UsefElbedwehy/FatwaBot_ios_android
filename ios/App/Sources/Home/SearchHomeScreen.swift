@@ -1,11 +1,11 @@
 import DesignSystemKit
 import SwiftUI
 
-/// Search-first Home (client redesign, 2026-07-24). Matches the FATWA BOT
-/// mockup: logo, wordmark, divider, three intent cards, a search field, and the
-/// manhaj tagline. The fatwa/hadith/question search is the M5 AI-search surface,
-/// which is on hold — so the cards and the search field open a branded
-/// "coming soon" sheet for now.
+/// Search-first Home (client redesign, 2026-07-24). Pixel-matches the FATWA BOT
+/// mockup (design/homeDesign.jpeg): logo, wordmark, rosette divider, three
+/// neumorphic intent cards, an embossed search field, and the manhaj tagline.
+/// The fatwa/hadith/question search is the M5 AI-search surface (on hold) — the
+/// cards and the search field open a branded "coming soon" sheet for now.
 struct SearchHomeScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var showComingSoon = false
@@ -14,8 +14,10 @@ struct SearchHomeScreen: View {
         colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
     }
 
+    // Declaration order == on-screen order. In the Arabic (RTL) mockup the cards
+    // read fatwa · hadith · question from the right, so list them in that order.
     private enum Intent: String, Identifiable, CaseIterable {
-        case question, hadith, fatwa
+        case fatwa, hadith, question
         var id: String { rawValue }
         var titleKey: LocalizedStringKey {
             switch self {
@@ -26,9 +28,9 @@ struct SearchHomeScreen: View {
         }
         var icon: String {
             switch self {
-            case .question: return "questionmark.bubble.fill"
+            case .question: return "questionmark.bubble"
             case .hadith: return "book.fill"
-            case .fatwa: return "text.magnifyingglass"
+            case .fatwa: return "magnifyingglass"
             }
         }
     }
@@ -36,49 +38,47 @@ struct SearchHomeScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                Spacer(minLength: 24)
+                Spacer(minLength: 28)
 
                 Image("LaunchLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 104, height: 148)
+                    .frame(width: 112, height: 158)
                     .accessibilityHidden(true)
 
                 Text(verbatim: "FATWA BOT")
                     .font(.system(size: 34, weight: .semibold, design: .serif))
                     .tracking(4)
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
-                    .padding(.top, 8)
+                    .padding(.top, 6)
 
                 divider
-                    .padding(.vertical, 28)
+                    .padding(.top, 30)
+                    .padding(.bottom, 34)
 
-                HStack(spacing: 12) {
+                HStack(spacing: 14) {
                     ForEach(Intent.allCases) { intent in
                         intentCard(intent)
                     }
                 }
-                .padding(.horizontal, 4)
 
                 searchField
-                    .padding(.top, 26)
+                    .padding(.top, 30)
 
                 HStack(spacing: 8) {
-                    Image(systemName: "staroflife.fill")
-                        .font(.caption2)
-                        .foregroundStyle(Color(hexToken: tokens.accent))
+                    RosetteMark(size: 15, color: Color(hexToken: tokens.accent))
                     Text("home.tagline")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(Color(hexToken: tokens.primary))
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, 22)
+                .padding(.top, 26)
                 .padding(.horizontal, 12)
 
                 Spacer(minLength: 40)
             }
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 22)
         }
         .brandScreenBackground(tokens)
         .sheet(isPresented: $showComingSoon) {
@@ -87,25 +87,43 @@ struct SearchHomeScreen: View {
         }
     }
 
+    // MARK: - Divider (rosette between two arrow-tipped rules)
+
     private var divider: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
+            dividerRule(pointsLeft: true)
+            RosetteMark(size: 22, color: Color(hexToken: tokens.primary))
+            dividerRule(pointsLeft: false)
+        }
+        .frame(maxWidth: 300)
+        .accessibilityHidden(true)
+    }
+
+    private func dividerRule(pointsLeft: Bool) -> some View {
+        HStack(spacing: 0) {
+            if pointsLeft {
+                Image(systemName: "arrowtriangle.left.fill")
+                    .font(.system(size: 7))
+                    .foregroundStyle(Color(hexToken: tokens.primary))
+            }
             Rectangle()
-                .fill(Color(hexToken: tokens.primary).opacity(0.5))
-                .frame(height: 1)
-            Image(systemName: "staroflife")
-                .font(.subheadline)
-                .foregroundStyle(Color(hexToken: tokens.primary))
-            Rectangle()
-                .fill(Color(hexToken: tokens.primary).opacity(0.5))
-                .frame(height: 1)
+                .fill(Color(hexToken: tokens.primary).opacity(0.6))
+                .frame(height: 1.2)
+            if !pointsLeft {
+                Image(systemName: "arrowtriangle.right.fill")
+                    .font(.system(size: 7))
+                    .foregroundStyle(Color(hexToken: tokens.primary))
+            }
         }
     }
 
+    // MARK: - Intent cards (neumorphic cream)
+
     private func intentCard(_ intent: Intent) -> some View {
         Button { showComingSoon = true } label: {
-            VStack(spacing: 12) {
+            VStack(spacing: 14) {
                 Image(systemName: intent.icon)
-                    .font(.title2)
+                    .font(.system(size: 26, weight: .regular))
                     .foregroundStyle(Color(hexToken: tokens.primary))
                 Text(intent.titleKey)
                     .font(.caption.weight(.medium))
@@ -113,17 +131,14 @@ struct SearchHomeScreen: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, minHeight: 118)
-            .padding(.vertical, 10)
-            .background(Color(hexToken: tokens.surfaceElevated), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color(hexToken: tokens.primary).opacity(0.08), lineWidth: 1)
-            )
-            .shadow(color: Color(hexToken: tokens.primary).opacity(0.06), radius: 10, x: 0, y: 4)
+            .frame(maxWidth: .infinity, minHeight: 120)
+            .padding(.vertical, 12)
+            .background(neumorphicSurface(cornerRadius: 26))
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: - Search field (embossed pill, maroon leading cap)
 
     private var searchField: some View {
         Button { showComingSoon = true } label: {
@@ -131,24 +146,55 @@ struct SearchHomeScreen: View {
                 ZStack {
                     Color(hexToken: tokens.primary)
                     Image(systemName: "magnifyingglass")
-                        .font(.headline)
+                        .font(.headline.weight(.semibold))
                         .foregroundStyle(Color(hexToken: tokens.onPrimary))
                 }
-                .frame(width: 64)
+                .frame(width: 68)
                 HStack {
                     Text("home.search_placeholder")
                         .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
                     Spacer()
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 18)
             }
-            .frame(height: 56)
-            .background(Color(hexToken: tokens.surfaceElevated))
+            .frame(height: 58)
+            .background(neumorphicSurface(cornerRadius: 29))
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color(hexToken: tokens.primary).opacity(0.10), lineWidth: 1))
-            .shadow(color: Color(hexToken: tokens.primary).opacity(0.08), radius: 10, x: 0, y: 4)
+            // Mockup keeps the maroon magnifier cap on the left in both languages.
+            .environment(\.layoutDirection, .leftToRight)
         }
         .buttonStyle(.plain)
+    }
+
+    /// Cream-on-cream neumorphism: soft dark drop + light top highlight, no border.
+    private func neumorphicSurface(cornerRadius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(Color(hexToken: tokens.surface))
+            .shadow(color: Color(hexToken: tokens.onSurface).opacity(0.12), radius: 9, x: 5, y: 7)
+            .shadow(color: .white.opacity(0.9), radius: 6, x: -5, y: -5)
+    }
+}
+
+/// Eight-petal geometric rosette (khatam-style flower) used on the divider and
+/// the tagline — a small brand motif matching the mockup.
+struct RosetteMark: View {
+    var size: CGFloat = 20
+    var color: Color
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<8, id: \.self) { i in
+                Ellipse()
+                    .fill(color)
+                    .frame(width: size * 0.26, height: size * 0.62)
+                    .offset(y: -size * 0.2)
+                    .rotationEffect(.degrees(Double(i) * 45))
+            }
+            Circle()
+                .fill(color)
+                .frame(width: size * 0.26, height: size * 0.26)
+        }
+        .frame(width: size, height: size)
     }
 }
 

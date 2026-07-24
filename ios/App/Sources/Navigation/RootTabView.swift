@@ -42,8 +42,10 @@ struct RootTabView: View {
                 FatwaBottomBar(selection: $selection, tokens: tokens)
             }
             .task {
-                _ = await Container.shared.notificationScheduler().requestAuthorization()
-                await prayerViewModel.start()
+                if !ProcessInfo.processInfo.arguments.contains("-skipPermPrompts") {
+                    _ = await Container.shared.notificationScheduler().requestAuthorization()
+                    await prayerViewModel.start()
+                }
                 await Container.shared.configService().refresh(locales: ["ar", "en"])
             }
     }
@@ -118,69 +120,100 @@ struct RootTabView: View {
 
 }
 
-/// Custom floating bottom bar (client redesign): Worship (left) · Home (center,
-/// raised) · Settings (right). Journey moved into the Worship grid. Forced LTR so
-/// the physical placement matches the mockup in both languages.
+/// Maroon cradle nav (client mockup, design/homeDesign.jpeg): a full-bleed maroon
+/// band with a scooped top edge cradling a raised cream Home button (mihrab logo +
+/// "الرئيسية"). A "⋯" (Settings) sits left, a 2×2 grid (Worship) right — white on
+/// maroon. Forced LTR so the physical placement matches the mockup in both langs.
 private struct FatwaBottomBar: View {
     @Binding var selection: AppTab
     let tokens: ColorTokens
 
+    private let barHeight: CGFloat = 84
+
     var body: some View {
-        HStack(alignment: .bottom, spacing: 0) {
-            sideItem(.worship, icon: "square.grid.2x2.fill")
+        ZStack(alignment: .top) {
+            NavCradleShape()
+                .fill(Color(hexToken: tokens.primary))
+                .shadow(color: Color(hexToken: tokens.primary).opacity(0.30), radius: 16, x: 0, y: -4)
+                .ignoresSafeArea(edges: .bottom)
+
+            HStack {
+                sideItem(.settings, icon: "ellipsis")
+                Spacer()
+                sideItem(.worship, icon: "square.grid.2x2.fill")
+            }
+            .padding(.horizontal, 44)
+            .frame(height: barHeight)
+
             homeItem
-            sideItem(.settings, icon: "gearshape.fill")
+                .frame(maxWidth: .infinity)
+                .offset(y: -32)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 12)
-        .padding(.bottom, 6)
-        .background(
-            Color(hexToken: tokens.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .shadow(color: Color(hexToken: tokens.primary).opacity(0.14), radius: 18, x: 0, y: 2)
-        )
-        .padding(.horizontal, 16)
+        .frame(height: barHeight)
         .environment(\.layoutDirection, .leftToRight)
     }
 
     private func sideItem(_ tab: AppTab, icon: String) -> some View {
         let active = selection == tab
         return Button { selection = tab } label: {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .medium))
-                Text(tab.titleKey)
-                    .font(.caption2.weight(.medium))
-            }
-            .foregroundStyle(active ? Color(hexToken: tokens.primary) : Color(hexToken: tokens.onSurfaceSecondary))
-            .frame(maxWidth: .infinity)
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Color(hexToken: tokens.onPrimary).opacity(active ? 1 : 0.78))
+                .frame(width: 54, height: 54)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(tab.titleKey)
     }
 
     private var homeItem: some View {
-        let active = selection == .home
-        return Button { selection = .home } label: {
-            VStack(spacing: 5) {
-                ZStack {
-                    Circle()
-                        .fill(Color(hexToken: tokens.surfaceElevated))
-                        .frame(width: 60, height: 60)
-                        .overlay(Circle().stroke(Color(hexToken: tokens.primary).opacity(0.14), lineWidth: 1))
-                        .shadow(color: Color(hexToken: tokens.primary).opacity(0.22), radius: 8, x: 0, y: 3)
-                    Image("LaunchLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 26, height: 34)
-                }
+        Button { selection = .home } label: {
+            VStack(spacing: 1) {
+                Image("LaunchLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 30, height: 40)
                 Text(AppTab.home.titleKey)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(active ? Color(hexToken: tokens.primary) : Color(hexToken: tokens.onSurfaceSecondary))
+                    .foregroundStyle(Color(hexToken: tokens.primary))
             }
-            .frame(maxWidth: .infinity)
-            .offset(y: -14)
+            .frame(width: 90, height: 90)
+            .background(
+                Circle()
+                    .fill(Color(hexToken: tokens.surface))
+                    .shadow(color: Color(hexToken: tokens.onSurface).opacity(0.18), radius: 9, x: 0, y: 3)
+            )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(AppTab.home.titleKey)
+    }
+}
+
+/// The maroon nav band: a flat-bottomed shape whose top edge rises from the screen
+/// edges to a shoulder on each side of center, then scoops down into a shallow
+/// cradle where the raised Home button nests.
+private struct NavCradleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let w = rect.width
+        let top = rect.minY
+        let cx = w / 2
+        let cradleHalf: CGFloat = 58   // half-width of the center scoop
+        let dip: CGFloat = 30          // how far the scoop dips below the shoulders
+        let sideDrop: CGFloat = 18     // screen edges sit slightly below the shoulders
+
+        p.move(to: CGPoint(x: 0, y: top + sideDrop))
+        p.addQuadCurve(to: CGPoint(x: cx - cradleHalf, y: top),
+                       control: CGPoint(x: w * 0.22, y: top + sideDrop))
+        p.addQuadCurve(to: CGPoint(x: cx, y: top + dip),
+                       control: CGPoint(x: cx - cradleHalf * 0.5, y: top))
+        p.addQuadCurve(to: CGPoint(x: cx + cradleHalf, y: top),
+                       control: CGPoint(x: cx + cradleHalf * 0.5, y: top))
+        p.addQuadCurve(to: CGPoint(x: w, y: top + sideDrop),
+                       control: CGPoint(x: w * 0.78, y: top + sideDrop))
+        p.addLine(to: CGPoint(x: w, y: rect.maxY))
+        p.addLine(to: CGPoint(x: 0, y: rect.maxY))
+        p.closeSubpath()
+        return p
     }
 }
 
