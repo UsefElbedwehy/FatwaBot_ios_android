@@ -44,10 +44,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.app.BuildConfig
-import com.fatwabot.feature.home.HomeHeroContent
-import com.fatwabot.feature.home.HomeScreen
-import com.fatwabot.feature.home.HomeViewModel
-import com.fatwabot.feature.home.QuickAction
 import com.fatwabot.feature.prayer.CityPicker
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.formatTime

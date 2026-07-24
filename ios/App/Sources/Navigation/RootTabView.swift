@@ -6,7 +6,6 @@ import DuaFeature
 import Factory
 import GamificationFeature
 import HadithFeature
-import HomeFeature
 import LeaderboardFeature
 import PrayerFeature
 import PrayerKit

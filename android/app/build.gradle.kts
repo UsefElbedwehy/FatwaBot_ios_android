@@ -43,7 +43,6 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:prayer"))
-    implementation(project(":feature:home"))
     implementation(project(":feature:prayer"))
     implementation(project(":core:config"))
     implementation(project(":core:network"))
