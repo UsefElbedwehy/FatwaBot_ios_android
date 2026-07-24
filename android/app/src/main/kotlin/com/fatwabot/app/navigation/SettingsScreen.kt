@@ -25,7 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Language
+import com.fatwabot.app.theme.ThemeMode
+import com.fatwabot.app.theme.ThemeModeController
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
@@ -99,6 +102,8 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
     ) {
         AccountSection()
 
+        AppearanceSection()
+
         LanguageSection()
 
         NotificationsSection(prayerViewModel)
@@ -115,6 +120,53 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
                 ) {
                     Text(stringResource(R.string.settings_version), color = MaterialTheme.colorScheme.onSurface)
                     Text(BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+/** Appearance control — System / Light / Dark. Applied app-wide by
+ * ThemeModeController (overrides uiMode so every isSystemInDarkTheme() reflects
+ * it), so toggling here recomposes the whole app. */
+@Composable
+private fun AppearanceSection() {
+    val context = LocalContext.current
+    val selected = ThemeModeController.mode
+    val options = listOf(
+        ThemeMode.SYSTEM to stringResource(R.string.appearance_system),
+        ThemeMode.LIGHT to stringResource(R.string.appearance_light),
+        ThemeMode.DARK to stringResource(R.string.appearance_dark),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BrandSectionHeader(stringResource(R.string.settings_appearance), icon = Icons.Filled.Contrast)
+        BrandCard {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                options.forEach { (mode, label) ->
+                    val isSelected = mode == selected
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent)
+                            .clickable { ThemeModeController.set(context, mode) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

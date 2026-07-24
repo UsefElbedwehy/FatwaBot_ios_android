@@ -56,4 +56,8 @@
     <string name="language_title">App language</string>
     <string name="language_subtitle">Change the app’s language in System settings</string>
     <string name="notification_channel_general">General notifications</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
 </resources>

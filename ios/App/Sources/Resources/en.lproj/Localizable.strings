@@ -7,6 +7,10 @@
 "tabs.settings" = "Settings";
 "common.coming_soon" = "Coming soon, in shaa Allah";
 "settings.prayer_section" = "Prayer";
+"settings.appearance_section" = "Appearance";
+"settings.appearance.system" = "System";
+"settings.appearance.light" = "Light";
+"settings.appearance.dark" = "Dark";
 "settings.language_section" = "Language";
 "settings.language.title" = "App Language";
 "settings.language.subtitle" = "Change the app's language in System Settings";

@@ -4,12 +4,14 @@ import SwiftUI
 @main
 struct FatwaBotApp: App {
     @State private var theme = ThemeStore()
+    @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.system.rawValue
 
     var body: some Scene {
         WindowGroup {
             AppRootView()
                 .environment(theme)
                 .tint(Color(hexToken: theme.current(for: .light).primary))
+                .preferredColorScheme((AppearanceMode(rawValue: appearanceRaw) ?? .system).colorScheme)
         }
     }
 }

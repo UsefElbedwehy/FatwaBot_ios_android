@@ -29,6 +29,8 @@ struct SettingsScreen: View {
             VStack(alignment: .leading, spacing: 22) {
                 AccountSection(tokens: tokens)
 
+                AppearanceSection(tokens: tokens)
+
                 LanguageSection(tokens: tokens)
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -280,6 +282,26 @@ private struct NotificationsSection: View {
 
 /// The "?" features guide (stakeholder direction, 2026-07-12): a per-item
 /// explanation of what each notification/feature does, so users understand them.
+/// Appearance control — System / Light / Dark, applied app-wide via
+/// `preferredColorScheme` in FatwaBotApp (bound to the same @AppStorage key).
+private struct AppearanceSection: View {
+    let tokens: ColorTokens
+    @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.system.rawValue
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BrandSectionHeader("settings.appearance_section", systemImage: "paintbrush.fill", tokens: tokens)
+            Picker("settings.appearance_section", selection: $appearanceRaw) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Label(mode.labelKey, systemImage: mode.systemImage).tag(mode.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+            .brandCard(tokens)
+        }
+    }
+}
+
 /// Language row. iOS keeps per-app language in the system Settings app (the
 /// "Preferred Language" screen that appears once the app ships >1 localization),
 /// so the native, Apple-sanctioned way to switch is to deep-link there rather

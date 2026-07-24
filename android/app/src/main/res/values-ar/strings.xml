@@ -56,4 +56,8 @@
     <string name="language_title">لغة التطبيق</string>
     <string name="language_subtitle">غيّر لغة التطبيق من إعدادات النظام</string>
     <string name="notification_channel_general">التنبيهات العامة</string>
+    <string name="settings_appearance">المظهر</string>
+    <string name="appearance_system">النظام</string>
+    <string name="appearance_light">فاتح</string>
+    <string name="appearance_dark">داكن</string>
 </resources>
