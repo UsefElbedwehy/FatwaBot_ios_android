@@ -60,4 +60,12 @@
     <string name="appearance_system">System</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
+    <string name="home_card_question">General question</string>
+    <string name="home_card_hadith">Find hadith</string>
+    <string name="home_card_fatwa">Search a fatwa</string>
+    <string name="home_search_placeholder">Type your question here…</string>
+    <string name="home_tagline">Answers in light of the way of Ahl as-Sunnah wa al-Jama\'ah</string>
+    <string name="home_coming_soon_title">Coming soon, in shaa Allah</string>
+    <string name="home_coming_soon_body">Smart search for fatwas and hadith is on its way.</string>
+    <string name="common_ok">OK</string>
 </resources>

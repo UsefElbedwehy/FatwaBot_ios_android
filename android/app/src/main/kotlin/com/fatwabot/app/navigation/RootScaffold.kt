@@ -2,9 +2,26 @@ package com.fatwabot.app.navigation
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import com.fatwabot.core.designsystem.BrandMark
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -40,9 +57,6 @@ fun RootScaffold() {
     var selected by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var worshipDestination by rememberSaveable { mutableStateOf<WorshipDestination?>(null) }
     val prayerViewModel: PrayerViewModel = hiltViewModel()
-    val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
-    val homeViewModel: HomeViewModel = hiltViewModel()
-    val homeState by homeViewModel.state.collectAsStateWithLifecycle()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -56,103 +70,80 @@ fun RootScaffold() {
             }
         }
         permissionLauncher.launch(permissions.toTypedArray())
-        homeViewModel.refresh(BuildConfig.VERSION_NAME, listOf("ar", "en"))
     }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            NavigationBar {
-                AppTab.entries.forEach { tab ->
-                    NavigationBarItem(
-                        selected = tab == selected,
-                        onClick = { selected = tab },
-                        icon = { Icon(tab.icon, contentDescription = null) },
-                        label = { Text(stringResource(tab.titleRes)) },
-                    )
-                }
-            }
-        },
+        bottomBar = { FatwaBottomBar(selected = selected, onSelect = { selected = it }) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selected) {
-                AppTab.HOME -> HomeTab(
-                    viewModel = prayerViewModel,
-                    state = prayerState,
-                    homeState = homeState,
-                    onQuickAction = { action ->
-                        handleQuickAction(
-                            action = action,
-                            hasLocation = prayerState.location != null,
-                            switchToWorship = { selected = AppTab.WORSHIP },
-                            setWorshipDestination = { worshipDestination = it },
-                        )
-                    },
-                )
+                AppTab.HOME -> SearchHome()
                 AppTab.WORSHIP -> WorshipTab(
                     prayerViewModel = prayerViewModel,
                     destination = worshipDestination,
                     onDestinationChange = { worshipDestination = it },
                 )
-                AppTab.JOURNEY -> JourneyTab()
                 AppTab.SETTINGS -> SettingsScreen(prayerViewModel = prayerViewModel)
             }
         }
     }
 }
 
+/** Custom floating bottom bar (client redesign): Worship (left) · Home (raised
+ * center) · Settings (right). Journey lives in the Worship grid now. Forced LTR
+ * so placement matches the mockup in both languages. */
 @Composable
-private fun HomeTab(
-    viewModel: PrayerViewModel,
-    state: PrayerViewModel.UiState,
-    homeState: HomeViewModel.UiState,
-    onQuickAction: (QuickAction) -> Unit,
-) {
-    if (state.needsLocation) {
-        CityPicker(onSelect = viewModel::selectCity)
-        return
-    }
-    val hero = state.nextPrayer?.let { next ->
-        state.today?.let { today ->
-            HomeHeroContent(
-                next = next,
-                today = today,
-                hijri = state.hijri,
-                locationName = state.location?.name,
-            )
+private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(30.dp))
+                .background(cs.surface)
+                .padding(horizontal = 22.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            BarItem(AppTab.WORSHIP, selected, cs, Modifier.weight(1f)) { onSelect(it) }
+            HomeBarItem(selected == AppTab.HOME, cs, Modifier.weight(1f)) { onSelect(AppTab.HOME) }
+            BarItem(AppTab.SETTINGS, selected, cs, Modifier.weight(1f)) { onSelect(it) }
         }
     }
-    HomeScreen(
-        layout = homeState.layout,
-        askEnabled = homeState.askEnabled,
-        hero = hero,
-        formatTime = ::formatTime,
-        prayerTitle = { stringResource(it.titleRes()) },
-        onQuickAction = onQuickAction,
-    )
 }
 
-/** Deep-links from Home's quick actions (task 26): switches to Worship and
- * pushes the target screen directly — no extra tap required. `HISTORY`
- * (Search History) has no content until AI Search ships (M5+), so it is
- * intentionally inert rather than routing to a hollow screen. */
-private fun handleQuickAction(
-    action: QuickAction,
-    hasLocation: Boolean,
-    switchToWorship: () -> Unit,
-    setWorshipDestination: (WorshipDestination?) -> Unit,
-) {
-    when (action) {
-        QuickAction.QIBLA -> {
-            if (!hasLocation) {
-                switchToWorship()
-                return
-            }
-            setWorshipDestination(WorshipDestination.QIBLA)
-        }
-        QuickAction.TASBEEH -> setWorshipDestination(WorshipDestination.TASBEEH)
-        QuickAction.AZKAR -> setWorshipDestination(WorshipDestination.AZKAR)
-        QuickAction.HISTORY -> return
+@Composable
+private fun BarItem(tab: AppTab, selected: AppTab, cs: androidx.compose.material3.ColorScheme, modifier: Modifier, onClick: (AppTab) -> Unit) {
+    val active = tab == selected
+    val tint = if (active) cs.primary else cs.onSurfaceVariant
+    Column(
+        modifier = modifier.clickable { onClick(tab) }.padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(tab.icon, contentDescription = null, tint = tint)
+        Text(stringResource(tab.titleRes), style = MaterialTheme.typography.labelSmall, color = tint)
     }
-    switchToWorship()
+}
+
+@Composable
+private fun HomeBarItem(active: Boolean, cs: androidx.compose.material3.ColorScheme, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier = modifier.clickable(onClick = onClick).offset(y = (-14).dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier.size(58.dp).clip(CircleShape).background(cs.primary),
+            contentAlignment = Alignment.Center,
+        ) {
+            BrandMark(modifier = Modifier.size(26.dp), color = cs.onPrimary)
+        }
+        Text(
+            stringResource(AppTab.HOME.titleRes),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (active) cs.primary else cs.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
 }

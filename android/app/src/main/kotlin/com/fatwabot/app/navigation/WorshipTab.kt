@@ -1,5 +1,7 @@
 package com.fatwabot.app.navigation
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -73,6 +75,7 @@ enum class WorshipDestination(@StringRes val titleRes: Int) {
     DUA(R.string.worship_dua),
     AWRAD(R.string.worship_awrad),
     HADITH(R.string.worship_hadith),
+    JOURNEY(R.string.tab_journey),
 }
 
 @Composable
@@ -148,6 +151,10 @@ fun WorshipTab(
                 }
             }
         }
+        WorshipDestination.JOURNEY -> {
+            BackHandler { onDestinationChange(null) }
+            JourneyTab()
+        }
     }
 }
 
@@ -158,6 +165,7 @@ private fun iconFor(destination: WorshipDestination) = when (destination) {
     WorshipDestination.DUA -> Icons.Filled.Favorite
     WorshipDestination.AWRAD -> Icons.Filled.Spa
     WorshipDestination.HADITH -> Icons.Filled.LibraryBooks
+    WorshipDestination.JOURNEY -> Icons.AutoMirrored.Filled.TrendingUp
     else -> Icons.Filled.Circle
 }
 
