@@ -37,7 +37,11 @@ let package = Package(
         .target(
             name: "ContentKit",
             dependencies: ["CoreKit", "NetworkingKit"],
-            resources: [.copy("Resources")],
+            // `.process` flattens the seed JSON to the bundle root, which (a) keeps the
+            // simulator bundle shallow — Xcode 26's codesign rejects a shallow bundle
+            // that contains a reserved `Resources/` subfolder — and (b) lets
+            // `bundle.url(forResource:withExtension:)` (no subdirectory) actually find them.
+            resources: [.process("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
         .testTarget(name: "ConfigKitTests", dependencies: ["ConfigKit"]),
