@@ -86,9 +86,99 @@ val widgetDuaPool: List<WidgetDua> = listOf(
     ),
 )
 
+/**
+ * A separate pool of *short, complete* adhkar for constrained surfaces (the 2x2
+ * du'a widget). Kept apart from [widgetDuaPool] on purpose: clipping a long
+ * Qur'anic verse to make it fit would change its meaning, so we never truncate —
+ * we pick something that is already whole at that length. Mirrors the iOS
+ * `widgetShortDhikrPool`.
+ */
+val widgetShortDhikrPool: List<WidgetDua> = listOf(
+    WidgetDua(
+        "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+        "Glory be to Allah, and praise be to Him.",
+        "متفق عليه",
+    ),
+    WidgetDua(
+        "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ",
+        "I seek Allah's forgiveness and turn to Him in repentance.",
+        "رواه البخاري",
+    ),
+    WidgetDua(
+        "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
+        "There is no might nor power except with Allah.",
+        "متفق عليه",
+    ),
+    WidgetDua(
+        "رَبِّ زِدْنِي عِلْمًا",
+        "My Lord, increase me in knowledge.",
+        "طه: 114",
+    ),
+    WidgetDua(
+        "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ",
+        "Allah is sufficient for us, and He is the best disposer of affairs.",
+        "آل عمران: 173",
+    ),
+    WidgetDua(
+        "اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ",
+        "O Allah, help me to remember You.",
+        "رواه أبو داود",
+    ),
+    WidgetDua(
+        "رَبِّ اشْرَحْ لِي صَدْرِي",
+        "My Lord, expand for me my chest.",
+        "طه: 25",
+    ),
+    WidgetDua(
+        "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَافِيَةَ",
+        "O Allah, I ask You for well-being.",
+        "رواه الترمذي",
+    ),
+    WidgetDua(
+        "سُبْحَانَ اللَّهِ الْعَظِيمِ",
+        "Glory be to Allah, the Most Great.",
+        "متفق عليه",
+    ),
+    WidgetDua(
+        "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ",
+        "O Allah, send blessings upon Muhammad.",
+        "متفق عليه",
+    ),
+    WidgetDua(
+        "رَبَّنَا تَقَبَّلْ مِنَّا",
+        "Our Lord, accept this from us.",
+        "البقرة: 127",
+    ),
+    WidgetDua(
+        "اللَّهُمَّ اغْفِرْ لِي",
+        "O Allah, forgive me.",
+        "متفق عليه",
+    ),
+)
+
 /** Deterministic ~3-hour rotation so the du'a refreshes through the day. */
-fun widgetDua(nowMillis: Long = System.currentTimeMillis()): WidgetDua {
-    val slot = (nowMillis / (3L * 3600L * 1000L))
-    val index = ((slot % widgetDuaPool.size) + widgetDuaPool.size) % widgetDuaPool.size
-    return widgetDuaPool[index.toInt()]
+fun widgetDua(nowMillis: Long = System.currentTimeMillis()): WidgetDua =
+    rotate(widgetDuaPool, nowMillis, 3L * 3600L * 1000L)
+
+/**
+ * Hourly rotation for the short pool — the small surface is glanced at far more
+ * often than it is read, so it should usually have something new on it.
+ */
+fun widgetShortDhikr(nowMillis: Long = System.currentTimeMillis()): WidgetDua =
+    rotate(widgetShortDhikrPool, nowMillis, 3600L * 1000L)
+
+private fun rotate(pool: List<WidgetDua>, nowMillis: Long, slotMillis: Long): WidgetDua {
+    val slot = nowMillis / slotMillis
+    val index = ((slot % pool.size) + pool.size) % pool.size
+    return pool[index.toInt()]
 }
+
+private val ARABIC_DIACRITICS = ('ً'..'ْ').toSet() + setOf('ٰ', 'ـ')
+
+/**
+ * Length of the Arabic text ignoring tashkeel and tatweel. Glance/RemoteViews has
+ * no auto-shrinking text, so the dhikr's rendered width has to be estimated up
+ * front to pick a point size — and counting raw `String.length` would badly
+ * over-count fully vocalised text (every fatha is a char but takes no width).
+ */
+internal fun arabicVisualLength(text: String): Int = text.count { it !in ARABIC_DIACRITICS }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The du'a widget is placeable from 2x2 upwards: at 2x2 it renders a short,
+  complete dhikr, and at 4x3 the full du'a with translation and source.
+  updatePeriodMillis is 1h to match the short pool's hourly rotation (the
+  platform clamps anything under 30 min anyway).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="3600000"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

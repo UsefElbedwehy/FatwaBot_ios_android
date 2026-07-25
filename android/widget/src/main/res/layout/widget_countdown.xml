@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A bare Chronometer embedded into the Glance tree via AndroidRemoteViews. Glance
+  has no ticking-text composable, but RemoteViews' Chronometer ticks in the
+  launcher process, which is the only way to get a live countdown on a widget.
+  Styling has to live here because RemoteViews cannot restyle arbitrary views.
+-->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_countdown"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:textColor="#7A2A2A"
+    android:textSize="15sp"
+    android:textStyle="bold"
+    android:includeFontPadding="false" />

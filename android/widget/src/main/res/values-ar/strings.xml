@@ -17,4 +17,5 @@
     <string name="widget_prayer_times">أوقات الصلاة</string>
     <string name="widget_dua">دعاء اليوم</string>
     <string name="widget_dua_title">دعاء</string>
+    <string name="widget_countdown_format">بعد %s</string>
 </resources>

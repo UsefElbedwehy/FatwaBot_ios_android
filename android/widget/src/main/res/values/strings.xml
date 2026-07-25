@@ -17,4 +17,6 @@
     <string name="widget_prayer_times">Prayer Times</string>
     <string name="widget_dua">Daily Du\'a</string>
     <string name="widget_dua_title">Du\'a</string>
+    <!-- %s is a live H:MM:SS countdown rendered by a Chronometer. -->
+    <string name="widget_countdown_format">in %s</string>
 </resources>

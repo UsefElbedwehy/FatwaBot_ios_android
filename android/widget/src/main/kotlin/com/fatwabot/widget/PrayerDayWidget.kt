@@ -2,7 +2,6 @@ package com.fatwabot.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
@@ -28,10 +27,6 @@ import com.fatwabot.core.prayer.PrayerWidgetSnapshot
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-
-private val BrandPrimary = Color(0xFF7A2A2A)
-private val Highlight = Color(0x1A7A2A2A)
-private val OnSurface = Color(0xFF2A2118)
 
 /**
  * Full-day prayer schedule Glance widget: lists all of today's prayers and
@@ -60,24 +55,24 @@ private fun PrayerDayContent(context: Context, snapshot: PrayerWidgetSnapshot?) 
         .orEmpty()
 
     Column(
-        modifier = GlanceModifier.fillMaxSize().padding(12.dp),
+        modifier = GlanceModifier.fillMaxSize().brandSurface().padding(12.dp),
     ) {
         if (snapshot == null || todays.isEmpty()) {
             Text(
                 context.getString(R.string.widget_open_app),
-                style = TextStyle(color = ColorProvider(BrandPrimary)),
+                style = TextStyle(color = MaroonProvider),
             )
             return@Column
         }
         Row(modifier = GlanceModifier.fillMaxWidth()) {
             Text(
                 snapshot.locationName,
-                style = TextStyle(color = ColorProvider(BrandPrimary), fontSize = 13.sp, fontWeight = FontWeight.Medium),
+                style = TextStyle(color = MaroonProvider, fontSize = 13.sp, fontWeight = FontWeight.Medium),
             )
             Spacer(GlanceModifier.defaultWeight())
             Text(
                 "${snapshot.hijriDay} ${snapshot.hijriMonthName}",
-                style = TextStyle(fontSize = 12.sp),
+                style = TextStyle(color = MutedProvider, fontSize = 12.sp),
             )
         }
         Spacer(GlanceModifier.height(8.dp))
@@ -87,13 +82,13 @@ private fun PrayerDayContent(context: Context, snapshot: PrayerWidgetSnapshot?) 
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = 7.dp)
-                    .then(if (isNext) GlanceModifier.background(ColorProvider(Highlight)).cornerRadius(10.dp) else GlanceModifier),
+                    .then(if (isNext) GlanceModifier.background(ColorProvider(BrandHighlight)).cornerRadius(10.dp) else GlanceModifier),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     prayerLabel(context, item.prayer),
                     style = TextStyle(
-                        color = if (isNext) ColorProvider(BrandPrimary) else ColorProvider(OnSurface),
+                        color = if (isNext) MaroonProvider else InkProvider,
                         fontSize = 15.sp,
                         fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
                     ),
@@ -102,7 +97,7 @@ private fun PrayerDayContent(context: Context, snapshot: PrayerWidgetSnapshot?) 
                 Text(
                     formatTime(item.timeEpochSeconds),
                     style = TextStyle(
-                        color = if (isNext) ColorProvider(BrandPrimary) else ColorProvider(OnSurface),
+                        color = if (isNext) MaroonProvider else InkProvider,
                         fontSize = 15.sp,
                         fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
                     ),

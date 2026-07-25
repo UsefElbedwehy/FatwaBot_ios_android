@@ -70,7 +70,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/widget_large_info" />
+                android:resource="@xml/widget_dua_info" />
         </receiver>
 
     </application>
