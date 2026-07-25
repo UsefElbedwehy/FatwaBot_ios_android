@@ -215,6 +215,15 @@ private struct FatwaBottomBar: View {
     let tokens: ColorTokens
 
     private let barHeight: CGFloat = 108
+    /// How far the Home circle rises above the band.
+    private let homeLift: CGFloat = 26
+    /// Reserved space ABOVE the band. `safeAreaInset` insets content by this
+    /// view's declared height, but the Home circle is drawn on an offset — i.e.
+    /// outside that height — so without this the bar visually occupies ~134pt
+    /// while only 108 is reserved, and content scrolls under the circle. Adding
+    /// it here fixes every screen at once; padding each screen individually
+    /// would mean remembering the number forever.
+    private var overhang: CGFloat { homeLift + 6 } // +6 clears the circle's shadow
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -238,9 +247,11 @@ private struct FatwaBottomBar: View {
 
             homeItem
                 .frame(maxWidth: .infinity)
-                .offset(y: -26)
+                .offset(y: -homeLift)
         }
         .frame(height: barHeight)
+        // Reserve the circle's overhang so content never slides beneath it.
+        .padding(.top, overhang)
         .environment(\.layoutDirection, .leftToRight)
     }
 

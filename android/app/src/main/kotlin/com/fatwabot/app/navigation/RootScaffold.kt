@@ -172,10 +172,19 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
     val cs = MaterialTheme.colorScheme
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val barHeight = 108.dp
+    val homeLift = 26.dp
+    // Reserved space ABOVE the band. Scaffold insets content by this composable's
+    // MEASURED height, but the Home circle is drawn on an offset — which doesn't
+    // affect measurement — so without this the bar visually occupies ~134dp while
+    // only 108 is reserved, and content scrolls under the circle. Fixing it here
+    // covers every screen at once; padding each screen would mean remembering the
+    // number forever. (+6 clears the circle's shadow.)
+    val overhang = homeLift + 6.dp
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top = overhang)
                 .height(barHeight + bottomInset)
                 .drawBehind {
                     val path = cradlePath(size, 54.dp.toPx(), 18.dp.toPx(), 22.dp.toPx())
@@ -196,7 +205,7 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                 SideItem(AppTab.SETTINGS, Icons.Filled.MoreHoriz, selected, cs) { onSelect(AppTab.SETTINGS) }
                 SideItem(AppTab.WORSHIP, Icons.Filled.GridView, selected, cs) { onSelect(AppTab.WORSHIP) }
             }
-            HomeCircle(cs, Modifier.align(Alignment.TopCenter).offset(y = (-26).dp)) { onSelect(AppTab.HOME) }
+            HomeCircle(cs, Modifier.align(Alignment.TopCenter).offset(y = -homeLift)) { onSelect(AppTab.HOME) }
         }
     }
 }
