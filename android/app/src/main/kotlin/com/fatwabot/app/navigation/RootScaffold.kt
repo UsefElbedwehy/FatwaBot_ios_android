@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.res.painterResource
 import com.fatwabot.app.R
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -127,9 +130,23 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
         permissionLauncher.launch(permissions.toTypedArray())
     }
 
+    // The bar is a *tab-root* control: on a pushed screen you navigate with Back,
+    // not by switching tabs, so 108dp of maroon band would only crowd content that
+    // wants the room (the Tasbeeh tap target, the Qibla compass, a hadith being
+    // read). Mirrors iOS `isShowingDetail`. Scaffold reports zero bottom padding
+    // when the slot is empty, so hiding it also releases the reserved space.
+    val isShowingDetail = selected == AppTab.WORSHIP && worshipDestination != null
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = { FatwaBottomBar(selected = selected, onSelect = { selected = it }) },
+        bottomBar = {
+            AnimatedVisibility(
+                visible = !isShowingDetail,
+                enter = slideInVertically { it },
+                exit = slideOutVertically { it },
+            ) {
+                FatwaBottomBar(selected = selected, onSelect = { selected = it })
+            }
+        },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selected) {

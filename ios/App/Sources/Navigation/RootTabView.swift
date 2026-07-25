@@ -91,11 +91,25 @@ struct RootTabView: View {
         colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
     }
 
+    /// True once a worship destination is pushed. The bar is a *tab-root*
+    /// control: on a pushed screen you navigate with Back, not by switching
+    /// tabs, so 140pt of maroon band would only crowd content that wants the
+    /// room (the Tasbeeh tap target, the Qibla compass, a hadith being read).
+    private var isShowingDetail: Bool {
+        selection == .worship && !worshipPath.isEmpty
+    }
+
     var body: some View {
         Group { content }
             .safeAreaInset(edge: .bottom) {
-                FatwaBottomBar(selection: $selection, tokens: tokens)
+                // Conditional inside the inset, so hiding the bar also releases
+                // the space it reserved — no empty gap left behind.
+                if !isShowingDetail {
+                    FatwaBottomBar(selection: $selection, tokens: tokens)
+                        .transition(.move(edge: .bottom))
+                }
             }
+            .animation(.easeInOut(duration: 0.22), value: isShowingDetail)
             .task {
                 if !ProcessInfo.processInfo.arguments.contains("-skipPermPrompts") {
                     _ = await Container.shared.notificationScheduler().requestAuthorization()
@@ -165,7 +179,9 @@ struct RootTabView: View {
                     .bottomBarClearance()
                     .navigationTitle(Text("tabs.worship"))
                     .navigationDestination(for: WorshipDestination.self) { destination in
-                        worshipDestinationView(destination).bottomBarClearance()
+                        // No clearance here: the bar hides on push, so reserving
+                        // space for it would leave a dead gap at the bottom.
+                        worshipDestinationView(destination)
                     }
             }
         case .settings:
