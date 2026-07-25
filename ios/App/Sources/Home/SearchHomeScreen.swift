@@ -28,7 +28,7 @@ struct SearchHomeScreen: View {
         }
         var icon: String {
             switch self {
-            case .question: return "questionmark.bubble"
+            case .question: return "questionmark.circle"
             case .hadith: return "book.fill"
             case .fatwa: return "magnifyingglass"
             }
@@ -38,32 +38,32 @@ struct SearchHomeScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                Spacer(minLength: 28)
+                Spacer(minLength: 48)
 
                 Image("LaunchLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 112, height: 158)
+                    .frame(width: 94, height: 132)
                     .accessibilityHidden(true)
 
                 Text(verbatim: "FATWA BOT")
-                    .font(.system(size: 34, weight: .semibold, design: .serif))
-                    .tracking(4)
-                    .foregroundStyle(Color(hexToken: tokens.onSurface))
-                    .padding(.top, 6)
+                    .font(.system(size: 28, weight: .medium, design: .serif))
+                    .tracking(3)
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                    .padding(.top, 4)
 
                 divider
-                    .padding(.top, 30)
-                    .padding(.bottom, 34)
+                    .padding(.top, 26)
+                    .padding(.bottom, 32)
 
-                HStack(spacing: 14) {
+                HStack(spacing: 12) {
                     ForEach(Intent.allCases) { intent in
                         intentCard(intent)
                     }
                 }
 
                 searchField
-                    .padding(.top, 30)
+                    .padding(.top, 16)
 
                 HStack(spacing: 8) {
                     RosetteMark(size: 15, color: Color(hexToken: tokens.accent))
@@ -72,7 +72,7 @@ struct SearchHomeScreen: View {
                         .foregroundStyle(Color(hexToken: tokens.primary))
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, 26)
+                .padding(.top, 18)
                 .padding(.horizontal, 12)
 
                 Spacer(minLength: 40)
@@ -90,12 +90,12 @@ struct SearchHomeScreen: View {
     // MARK: - Divider (rosette between two arrow-tipped rules)
 
     private var divider: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             dividerRule(pointsLeft: true)
-            RosetteMark(size: 22, color: Color(hexToken: tokens.primary))
+            RosetteMark(size: 18, color: Color(hexToken: tokens.primary))
             dividerRule(pointsLeft: false)
         }
-        .frame(maxWidth: 300)
+        .frame(maxWidth: 234)
         .accessibilityHidden(true)
     }
 
@@ -121,19 +121,19 @@ struct SearchHomeScreen: View {
 
     private func intentCard(_ intent: Intent) -> some View {
         Button { showComingSoon = true } label: {
-            VStack(spacing: 14) {
+            VStack(spacing: 12) {
                 Image(systemName: intent.icon)
-                    .font(.system(size: 26, weight: .regular))
+                    .font(.system(size: 26, weight: .medium))
                     .foregroundStyle(Color(hexToken: tokens.primary))
                 Text(intent.titleKey)
-                    .font(.caption.weight(.medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, minHeight: 120)
-            .padding(.vertical, 12)
-            .background(neumorphicSurface(cornerRadius: 26))
+            .frame(maxWidth: .infinity, minHeight: 104)
+            .padding(.vertical, 10)
+            .background(neumorphicSurface(cornerRadius: 24))
         }
         .buttonStyle(.plain)
     }
@@ -149,17 +149,18 @@ struct SearchHomeScreen: View {
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(Color(hexToken: tokens.onPrimary))
                 }
-                .frame(width: 68)
+                .frame(width: 60)
                 HStack {
                     Text("home.search_placeholder")
+                        .font(.subheadline)
                         .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
                     Spacer()
                 }
                 .padding(.horizontal, 18)
             }
-            .frame(height: 58)
-            .background(neumorphicSurface(cornerRadius: 29))
-            .clipShape(Capsule())
+            .frame(height: 54)
+            .background(neumorphicSurface(cornerRadius: 18))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             // Mockup keeps the maroon magnifier cap on the left in both languages.
             .environment(\.layoutDirection, .leftToRight)
         }
@@ -170,8 +171,8 @@ struct SearchHomeScreen: View {
     private func neumorphicSurface(cornerRadius: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(Color(hexToken: tokens.surface))
-            .shadow(color: Color(hexToken: tokens.onSurface).opacity(0.12), radius: 9, x: 5, y: 7)
-            .shadow(color: .white.opacity(0.9), radius: 6, x: -5, y: -5)
+            .shadow(color: Color(hexToken: tokens.onSurface).opacity(0.09), radius: 11, x: 4, y: 8)
+            .shadow(color: .white.opacity(0.85), radius: 7, x: -5, y: -5)
     }
 }
 

@@ -23,8 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -79,60 +79,63 @@ fun SearchHome() {
             .padding(22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(48.dp))
         Image(
             painter = painterResource(R.drawable.fatwabot_logo),
             contentDescription = null,
-            modifier = Modifier.width(112.dp).height(158.dp),
+            modifier = Modifier.width(94.dp).height(132.dp),
         )
         Text(
             "FATWA BOT",
             fontFamily = FontFamily.Serif,
-            fontSize = 32.sp,
-            letterSpacing = 4.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = cs.onSurface,
-            modifier = Modifier.padding(top = 6.dp),
+            fontSize = 28.sp,
+            letterSpacing = 3.sp,
+            fontWeight = FontWeight.Medium,
+            color = cs.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
         )
 
         // Rosette divider (arrow-tipped rules + 8-petal flower).
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth().widthIn(max = 300.dp).padding(top = 30.dp, bottom = 34.dp),
+            modifier = Modifier.fillMaxWidth().widthIn(max = 234.dp).padding(top = 26.dp, bottom = 32.dp),
         ) {
             DividerRule(pointsStart = true, color = cs.primary, modifier = Modifier.weight(1f))
-            RosetteMark(size = 22.dp, color = cs.primary)
+            RosetteMark(size = 18.dp, color = cs.primary)
             DividerRule(pointsStart = false, color = cs.primary, modifier = Modifier.weight(1f))
         }
 
         // Cards read fatwa · hadith · question from the start edge (matches the
         // RTL mockup where fatwa is on the right).
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             IntentCard(R.string.home_card_fatwa, Icons.Filled.Search, Modifier.weight(1f)) { showComingSoon = true }
             IntentCard(R.string.home_card_hadith, Icons.AutoMirrored.Filled.MenuBook, Modifier.weight(1f)) { showComingSoon = true }
-            IntentCard(R.string.home_card_question, Icons.Filled.QuestionAnswer, Modifier.weight(1f)) { showComingSoon = true }
+            IntentCard(R.string.home_card_question, Icons.Outlined.HelpOutline, Modifier.weight(1f)) { showComingSoon = true }
         }
 
-        Spacer(Modifier.height(30.dp))
-        // Search pill — maroon magnifier cap pinned to the left in both languages.
+        Spacer(Modifier.height(16.dp))
+        // Search bar — rounded rect with the maroon magnifier cap pinned to the
+        // left in both languages.
+        val searchShape = RoundedCornerShape(18.dp)
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp)
-                    .shadow(6.dp, CircleShape)
-                    .clip(CircleShape)
+                    .height(54.dp)
+                    .shadow(7.dp, searchShape)
+                    .clip(searchShape)
                     .background(cs.surface)
                     .clickable { showComingSoon = true },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
-                    modifier = Modifier.width(68.dp).fillMaxSize().clip(CircleShape).background(cs.primary),
+                    modifier = Modifier.width(60.dp).fillMaxSize().background(cs.primary),
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Filled.Search, contentDescription = null, tint = cs.onPrimary) }
                 Text(
                     stringResource(R.string.home_search_placeholder),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 18.dp),
                 )
@@ -142,7 +145,7 @@ fun SearchHome() {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 26.dp, start = 8.dp, end = 8.dp),
+            modifier = Modifier.padding(top = 18.dp, start = 8.dp, end = 8.dp),
         ) {
             RosetteMark(size = 15.dp, color = cs.secondary)
             Text(
@@ -171,17 +174,17 @@ private fun IntentCard(titleRes: Int, icon: ImageVector, modifier: Modifier, onC
     val cs = MaterialTheme.colorScheme
     Column(
         modifier = modifier
-            .height(120.dp)
-            .shadow(7.dp, RoundedCornerShape(26.dp))
-            .clip(RoundedCornerShape(26.dp))
+            .height(104.dp)
+            .shadow(6.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(cs.surface)
             .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(28.dp))
-        Spacer(Modifier.height(14.dp))
+        Icon(icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(26.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
             stringResource(titleRes),
             style = MaterialTheme.typography.bodySmall,

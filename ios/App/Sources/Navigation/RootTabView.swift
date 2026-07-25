@@ -128,13 +128,17 @@ private struct FatwaBottomBar: View {
     @Binding var selection: AppTab
     let tokens: ColorTokens
 
-    private let barHeight: CGFloat = 84
+    private let barHeight: CGFloat = 108
 
     var body: some View {
         ZStack(alignment: .top) {
             NavCradleShape()
                 .fill(Color(hexToken: tokens.primary))
-                .shadow(color: Color(hexToken: tokens.primary).opacity(0.30), radius: 16, x: 0, y: -4)
+                .overlay(
+                    NavCradleShape()
+                        .stroke(Color.white.opacity(0.16), lineWidth: 2)
+                )
+                .shadow(color: Color(hexToken: tokens.primary).opacity(0.28), radius: 16, x: 0, y: -4)
                 .ignoresSafeArea(edges: .bottom)
 
             HStack {
@@ -144,10 +148,11 @@ private struct FatwaBottomBar: View {
             }
             .padding(.horizontal, 44)
             .frame(height: barHeight)
+            .offset(y: 6)
 
             homeItem
                 .frame(maxWidth: .infinity)
-                .offset(y: -32)
+                .offset(y: -26)
         }
         .frame(height: barHeight)
         .environment(\.layoutDirection, .leftToRight)
@@ -176,7 +181,7 @@ private struct FatwaBottomBar: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Color(hexToken: tokens.primary))
             }
-            .frame(width: 90, height: 90)
+            .frame(width: 92, height: 92)
             .background(
                 Circle()
                     .fill(Color(hexToken: tokens.surface))
@@ -188,28 +193,38 @@ private struct FatwaBottomBar: View {
     }
 }
 
-/// The maroon nav band: a flat-bottomed shape whose top edge rises from the screen
-/// edges to a shoulder on each side of center, then scoops down into a shallow
-/// cradle where the raised Home button nests.
+/// The maroon nav band: a smooth cradle. Two soft shoulders peak just outside the
+/// Home circle, the center dips under it, and the top eases down to the screen
+/// edges — sampled from a cosine so every junction (peaks, valley, edges) meets
+/// with a horizontal tangent, i.e. no cusps or visible seams.
 private struct NavCradleShape: Shape {
     func path(in rect: CGRect) -> Path {
-        var p = Path()
         let w = rect.width
         let top = rect.minY
         let cx = w / 2
-        let cradleHalf: CGFloat = 58   // half-width of the center scoop
-        let dip: CGFloat = 30          // how far the scoop dips below the shoulders
-        let sideDrop: CGFloat = 18     // screen edges sit slightly below the shoulders
+        let shoulderHalf: CGFloat = 54   // peaks sit just outside the Home circle
+        let valleyDip: CGFloat = 18      // center dips below the shoulder peaks
+        let edgeDrop: CGFloat = 22       // screen edges sit below the peaks
 
-        p.move(to: CGPoint(x: 0, y: top + sideDrop))
-        p.addQuadCurve(to: CGPoint(x: cx - cradleHalf, y: top),
-                       control: CGPoint(x: w * 0.22, y: top + sideDrop))
-        p.addQuadCurve(to: CGPoint(x: cx, y: top + dip),
-                       control: CGPoint(x: cx - cradleHalf * 0.5, y: top))
-        p.addQuadCurve(to: CGPoint(x: cx + cradleHalf, y: top),
-                       control: CGPoint(x: cx + cradleHalf * 0.5, y: top))
-        p.addQuadCurve(to: CGPoint(x: w, y: top + sideDrop),
-                       control: CGPoint(x: w * 0.78, y: top + sideDrop))
+        func y(at x: CGFloat) -> CGFloat {
+            let d = abs(x - cx)
+            if d <= shoulderHalf {
+                let t = Double(d / shoulderHalf)              // 0 center → 1 shoulder
+                return top + valleyDip * CGFloat(0.5 + 0.5 * cos(.pi * t))
+            } else {
+                let t = Double((d - shoulderHalf) / (cx - shoulderHalf)) // 0 shoulder → 1 edge
+                return top + edgeDrop * CGFloat(0.5 - 0.5 * cos(.pi * t))
+            }
+        }
+
+        var p = Path()
+        p.move(to: CGPoint(x: 0, y: y(at: 0)))
+        var x: CGFloat = 0
+        while x <= w {
+            p.addLine(to: CGPoint(x: x, y: y(at: x)))
+            x += 2
+        }
+        p.addLine(to: CGPoint(x: w, y: y(at: w)))
         p.addLine(to: CGPoint(x: w, y: rect.maxY))
         p.addLine(to: CGPoint(x: 0, y: rect.maxY))
         p.closeSubpath()

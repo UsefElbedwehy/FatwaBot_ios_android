@@ -30,8 +30,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import kotlin.math.abs
+import kotlin.math.cos
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -107,14 +111,16 @@ fun RootScaffold() {
 private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
     val cs = MaterialTheme.colorScheme
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val barHeight = 84.dp
+    val barHeight = 108.dp
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(barHeight + bottomInset)
                 .drawBehind {
-                    drawPath(cradlePath(size, 58.dp.toPx(), 30.dp.toPx(), 18.dp.toPx()), cs.primary)
+                    val path = cradlePath(size, 54.dp.toPx(), 18.dp.toPx(), 22.dp.toPx())
+                    drawPath(path, cs.primary)
+                    drawPath(path, Color.White.copy(alpha = 0.16f), style = Stroke(width = 2.dp.toPx()))
                 },
         ) {
             Row(
@@ -122,6 +128,7 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                     .fillMaxWidth()
                     .height(barHeight)
                     .align(Alignment.TopCenter)
+                    .offset(y = 6.dp)
                     .padding(horizontal = 40.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -129,23 +136,34 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                 SideItem(AppTab.SETTINGS, Icons.Filled.MoreHoriz, selected, cs) { onSelect(AppTab.SETTINGS) }
                 SideItem(AppTab.WORSHIP, Icons.Filled.GridView, selected, cs) { onSelect(AppTab.WORSHIP) }
             }
-            HomeCircle(cs, Modifier.align(Alignment.TopCenter).offset(y = (-30).dp)) { onSelect(AppTab.HOME) }
+            HomeCircle(cs, Modifier.align(Alignment.TopCenter).offset(y = (-26).dp)) { onSelect(AppTab.HOME) }
         }
     }
 }
 
-/** Maroon band path: rises from the screen edges to a shoulder each side of
- * center, then scoops down into a shallow cradle for the Home button. */
-private fun cradlePath(size: Size, cradleHalf: Float, dip: Float, sideDrop: Float): Path {
+/** Maroon band path: a smooth cradle. Two soft shoulders peak just outside the
+ * Home circle, the center dips under it, and the top eases down to the screen
+ * edges — sampled from a cosine so every junction meets with a horizontal
+ * tangent (no cusps or seams). Mirrors iOS NavCradleShape. */
+private fun cradlePath(size: Size, shoulderHalf: Float, valleyDip: Float, edgeDrop: Float): Path {
     val w = size.width
-    val cx = w / 2f
     val top = 0f
+    val cx = w / 2f
+    fun y(x: Float): Float {
+        val d = abs(x - cx)
+        return if (d <= shoulderHalf) {
+            val t = (d / shoulderHalf).toDouble()                       // 0 center → 1 shoulder
+            top + valleyDip * (0.5 + 0.5 * cos(Math.PI * t)).toFloat()
+        } else {
+            val t = ((d - shoulderHalf) / (cx - shoulderHalf)).toDouble() // 0 shoulder → 1 edge
+            top + edgeDrop * (0.5 - 0.5 * cos(Math.PI * t)).toFloat()
+        }
+    }
     return Path().apply {
-        moveTo(0f, top + sideDrop)
-        quadraticBezierTo(w * 0.22f, top + sideDrop, cx - cradleHalf, top)
-        quadraticBezierTo(cx - cradleHalf * 0.5f, top, cx, top + dip)
-        quadraticBezierTo(cx + cradleHalf * 0.5f, top, cx + cradleHalf, top)
-        quadraticBezierTo(w * 0.78f, top + sideDrop, w, top + sideDrop)
+        moveTo(0f, y(0f))
+        var x = 0f
+        while (x <= w) { lineTo(x, y(x)); x += 2f }
+        lineTo(w, y(w))
         lineTo(w, size.height)
         lineTo(0f, size.height)
         close()
@@ -172,7 +190,7 @@ private fun SideItem(tab: AppTab, icon: ImageVector, selected: AppTab, cs: andro
 private fun HomeCircle(cs: androidx.compose.material3.ColorScheme, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
         modifier = modifier
-            .size(90.dp)
+            .size(92.dp)
             .clip(CircleShape)
             .background(cs.surface)
             .clickable(onClick = onClick),
