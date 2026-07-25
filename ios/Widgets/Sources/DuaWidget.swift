@@ -60,12 +60,53 @@ let widgetDuaPool: [WidgetDua] = [
           source: "البقرة: 286"),
 ]
 
+// Short, complete adhkar for the lock-screen / Notification Center families,
+// where only ~2 lines are legible at a readable size. Kept as its OWN pool
+// rather than clipping `widgetDuaPool` — truncating a Qur'anic verse mid-āyah
+// to fit a widget would change its meaning, which we won't do.
+// NOTE: like all shipped religious content, this list should be proofread by a
+// scholar before release (see the content review process).
+let widgetShortDhikrPool: [WidgetDua] = [
+    .init(id: 100, arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+          translation: "Glory be to Allah, and praise be to Him.", source: "متفق عليه"),
+    .init(id: 101, arabic: "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ",
+          translation: "I seek Allah's forgiveness and turn to Him in repentance.", source: "رواه البخاري"),
+    .init(id: 102, arabic: "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
+          translation: "There is no power nor strength except with Allah.", source: "متفق عليه"),
+    .init(id: 103, arabic: "رَبِّ زِدْنِي عِلْمًا",
+          translation: "My Lord, increase me in knowledge.", source: "طه: 114"),
+    .init(id: 104, arabic: "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ",
+          translation: "Allah is sufficient for us, and He is the best disposer of affairs.", source: "آل عمران: 173"),
+    .init(id: 105, arabic: "اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ",
+          translation: "O Allah, help me to remember You.", source: "رواه أبو داود"),
+    .init(id: 106, arabic: "رَبِّ اشْرَحْ لِي صَدْرِي",
+          translation: "My Lord, expand for me my chest.", source: "طه: 25"),
+    .init(id: 107, arabic: "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَافِيَةَ",
+          translation: "O Allah, I ask You for well-being.", source: "رواه الترمذي"),
+    .init(id: 108, arabic: "سُبْحَانَ اللَّهِ الْعَظِيمِ",
+          translation: "Glory be to Allah, the Most Great.", source: "متفق عليه"),
+    .init(id: 109, arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ",
+          translation: "O Allah, send blessings upon Muhammad.", source: "متفق عليه"),
+    .init(id: 110, arabic: "رَبَّنَا تَقَبَّلْ مِنَّا",
+          translation: "Our Lord, accept this from us.", source: "البقرة: 127"),
+    .init(id: 111, arabic: "اللَّهُمَّ اغْفِرْ لِي",
+          translation: "O Allah, forgive me.", source: "متفق عليه"),
+]
+
 /// Rotates through the pool in ~3-hour slots so the du'a refreshes through the
 /// day (deterministic, so the timeline is stable without waking the app).
 func widgetDua(for date: Date) -> WidgetDua {
     let slot = Int(date.timeIntervalSince1970 / (3 * 3600))
     let index = ((slot % widgetDuaPool.count) + widgetDuaPool.count) % widgetDuaPool.count
     return widgetDuaPool[index]
+}
+
+/// Lock-screen rotation — hourly, so a glance at the phone usually shows
+/// something new (the home-screen widget's 3h cadence feels static there).
+func widgetShortDhikr(for date: Date) -> WidgetDua {
+    let slot = Int(date.timeIntervalSince1970 / 3600)
+    let count = widgetShortDhikrPool.count
+    return widgetShortDhikrPool[((slot % count) + count) % count]
 }
 
 struct DuaEntry: TimelineEntry {
@@ -92,6 +133,28 @@ struct DuaTimelineProvider: TimelineProvider {
             entries.append(DuaEntry(date: date, dua: widgetDua(for: date)))
         }
         completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(step * 8))))
+    }
+}
+
+/// Separate provider for the accessory families: hourly cadence over the short
+/// adhkar pool.
+struct ShortDhikrTimelineProvider: TimelineProvider {
+    func placeholder(in context: Context) -> DuaEntry {
+        DuaEntry(date: Date(), dua: widgetShortDhikrPool[0])
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (DuaEntry) -> Void) {
+        completion(DuaEntry(date: Date(), dua: widgetShortDhikr(for: Date())))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<DuaEntry>) -> Void) {
+        let now = Date()
+        let step: TimeInterval = 3600
+        let entries = (0..<12).map { i -> DuaEntry in
+            let date = now.addingTimeInterval(step * Double(i))
+            return DuaEntry(date: date, dua: widgetShortDhikr(for: date))
+        }
+        completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(step * 12))))
     }
 }
 
@@ -152,28 +215,36 @@ struct DuaWidgetView: View {
 
 struct DuaAccessoryWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "DuaAccessoryWidget", provider: DuaTimelineProvider()) { entry in
+        StaticConfiguration(kind: "DuaAccessoryWidget", provider: ShortDhikrTimelineProvider()) { entry in
             DuaAccessoryView(entry: entry)
                 .containerBackground(.clear, for: .widget)
         }
         .configurationDisplayName(Text("widget.dua.name"))
         .description(Text("widget.dua.desc"))
-        .supportedFamilies([.accessoryRectangular])
+        .supportedFamilies([.accessoryRectangular, .accessoryInline])
     }
 }
 
+/// The dhikr gets the WHOLE widget — no header row, no icon. On the lock screen
+/// vertical space is the scarcest resource, and a static "Du'a" caption costs a
+/// third of it while telling the user nothing they can't see. Rendering the
+/// Arabic as large as it will fit is what makes this legible at a glance.
 struct DuaAccessoryView: View {
+    @Environment(\.widgetFamily) private var family
     let entry: DuaEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Label("widget.dua.title", systemImage: "hands.sparkles.fill")
-                .font(.caption2.weight(.semibold))
+        switch family {
+        case .accessoryInline:
             Text(entry.dua.arabic)
-                .font(.caption2)
+        default:
+            Text(entry.dua.arabic)
+                .font(.system(.headline, design: .serif).weight(.semibold))
+                .multilineTextAlignment(.center)
                 .lineLimit(2)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.45)
+                .widgetAccentable()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }

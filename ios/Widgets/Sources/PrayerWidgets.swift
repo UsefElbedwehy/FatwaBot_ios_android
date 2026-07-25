@@ -159,6 +159,12 @@ struct NextPrayerAccessoryView: View {
     @Environment(\.widgetFamily) private var family
     let entry: PrayerEntry
 
+    /// Start of the current interval — the most recent prayer already passed —
+    /// so the circular family can draw how far through the gap we are.
+    private var previousTime: Date? {
+        entry.snapshot?.upcoming.last { $0.time <= entry.date }?.time
+    }
+
     var body: some View {
         let next = entry.snapshot?.nextEntry(after: entry.date)
         switch family {
@@ -168,19 +174,50 @@ struct NextPrayerAccessoryView: View {
             } else {
                 Text("home.next_prayer")
             }
+
         case .accessoryCircular:
-            VStack(spacing: 1) {
-                Image(systemName: "moon.stars.fill").font(.caption2)
-                if let next {
-                    Text(next.time, style: .time).font(.caption2.monospacedDigit())
+            // A live ring showing progress toward the next prayer, with the
+            // time in the middle — the ring ticks on its own, no app wake-ups.
+            if let next, let start = previousTime, start < next.time {
+                ProgressView(timerInterval: start...next.time, countsDown: false) {
+                    EmptyView()
+                } currentValueLabel: {
+                    VStack(spacing: -1) {
+                        Image(systemName: "moon.stars.fill").font(.system(size: 9))
+                        Text(next.time, style: .time)
+                            .font(.system(size: 11).monospacedDigit())
+                    }
+                }
+                .progressViewStyle(.circular)
+            } else {
+                VStack(spacing: 1) {
+                    Image(systemName: "moon.stars.fill").font(.caption2)
+                    if let next {
+                        Text(next.time, style: .time).font(.caption2.monospacedDigit())
+                    }
                 }
             }
+
         default: // accessoryRectangular
+            // Name + clock time on one row, live countdown beneath. Every line
+            // earns its place: no static "next prayer" caption (the glyph says
+            // it), and both "when" and "how long" are visible at a glance.
             if let next {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("home.next_prayer").font(.caption2).foregroundStyle(.secondary)
-                    Text(PrayerWidgetSnapshot.title(for: next.prayer)).font(.headline)
-                    Text(next.time, style: .timer).font(.caption.monospacedDigit())
+                    HStack(spacing: 4) {
+                        Image(systemName: "moon.stars.fill").font(.caption2)
+                        Text(PrayerWidgetSnapshot.title(for: next.prayer))
+                            .font(.headline)
+                            .lineLimit(1)
+                        Spacer(minLength: 2)
+                        Text(next.time, style: .time)
+                            .font(.subheadline.monospacedDigit())
+                    }
+                    .widgetAccentable()
+                    Text(next.time, style: .timer)
+                        .font(.title3.monospacedDigit().weight(.medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             } else {
