@@ -54,6 +54,11 @@ targets:
           - CFBundleTypeRole: Editor
             CFBundleURLSchemes:
               - com.googleusercontent.apps.665767164439-gbe98ql9lddnddflkmev7vaira6mako3
+          # Widget / Live Activity deep links — keep in sync with CoreKit.DeepLink.scheme
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.fatwabot.app.deeplink
+            CFBundleURLSchemes:
+              - fatwabot
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app
@@ -92,6 +97,10 @@ targets:
     dependencies:
       - package: PrayerKit
         products: [PrayerKit]
+      # For CoreKit.DeepLink — so the activity's tap target uses the same
+      # canonical route definition as the app and the widgets.
+      - package: FatwaBotKit
+        products: [CoreKit]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app.liveactivity

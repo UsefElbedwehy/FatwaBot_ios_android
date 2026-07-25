@@ -26,6 +26,7 @@ import com.fatwabot.core.prayer.PrayerWidgetSnapshot
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.fatwabot.core.common.DeepLink
 
 /**
  * Next Prayer Glance widget. Reads the app-written snapshot with zero network
@@ -54,7 +55,7 @@ private fun NextPrayerContent(context: Context, snapshot: PrayerWidgetSnapshot?)
     val next = snapshot?.nextEntry(nowSeconds)
 
     Column(
-        modifier = GlanceModifier.fillMaxSize().brandSurface().padding(12.dp),
+        modifier = GlanceModifier.fillMaxSize().brandSurface().opensApp(context, DeepLink.PRAYER).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

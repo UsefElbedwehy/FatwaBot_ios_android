@@ -1,3 +1,4 @@
+import CoreKit
 import PrayerKit
 import SwiftUI
 import WidgetKit
@@ -15,6 +16,7 @@ struct NextPrayerWidget: Widget {
         StaticConfiguration(kind: "NextPrayerWidget", provider: PrayerTimelineProvider()) { entry in
             NextPrayerView(entry: entry)
                 .containerBackground(brandSurface, for: .widget)
+                .widgetURL(DeepLink.prayer.url)
         }
         .configurationDisplayName(Text("widget.next_prayer.name"))
         .description(Text("widget.next_prayer.desc"))
@@ -56,6 +58,7 @@ struct PrayerTimelineWidget: Widget {
         StaticConfiguration(kind: "PrayerTimelineWidget", provider: PrayerTimelineProvider()) { entry in
             PrayerTimelineView(entry: entry)
                 .containerBackground(brandSurface, for: .widget)
+                .widgetURL(DeepLink.prayer.url)
         }
         .configurationDisplayName(Text("widget.timeline.name"))
         .description(Text("widget.timeline.desc"))
@@ -148,6 +151,7 @@ struct NextPrayerAccessoryWidget: Widget {
         StaticConfiguration(kind: "NextPrayerAccessoryWidget", provider: PrayerTimelineProvider()) { entry in
             NextPrayerAccessoryView(entry: entry)
                 .containerBackground(.clear, for: .widget)
+                .widgetURL(DeepLink.prayer.url)
         }
         .configurationDisplayName(Text("widget.next_prayer.name"))
         .description(Text("widget.next_prayer.desc"))
@@ -234,6 +238,7 @@ struct HijriDateWidget: Widget {
         StaticConfiguration(kind: "HijriDateWidget", provider: PrayerTimelineProvider()) { entry in
             HijriDateView(entry: entry)
                 .containerBackground(brandSurface, for: .widget)
+                .widgetURL(DeepLink.prayer.url)
         }
         .configurationDisplayName(Text("widget.hijri.name"))
         .description(Text("widget.hijri.desc"))

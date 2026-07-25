@@ -67,6 +67,20 @@ import com.fatwabot.feature.tasbeeh.TasbeehScreen
  * growing. `destination` is hoisted to RootScaffold so Home's quick actions
  * (task 26) can deep-link directly into a screen, not just the tab.
  */
+/** Maps a deep link onto the worship stack. `HOME` has no worship destination
+ * and is handled by the caller. */
+fun com.fatwabot.core.common.DeepLink.worshipDestination(): WorshipDestination? = when (this) {
+    com.fatwabot.core.common.DeepLink.PRAYER -> WorshipDestination.PRAYER
+    com.fatwabot.core.common.DeepLink.QIBLA -> WorshipDestination.QIBLA
+    com.fatwabot.core.common.DeepLink.TASBEEH -> WorshipDestination.TASBEEH
+    com.fatwabot.core.common.DeepLink.AZKAR -> WorshipDestination.AZKAR
+    com.fatwabot.core.common.DeepLink.DUA -> WorshipDestination.DUA
+    com.fatwabot.core.common.DeepLink.AWRAD -> WorshipDestination.AWRAD
+    com.fatwabot.core.common.DeepLink.HADITH -> WorshipDestination.HADITH
+    com.fatwabot.core.common.DeepLink.JOURNEY -> WorshipDestination.JOURNEY
+    com.fatwabot.core.common.DeepLink.HOME -> null
+}
+
 enum class WorshipDestination(@StringRes val titleRes: Int) {
     PRAYER(R.string.worship_prayer_times),
     QIBLA(R.string.worship_qibla),

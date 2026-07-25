@@ -27,6 +27,7 @@ import com.fatwabot.core.prayer.PrayerWidgetSnapshot
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import com.fatwabot.core.common.DeepLink
 
 /**
  * Full-day prayer schedule Glance widget: lists all of today's prayers and
@@ -55,7 +56,7 @@ private fun PrayerDayContent(context: Context, snapshot: PrayerWidgetSnapshot?) 
         .orEmpty()
 
     Column(
-        modifier = GlanceModifier.fillMaxSize().brandSurface().padding(12.dp),
+        modifier = GlanceModifier.fillMaxSize().brandSurface().opensApp(context, DeepLink.PRAYER).padding(12.dp),
     ) {
         if (snapshot == null || todays.isEmpty()) {
             Text(

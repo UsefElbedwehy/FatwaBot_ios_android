@@ -17,6 +17,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.fatwabot.core.common.GamificationWidgetSnapshot
+import com.fatwabot.core.common.DeepLink
 
 /** Streak Glance widget. Reads the app-written snapshot with zero network
  * (mirror of iOS StreakWidget). Refreshed by the app via updateAll after
@@ -36,7 +37,7 @@ class StreakWidget : GlanceAppWidget() {
 private fun StreakContent(context: Context, snapshot: GamificationWidgetSnapshot?) {
     val streak = snapshot?.topStreak
     Column(
-        modifier = GlanceModifier.fillMaxSize().brandSurface().padding(12.dp),
+        modifier = GlanceModifier.fillMaxSize().brandSurface().opensApp(context, DeepLink.JOURNEY).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

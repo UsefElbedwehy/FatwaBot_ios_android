@@ -9,6 +9,7 @@ struct StreakWidget: Widget {
         StaticConfiguration(kind: "StreakWidget", provider: GamificationTimelineProvider()) { entry in
             StreakView(entry: entry)
                 .containerBackground(brandSurface, for: .widget)
+                .widgetURL(DeepLink.journey.url)
         }
         .configurationDisplayName(Text("widget.streak.name"))
         .description(Text("widget.streak.desc"))
@@ -54,6 +55,7 @@ struct DailyChallengeWidget: Widget {
         StaticConfiguration(kind: "DailyChallengeWidget", provider: GamificationTimelineProvider()) { entry in
             DailyChallengeView(entry: entry)
                 .containerBackground(brandSurface, for: .widget)
+                .widgetURL(DeepLink.journey.url)
         }
         .configurationDisplayName(Text("widget.daily_challenge.name"))
         .description(Text("widget.daily_challenge.desc"))

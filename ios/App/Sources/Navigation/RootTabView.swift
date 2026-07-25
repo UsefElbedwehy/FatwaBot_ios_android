@@ -1,6 +1,7 @@
 import AwradFeature
 import AzkarFeature
 import ConfigKit
+import CoreKit
 import DesignSystemKit
 import DuaFeature
 import Factory
@@ -17,6 +18,23 @@ import TasbeehFeature
 /// from Home's quick actions (task 26 wiring) — pushed onto `worshipPath`.
 enum WorshipDestination: Hashable {
     case qibla, tasbeeh, azkar, dua, awrad, hadith, journey
+}
+
+extension DeepLink {
+    /// The worship-stack destination this link pushes, if any. `home`/`prayer`
+    /// resolve to a tab root instead and so have none.
+    var worshipDestination: WorshipDestination? {
+        switch self {
+        case .qibla: return .qibla
+        case .tasbeeh: return .tasbeeh
+        case .azkar: return .azkar
+        case .dua: return .dua
+        case .awrad: return .awrad
+        case .hadith: return .hadith
+        case .journey: return .journey
+        case .home, .prayer: return nil
+        }
+    }
 }
 
 struct RootTabView: View {
@@ -48,6 +66,31 @@ struct RootTabView: View {
                 }
                 await Container.shared.configService().refresh(locales: ["ar", "en"])
             }
+            .onOpenURL { url in
+                guard let link = DeepLink(url: url) else { return }
+                open(link)
+            }
+    }
+
+    /// Routes a widget / Live Activity tap to the screen it promised. Resets the
+    /// worship stack first so a second tap from a different widget doesn't land
+    /// on top of the previous destination.
+    private func open(_ link: DeepLink) {
+        switch link {
+        case .home:
+            selection = .home
+        case .prayer:
+            // Prayer is a NavigationLink inside the grid rather than a
+            // `WorshipDestination`, so land on the Worship root; the prayer
+            // hero is the first thing there.
+            selection = .worship
+            worshipPath = NavigationPath()
+        case .qibla, .tasbeeh, .azkar, .dua, .awrad, .hadith, .journey:
+            selection = .worship
+            var path = NavigationPath()
+            if let destination = link.worshipDestination { path.append(destination) }
+            worshipPath = path
+        }
     }
 
     @ViewBuilder

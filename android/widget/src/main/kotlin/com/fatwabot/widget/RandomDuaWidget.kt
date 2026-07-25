@@ -23,6 +23,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
+import com.fatwabot.core.common.DeepLink
 
 private val SmallCell = DpSize(110.dp, 110.dp)
 private val LargeCell = DpSize(250.dp, 180.dp)
@@ -53,7 +54,7 @@ class RandomDuaWidget : GlanceAppWidget() {
 private fun DuaContent(context: Context) {
     val size = LocalSize.current
     if (size.width < LargeCell.width || size.height < LargeCell.height) {
-        CompactDhikr()
+        CompactDhikr(context)
     } else {
         ExpandedDua(context)
     }
@@ -61,10 +62,10 @@ private fun DuaContent(context: Context) {
 
 /** The dhikr gets the whole widget: big, centred, never clipped mid-phrase. */
 @Composable
-private fun CompactDhikr() {
+private fun CompactDhikr(context: Context) {
     val dhikr = widgetShortDhikr()
     Column(
-        modifier = GlanceModifier.fillMaxSize().brandSurface().padding(horizontal = 10.dp, vertical = 12.dp),
+        modifier = GlanceModifier.fillMaxSize().brandSurface().opensApp(context, DeepLink.DUA).padding(horizontal = 10.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -98,7 +99,7 @@ internal fun compactDhikrFontSize(arabic: String): Int = when (arabicVisualLengt
 private fun ExpandedDua(context: Context) {
     val dua = widgetDua()
     Column(
-        modifier = GlanceModifier.fillMaxSize().brandSurface().padding(16.dp),
+        modifier = GlanceModifier.fillMaxSize().brandSurface().opensApp(context, DeepLink.DUA).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(

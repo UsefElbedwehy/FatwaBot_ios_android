@@ -18,6 +18,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.fatwabot.core.common.GamificationWidgetSnapshot
+import com.fatwabot.core.common.DeepLink
 
 /** Daily Challenge Glance widget. Reads the app-written snapshot with zero
  * network (mirror of iOS DailyChallengeWidget). */
@@ -36,7 +37,7 @@ class DailyChallengeWidget : GlanceAppWidget() {
 private fun DailyChallengeContent(context: Context, snapshot: GamificationWidgetSnapshot?) {
     val challenge = snapshot?.dailyChallenge
     Column(
-        modifier = GlanceModifier.fillMaxSize().brandSurface().padding(12.dp),
+        modifier = GlanceModifier.fillMaxSize().brandSurface().opensApp(context, DeepLink.JOURNEY).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

@@ -16,6 +16,7 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import com.fatwabot.core.common.DeepLink
 
 /** Hijri Date Glance widget (mirror of iOS HijriDateWidget). */
 class HijriDateWidget : GlanceAppWidget() {
@@ -24,7 +25,7 @@ class HijriDateWidget : GlanceAppWidget() {
         provideContent {
             GlanceTheme {
                 Column(
-                    modifier = GlanceModifier.fillMaxSize().brandSurface().padding(12.dp),
+                    modifier = GlanceModifier.fillMaxSize().brandSurface().opensApp(context, DeepLink.PRAYER).padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

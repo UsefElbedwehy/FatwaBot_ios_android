@@ -1,4 +1,5 @@
 import ActivityKit
+import CoreKit
 import PrayerKit
 import SwiftUI
 import WidgetKit
@@ -33,6 +34,7 @@ struct PrayerLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PrayerActivityAttributes.self) { context in
             LockScreenView(attributes: context.attributes, state: context.state)
+                .widgetURL(DeepLink.prayer.url)
                 .activityBackgroundTint(brandSurface)
                 .activitySystemActionForegroundColor(brandPrimary)
         } dynamicIsland: { context in

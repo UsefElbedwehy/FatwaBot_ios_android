@@ -1,3 +1,4 @@
+import CoreKit
 import SwiftUI
 import WidgetKit
 
@@ -165,6 +166,7 @@ struct RandomDuaWidget: Widget {
         StaticConfiguration(kind: "RandomDuaWidget", provider: DuaTimelineProvider()) { entry in
             DuaWidgetView(entry: entry)
                 .containerBackground(brandSurface, for: .widget)
+                .widgetURL(DeepLink.dua.url)
         }
         .configurationDisplayName(Text("widget.dua.name"))
         .description(Text("widget.dua.desc"))
@@ -218,6 +220,7 @@ struct DuaAccessoryWidget: Widget {
         StaticConfiguration(kind: "DuaAccessoryWidget", provider: ShortDhikrTimelineProvider()) { entry in
             DuaAccessoryView(entry: entry)
                 .containerBackground(.clear, for: .widget)
+                .widgetURL(DeepLink.dua.url)
         }
         .configurationDisplayName(Text("widget.dua.name"))
         .description(Text("widget.dua.desc"))

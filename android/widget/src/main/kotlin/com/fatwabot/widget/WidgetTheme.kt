@@ -1,11 +1,16 @@
 package com.fatwabot.widget
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceModifier
+import androidx.glance.action.clickable
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.unit.ColorProvider
+import com.fatwabot.core.common.DeepLink
 
 /**
  * Shared brand palette for the home-screen widgets: maroon on cream, matching the
@@ -27,3 +32,20 @@ internal val MutedProvider = ColorProvider(BrandMuted)
 /** Cream card that fills the widget cell, with the platform-typical rounding. */
 internal fun GlanceModifier.brandSurface(): GlanceModifier =
     this.background(ColorProvider(BrandCream)).cornerRadius(20.dp)
+
+/**
+ * Makes the whole widget open [link] in the app.
+ *
+ * `:widget` can't reference `MainActivity` (`:app` depends on `:widget`, not the
+ * other way round), so this goes out as an ACTION_VIEW intent carrying the deep
+ * link URI. `setPackage` keeps it explicit — without it Android would offer a
+ * chooser, or another app claiming `fatwabot://` could intercept the tap.
+ */
+internal fun GlanceModifier.opensApp(context: Context, link: DeepLink): GlanceModifier =
+    this.clickable(
+        actionStartActivity(
+            Intent(Intent.ACTION_VIEW, link.uri)
+                .setPackage(context.packageName)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        ),
+    )

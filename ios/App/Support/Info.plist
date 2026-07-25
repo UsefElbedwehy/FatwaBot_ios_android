@@ -33,6 +33,16 @@
 				<string>com.googleusercontent.apps.665767164439-gbe98ql9lddnddflkmev7vaira6mako3</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.fatwabot.app.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fatwabot</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>

@@ -56,6 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.app.BuildConfig
+import com.fatwabot.core.common.DeepLink
 import com.fatwabot.feature.prayer.CityPicker
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.formatTime
@@ -66,10 +67,25 @@ import com.fatwabot.feature.prayer.titleRes
  * feature nav-graphs replace inline composition as features multiply (ADR-0005).
  */
 @Composable
-fun RootScaffold() {
+fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {}) {
     var selected by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var worshipDestination by rememberSaveable { mutableStateOf<WorshipDestination?>(null) }
     val prayerViewModel: PrayerViewModel = hiltViewModel()
+
+    // Route a widget tap to the screen it promised, then clear it so the same
+    // link isn't re-applied on every recomposition (or after the user navigates
+    // away manually).
+    LaunchedEffect(deepLink) {
+        val link = deepLink ?: return@LaunchedEffect
+        if (link == DeepLink.HOME) {
+            selected = AppTab.HOME
+            worshipDestination = null
+        } else {
+            selected = AppTab.WORSHIP
+            worshipDestination = link.worshipDestination()
+        }
+        onDeepLinkHandled()
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
