@@ -24,7 +24,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -40,14 +39,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -109,9 +113,16 @@ fun SearchHome() {
         // Cards read fatwa · hadith · question from the start edge (matches the
         // RTL mockup where fatwa is on the right).
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            IntentCard(R.string.home_card_fatwa, Icons.Filled.Search, Modifier.weight(1f)) { showComingSoon = true }
-            IntentCard(R.string.home_card_hadith, Icons.AutoMirrored.Filled.MenuBook, Modifier.weight(1f)) { showComingSoon = true }
-            IntentCard(R.string.home_card_question, Icons.Outlined.HelpOutline, Modifier.weight(1f)) { showComingSoon = true }
+            IntentCard(R.string.home_card_fatwa, Modifier.weight(1f), { showComingSoon = true }) {
+                // Flipped so the magnifier handle points bottom-left, matching the mockup.
+                Icon(Icons.Filled.Search, null, tint = cs.primary, modifier = Modifier.size(26.dp).graphicsLayer(scaleX = -1f))
+            }
+            IntentCard(R.string.home_card_hadith, Modifier.weight(1f), { showComingSoon = true }) {
+                Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = cs.primary, modifier = Modifier.size(26.dp))
+            }
+            IntentCard(R.string.home_card_question, Modifier.weight(1f), { showComingSoon = true }) {
+                QuestionBubbleIcon(cs.primary, 28.dp)
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -170,7 +181,7 @@ fun SearchHome() {
 }
 
 @Composable
-private fun IntentCard(titleRes: Int, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
+private fun IntentCard(titleRes: Int, modifier: Modifier, onClick: () -> Unit, icon: @Composable () -> Unit) {
     val cs = MaterialTheme.colorScheme
     Column(
         modifier = modifier
@@ -183,7 +194,7 @@ private fun IntentCard(titleRes: Int, icon: ImageVector, modifier: Modifier, onC
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(26.dp))
+        icon()
         Spacer(Modifier.height(12.dp))
         Text(
             stringResource(titleRes),
@@ -192,6 +203,46 @@ private fun IntentCard(titleRes: Int, icon: ImageVector, modifier: Modifier, onC
             color = cs.onSurface,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+/** Round chat-bubble outline with a small down-left tail and a centered "?",
+ * matching the mockup's question glyph. Mirrors iOS QuestionBubbleIcon. */
+@Composable
+fun QuestionBubbleIcon(color: Color, size: Dp) {
+    Box(Modifier.size(size)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = this.size.width
+            val h = this.size.height
+            val lw = w * 0.09f
+            val dia = w * 0.80f
+            val r = dia / 2f
+            val cxC = w * 0.56f              // nudge right to leave room for the tail
+            val cyC = r + lw / 2f
+            val tail = Path().apply {
+                moveTo(cxC - r * 0.72f, cyC + r * 0.70f)
+                lineTo(cxC - r * 1.02f, h - lw * 0.5f)
+                lineTo(cxC - r * 0.30f, cyC + r * 0.95f)
+                close()
+            }
+            drawPath(tail, color)
+            drawCircle(color, radius = r, center = Offset(cxC, cyC), style = Stroke(width = lw))
+        }
+        // "?" centered inside the circle sub-box.
+        Box(
+            modifier = Modifier
+                .size(size * 0.80f)
+                .offset(x = size * 0.16f, y = size * 0.045f),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "?",
+                color = color,
+                fontWeight = FontWeight.Bold,
+                fontSize = (size.value * 0.46f).sp,
+                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+            )
+        }
     }
 }
 

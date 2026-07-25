@@ -26,13 +26,6 @@ struct SearchHomeScreen: View {
             case .fatwa: return "home.card.fatwa"
             }
         }
-        var icon: String {
-            switch self {
-            case .question: return "questionmark.circle"
-            case .hadith: return "book.fill"
-            case .fatwa: return "magnifyingglass"
-            }
-        }
     }
 
     var body: some View {
@@ -122,9 +115,8 @@ struct SearchHomeScreen: View {
     private func intentCard(_ intent: Intent) -> some View {
         Button { showComingSoon = true } label: {
             VStack(spacing: 12) {
-                Image(systemName: intent.icon)
-                    .font(.system(size: 26, weight: .medium))
-                    .foregroundStyle(Color(hexToken: tokens.primary))
+                intentIcon(intent)
+                    .frame(height: 30)
                 Text(intent.titleKey)
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
@@ -136,6 +128,24 @@ struct SearchHomeScreen: View {
             .background(neumorphicSurface(cornerRadius: 24))
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func intentIcon(_ intent: Intent) -> some View {
+        let color = Color(hexToken: tokens.primary)
+        switch intent {
+        case .question:
+            QuestionBubbleIcon(color: color, size: 28)
+        case .hadith:
+            Image(systemName: "book.fill")
+                .font(.system(size: 26, weight: .medium))
+                .foregroundStyle(color)
+        case .fatwa:
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(color)
+                .scaleEffect(x: -1, y: 1)   // handle to bottom-left, matching the mockup
+        }
     }
 
     // MARK: - Search field (embossed pill, maroon leading cap)
@@ -173,6 +183,42 @@ struct SearchHomeScreen: View {
             .fill(Color(hexToken: tokens.surface))
             .shadow(color: Color(hexToken: tokens.onSurface).opacity(0.09), radius: 11, x: 4, y: 8)
             .shadow(color: .white.opacity(0.85), radius: 7, x: -5, y: -5)
+    }
+}
+
+/// Round chat-bubble outline with a small down-left tail and a centered "?",
+/// matching the mockup's question glyph (no exact SF Symbol equivalent).
+struct QuestionBubbleIcon: View {
+    let color: Color
+    var size: CGFloat = 28
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let w = sz.width, h = sz.height
+            let lw = w * 0.09
+            let dia = w * 0.80
+            let r = dia / 2
+            let cxC = w * 0.56              // nudge right to leave room for the tail
+            let cyC = r + lw / 2
+            let circleRect = CGRect(x: cxC - r, y: cyC - r, width: dia, height: dia)
+
+            // Tail: a small triangle hanging off the circle's lower-left edge.
+            let a = CGPoint(x: cxC - r * 0.72, y: cyC + r * 0.70)
+            let b = CGPoint(x: cxC - r * 0.30, y: cyC + r * 0.95)
+            let tip = CGPoint(x: cxC - r * 1.02, y: h - lw * 0.5)
+            var tail = Path()
+            tail.move(to: a)
+            tail.addLine(to: tip)
+            tail.addLine(to: b)
+            tail.closeSubpath()
+            ctx.fill(tail, with: .color(color))
+
+            // Bubble ring, then the "?".
+            ctx.stroke(Path(ellipseIn: circleRect), with: .color(color), lineWidth: lw)
+            let q = Text("?").font(.system(size: dia * 0.56, weight: .bold)).foregroundColor(color)
+            ctx.draw(q, at: CGPoint(x: cxC, y: cyC))
+        }
+        .frame(width: size, height: size)
     }
 }
 
