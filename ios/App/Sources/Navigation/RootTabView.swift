@@ -53,6 +53,24 @@ extension DeepLink {
     }
 }
 
+/// Clearance for the custom bottom bar.
+///
+/// The root `.safeAreaInset` reserves the bar's height, and that works for
+/// content placed directly in it (the Home tab). It does NOT reach scroll views
+/// hosted inside a `NavigationStack` — verified on device: Settings scrolled to
+/// the end left its whole About section behind the band. So every screen the
+/// stacks host gets the inset applied directly, where it does take effect.
+///
+/// Applied here in RootTabView rather than in each feature screen: the bar is
+/// this file's concern, and a feature module has no business knowing its height.
+private extension View {
+    func bottomBarClearance() -> some View {
+        safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: FatwaBottomBar.visualHeight)
+        }
+    }
+}
+
 struct RootTabView: View {
     @State private var selection: AppTab = .home
     @State private var prayerViewModel = Container.shared.prayerViewModel()
@@ -144,14 +162,16 @@ struct RootTabView: View {
         case .worship:
             NavigationStack(path: $worshipPath) {
                 WorshipTabView(prayerViewModel: prayerViewModel)
+                    .bottomBarClearance()
                     .navigationTitle(Text("tabs.worship"))
                     .navigationDestination(for: WorshipDestination.self) { destination in
-                        worshipDestinationView(destination)
+                        worshipDestinationView(destination).bottomBarClearance()
                     }
             }
         case .settings:
             NavigationStack {
                 SettingsScreen(prayerViewModel: prayerViewModel)
+                    .bottomBarClearance()
                     .navigationTitle(Text("tabs.settings"))
             }
         }
@@ -211,6 +231,11 @@ struct RootTabView: View {
 /// "الرئيسية"). A "⋯" (Settings) sits left, a 2×2 grid (Worship) right — white on
 /// maroon. Forced LTR so the physical placement matches the mockup in both langs.
 private struct FatwaBottomBar: View {
+    /// Band + the circle's overhang. The single source of truth for how much
+    /// vertical space the bar actually occupies, used both to lay the bar out
+    /// and to keep screen content clear of it.
+    static let visualHeight: CGFloat = 140
+
     @Binding var selection: AppTab
     let tokens: ColorTokens
 
