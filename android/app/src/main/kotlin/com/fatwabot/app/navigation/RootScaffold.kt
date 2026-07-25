@@ -56,11 +56,25 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.app.BuildConfig
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.fatwabot.core.common.AnalyticsEvents
+import com.fatwabot.core.common.AnalyticsTracking
 import com.fatwabot.core.common.DeepLink
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import com.fatwabot.feature.prayer.CityPicker
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.formatTime
 import com.fatwabot.feature.prayer.titleRes
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+private interface AnalyticsEntryPoint {
+    fun analytics(): AnalyticsTracking
+}
 
 /**
  * M1 shell: 4 tabs with Home (server-layout sections) and Worship→Prayer live;
@@ -71,6 +85,18 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     var selected by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var worshipDestination by rememberSaveable { mutableStateOf<WorshipDestination?>(null) }
     val prayerViewModel: PrayerViewModel = hiltViewModel()
+
+    val context = LocalContext.current
+    val analytics = remember {
+        EntryPointAccessors
+            .fromApplication(context.applicationContext, AnalyticsEntryPoint::class.java)
+            .analytics()
+    }
+    // One place that reports "where is the user", rather than an onAppear in
+    // every screen — those drift as screens are added and quietly stop firing.
+    LaunchedEffect(selected, worshipDestination) {
+        analytics.screenView(screenKey(selected, worshipDestination))
+    }
 
     // Route a widget tap to the screen it promised, then clear it so the same
     // link isn't re-applied on every recomposition (or after the user navigates
@@ -117,6 +143,24 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
             }
         }
     }
+}
+
+/** Stable, non-PII screen key for analytics. A pushed worship destination wins
+ * over the tab, since that's the screen actually on top. */
+private fun screenKey(tab: AppTab, destination: WorshipDestination?): String = when {
+    tab == AppTab.WORSHIP && destination != null -> when (destination) {
+        WorshipDestination.PRAYER -> AnalyticsEvents.SCREEN_PRAYER
+        WorshipDestination.QIBLA -> AnalyticsEvents.SCREEN_QIBLA
+        WorshipDestination.TASBEEH -> AnalyticsEvents.SCREEN_TASBEEH
+        WorshipDestination.AZKAR -> AnalyticsEvents.SCREEN_AZKAR
+        WorshipDestination.DUA -> AnalyticsEvents.SCREEN_DUA
+        WorshipDestination.AWRAD -> AnalyticsEvents.SCREEN_AWRAD
+        WorshipDestination.HADITH -> AnalyticsEvents.SCREEN_HADITH
+        WorshipDestination.JOURNEY -> AnalyticsEvents.SCREEN_JOURNEY
+    }
+    tab == AppTab.WORSHIP -> AnalyticsEvents.SCREEN_WORSHIP
+    tab == AppTab.SETTINGS -> AnalyticsEvents.SCREEN_SETTINGS
+    else -> AnalyticsEvents.SCREEN_HOME
 }
 
 /** Maroon cradle nav (client mockup, design/homeDesign.jpeg): a full-bleed maroon

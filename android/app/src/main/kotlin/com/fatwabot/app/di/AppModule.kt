@@ -19,7 +19,13 @@ import com.fatwabot.core.network.AuthenticatedApiClientProtocol
 import com.fatwabot.core.network.ClientContext
 import com.fatwabot.core.network.DeviceInfo
 import com.fatwabot.core.network.EncryptedPrefsAuthTokenStore
+import com.fatwabot.app.analytics.AnalyticsPreferences
+import com.fatwabot.app.analytics.FirebaseAnalyticsTracker
 import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.AnalyticsTracking
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.analytics
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.fatwabot.core.common.AuthTokenStoring
 import com.fatwabot.core.common.GamificationWidgetSnapshotStore
 import com.fatwabot.core.common.OnboardingCompletionStore
@@ -164,6 +170,28 @@ abstract class AppModule {
         @Provides
         @Singleton
         fun provideActivityEventRecording(recorder: GamificationEventRecorder): ActivityEventRecording = recorder
+
+        @Provides
+        @Singleton
+        fun provideAnalyticsPreferences(@ApplicationContext context: Context): AnalyticsPreferences =
+            AnalyticsPreferences(context)
+
+        @Provides
+        @Singleton
+        fun provideFirebaseAnalyticsTracker(
+            preferences: AnalyticsPreferences,
+        ): FirebaseAnalyticsTracker = FirebaseAnalyticsTracker(
+            analytics = Firebase.analytics,
+            crashlytics = FirebaseCrashlytics.getInstance(),
+            preferences = preferences,
+        )
+
+        // Bound to the concrete type as well, so MainActivity can call
+        // applyPersistedChoice()/setCollectionEnabled while features only ever
+        // see the interface (ADR-0010).
+        @Provides
+        @Singleton
+        fun provideAnalyticsTracking(tracker: FirebaseAnalyticsTracker): AnalyticsTracking = tracker
 
         @Provides
         @Singleton

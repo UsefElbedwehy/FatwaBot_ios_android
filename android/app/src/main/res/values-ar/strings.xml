@@ -68,4 +68,7 @@
     <string name="home_coming_soon_title">قريباً بإذن الله</string>
     <string name="home_coming_soon_body">البحث الذكي عن الفتاوى والأحاديث قيد الإعداد، وسيصلك قريباً.</string>
     <string name="common_ok">حسناً</string>
+    <string name="settings_diagnostics">التشخيص</string>
+    <string name="settings_diagnostics_share">مشاركة تقارير الأعطال والاستخدام</string>
+    <string name="settings_diagnostics_note">تساعدنا في إصلاح المشكلات. لا تتضمن بحثك أو موقعك أو اسمك أبداً.</string>
 </resources>

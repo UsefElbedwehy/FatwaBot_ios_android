@@ -69,6 +69,13 @@ targets:
         DEVELOPMENT_TEAM: ""
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: Support/FatwaBot.entitlements
+      configs:
+        # iOS crash reporting goes through TestFlight / Xcode Organizer rather
+        # than a third-party SDK (docs/features/analytics-and-crash-reporting.md).
+        # That only yields readable stack traces if the archive carries dSYMs, so
+        # pin it here instead of relying on the Xcode default staying put.
+        Release:
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
   FatwaBotWidgets:
     type: app-extension
     platform: iOS

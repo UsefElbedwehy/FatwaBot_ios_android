@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.crashlytics)
 }
 
 android {
@@ -74,6 +75,8 @@ dependencies {
     implementation(libs.glance.appwidget)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
     // Google Sign-In via Credential Manager (returns a Google ID token that the
     // backend verifies against Google's JWKS).
     implementation(libs.androidx.credentials)

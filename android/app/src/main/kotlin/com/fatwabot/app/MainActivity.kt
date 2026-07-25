@@ -11,6 +11,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
+import com.fatwabot.app.analytics.FirebaseAnalyticsTracker
+import com.fatwabot.core.common.AnalyticsEvents
 import com.fatwabot.core.common.DeepLink
 import androidx.lifecycle.lifecycleScope
 import com.fatwabot.app.navigation.AppRoot
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var pushRegistrar: PushTokenRegistrar
+    @Inject lateinit var analytics: FirebaseAnalyticsTracker
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Swap the splash window background (Theme.FatwaBot.Splash) for the real
@@ -33,7 +36,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         ThemeModeController.init(this)
+        // Before anything is reported: mirror the user's opt-out into both SDKs.
+        analytics.applyPersistedChoice()
         registerPushToken()
+        DeepLink.from(intent?.data)?.let { reportWidgetOpen(it) }
         setContent {
             // Override uiMode per the user's appearance choice so every
             // isSystemInDarkTheme() read across the app reflects it.
@@ -63,8 +69,18 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        DeepLink.from(intent.data)?.let { link -> deepLinkSink?.invoke(link) }
+        DeepLink.from(intent.data)?.let { link ->
+            deepLinkSink?.invoke(link)
+            reportWidgetOpen(link)
+        }
     }
+
+    /** Which widget routes actually get tapped — the one signal that tells us
+     * whether the widgets are earning their place on the home screen. */
+    private fun reportWidgetOpen(link: DeepLink) = analytics.event(
+        AnalyticsEvents.WIDGET_OPENED_APP,
+        mapOf(AnalyticsEvents.PARAM_ROUTE to link.host),
+    )
 
     /** Fetch the current FCM token on launch and (re)register it with the backend. */
     private fun registerPushToken() {

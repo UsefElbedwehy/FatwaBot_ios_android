@@ -110,6 +110,8 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
 
         FeaturesGuideSection()
 
+        DiagnosticsSection()
+
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandSectionHeader(stringResource(R.string.settings_about), icon = Icons.Filled.Info)
             BrandCard {
@@ -121,6 +123,58 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
                     Text(stringResource(R.string.settings_version), color = MaterialTheme.colorScheme.onSurface)
                     Text(BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+        }
+    }
+}
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+private interface DiagnosticsEntryPoint {
+    fun tracker(): com.fatwabot.app.analytics.FirebaseAnalyticsTracker
+}
+
+/** Diagnostics opt-out. Crash + usage reporting is on by default (a crash you
+ * can't see is a crash you can't fix, and nothing personal is collected), but
+ * this is a worship app — someone who would rather send nothing at all
+ * shouldn't have to uninstall to get that. Flipping it disables the SDKs
+ * themselves, not just our call sites. */
+@Composable
+private fun DiagnosticsSection() {
+    val context = LocalContext.current
+    val tracker = remember {
+        dagger.hilt.android.EntryPointAccessors
+            .fromApplication(context.applicationContext, DiagnosticsEntryPoint::class.java)
+            .tracker()
+    }
+    var enabled by remember { mutableStateOf(tracker.isCollectionEnabled) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BrandSectionHeader(stringResource(R.string.settings_diagnostics), icon = Icons.Filled.Info)
+        BrandCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.settings_diagnostics_share),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        stringResource(R.string.settings_diagnostics_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = {
+                        enabled = it
+                        tracker.setCollectionEnabled(it)
+                    },
+                )
             }
         }
     }

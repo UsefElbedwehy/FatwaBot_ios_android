@@ -68,4 +68,7 @@
     <string name="home_coming_soon_title">Coming soon, in shaa Allah</string>
     <string name="home_coming_soon_body">Smart search for fatwas and hadith is on its way.</string>
     <string name="common_ok">OK</string>
+    <string name="settings_diagnostics">Diagnostics</string>
+    <string name="settings_diagnostics_share">Share crash &amp; usage reports</string>
+    <string name="settings_diagnostics_note">Helps us fix problems. Never includes your searches, location, or name.</string>
 </resources>
