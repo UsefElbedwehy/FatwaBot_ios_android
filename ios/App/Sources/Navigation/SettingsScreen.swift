@@ -56,6 +56,8 @@ struct SettingsScreen: View {
 
                 FeaturesGuideSection(tokens: tokens)
 
+                DiagnosticsSection(tokens: tokens)
+
                 VStack(alignment: .leading, spacing: 12) {
                     BrandSectionHeader("settings.about_section", systemImage: "info.circle.fill", tokens: tokens)
                     HStack {
@@ -284,6 +286,40 @@ private struct NotificationsSection: View {
 /// explanation of what each notification/feature does, so users understand them.
 /// Appearance control — System / Light / Dark, applied app-wide via
 /// `preferredColorScheme` in FatwaBotApp (bound to the same @AppStorage key).
+/// Diagnostics opt-out. Usage reporting is on by default — it's what tells us
+/// which worship features earn their place, and nothing personal is collected
+/// (see `CoreKit.AnalyticsTracking`). The switch exists because this is a worship
+/// app: someone who would rather send nothing at all shouldn't have to uninstall
+/// to get that. Opting out also drops anything still queued, so events recorded
+/// before the decision are never transmitted afterwards.
+private struct DiagnosticsSection: View {
+    let tokens: ColorTokens
+    @AppStorage(AnalyticsPreferences.storageKey) private var isEnabled = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BrandSectionHeader("settings.diagnostics_section", systemImage: "waveform.path.ecg", tokens: tokens)
+            Toggle(isOn: $isEnabled) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("settings.diagnostics.title")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(Color(hexToken: tokens.onSurface))
+                    Text("settings.diagnostics.subtitle")
+                        .font(.caption)
+                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                }
+            }
+            .tint(Color(hexToken: tokens.primary))
+            .onChange(of: isEnabled) { _, newValue in
+                if !newValue {
+                    (Container.shared.analyticsTracking() as? BackendAnalyticsRecorder)?.discardQueued()
+                }
+            }
+            .brandCard(tokens)
+        }
+    }
+}
+
 private struct AppearanceSection: View {
     let tokens: ColorTokens
     @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.system.rawValue

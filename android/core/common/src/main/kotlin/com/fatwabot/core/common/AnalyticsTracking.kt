@@ -6,6 +6,15 @@ package com.fatwabot.core.common
  * SDK stays an `:app`-only implementation detail and features stay unit-testable
  * with [NoopAnalyticsTracking].
  *
+ * Android **dual-sends**: the bound implementation is a composite over
+ * `FirebaseAnalyticsTracker` (free aggregate/retention dashboards, and
+ * Crashlytics uses it for breadcrumbs) and
+ * `com.fatwabot.core.network.BackendAnalyticsRecorder`, which posts to our OWN
+ * ingest so the first-party dataset covers both platforms. iOS single-sends to
+ * that same ingest (no Firebase SDK there by design), so the event and param
+ * names below must stay byte-identical to iOS `AnalyticsEvents` — a mismatch
+ * silently splits a metric across two names in one dashboard.
+ *
  * ## What must never be logged
  *
  * This is a worship app used by anonymous users, and analytics goes to a third
@@ -69,14 +78,18 @@ object AnalyticsEvents {
     const val SCREEN_JOURNEY = "journey"
 
     // Events
+    const val SCREEN_VIEW = "screen_view"
     const val WIDGET_OPENED_APP = "widget_opened_app"
     const val SEARCH_SUBMITTED = "search_submitted"
+    const val NON_FATAL_ERROR = "non_fatal_error"
     const val TASBEEH_SESSION_COMPLETED = "tasbeeh_session_completed"
     const val AZKAR_CATEGORY_COMPLETED = "azkar_category_completed"
     const val NOTIFICATION_PREFS_CHANGED = "notification_prefs_changed"
 
     // Param keys
+    const val PARAM_SCREEN = "screen"
     const val PARAM_ROUTE = "route"
     const val PARAM_CATEGORY = "category"
     const val PARAM_COUNT = "count"
+    const val PARAM_ERROR_TYPE = "error_type"
 }

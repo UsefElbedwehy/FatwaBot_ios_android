@@ -20,6 +20,22 @@ enum WorshipDestination: Hashable {
     case qibla, tasbeeh, azkar, dua, awrad, hadith, journey
 }
 
+extension WorshipDestination {
+    /// Stable, non-PII analytics key. Kept identical to Android's `screenKey`
+    /// mapping so one dashboard serves both platforms.
+    var analyticsScreenKey: String {
+        switch self {
+        case .qibla: return AnalyticsEvents.screenQibla
+        case .tasbeeh: return AnalyticsEvents.screenTasbeeh
+        case .azkar: return AnalyticsEvents.screenAzkar
+        case .dua: return AnalyticsEvents.screenDua
+        case .awrad: return AnalyticsEvents.screenAwrad
+        case .hadith: return AnalyticsEvents.screenHadith
+        case .journey: return AnalyticsEvents.screenJourney
+        }
+    }
+}
+
 extension DeepLink {
     /// The worship-stack destination this link pushes, if any. `home`/`prayer`
     /// resolve to a tab root instead and so have none.
@@ -40,7 +56,9 @@ extension DeepLink {
 struct RootTabView: View {
     @State private var selection: AppTab = .home
     @State private var prayerViewModel = Container.shared.prayerViewModel()
-    @State private var worshipPath = NavigationPath()
+    // Typed rather than `NavigationPath` so the screen on top is readable
+    // (NavigationPath is opaque) — needed for screen-view reporting.
+    @State private var worshipPath: [WorshipDestination] = []
     // Hoisted so they're created ONCE and survive tab switches. Previously
     // built inline in `body` (recreated on every re-eval → the Journey tab
     // reset to an empty profile and re-ran a full network reload on every
@@ -48,6 +66,7 @@ struct RootTabView: View {
     @State private var gamificationViewModel = Container.shared.gamificationViewModel()
     @State private var leaderboardViewModel = Container.shared.leaderboardViewModel()
     @State private var searchHistoryViewModel = Container.shared.searchHistoryViewModel()
+    private let analytics = Container.shared.analyticsTracking()
 
     @Environment(\.colorScheme) private var colorScheme
     private var tokens: ColorTokens {
@@ -68,8 +87,34 @@ struct RootTabView: View {
             }
             .onOpenURL { url in
                 guard let link = DeepLink(url: url) else { return }
+                // Which widget routes actually get tapped — the one signal that
+                // says whether the widgets earn their home-screen slot.
+                analytics.event(
+                    AnalyticsEvents.widgetOpenedApp,
+                    params: [AnalyticsEvents.paramRoute: link.rawValue]
+                )
                 open(link)
             }
+            // Reported from ONE place, rather than an .onAppear per screen —
+            // those drift as screens are added and quietly stop firing, and
+            // nothing fails loudly when they do.
+            .onChange(of: currentScreenKey, initial: true) { _, key in
+                analytics.screenView(key)
+            }
+    }
+
+    /// Stable, non-PII screen key. A pushed worship destination wins over the
+    /// tab, since that's the screen actually on top.
+    private var currentScreenKey: String {
+        switch selection {
+        case .home: return AnalyticsEvents.screenHome
+        case .settings: return AnalyticsEvents.screenSettings
+        case .worship:
+            guard let destination = worshipPath.last else {
+                return AnalyticsEvents.screenWorship
+            }
+            return destination.analyticsScreenKey
+        }
     }
 
     /// Routes a widget / Live Activity tap to the screen it promised. Resets the
@@ -84,12 +129,10 @@ struct RootTabView: View {
             // `WorshipDestination`, so land on the Worship root; the prayer
             // hero is the first thing there.
             selection = .worship
-            worshipPath = NavigationPath()
+            worshipPath = []
         case .qibla, .tasbeeh, .azkar, .dua, .awrad, .hadith, .journey:
             selection = .worship
-            var path = NavigationPath()
-            if let destination = link.worshipDestination { path.append(destination) }
-            worshipPath = path
+            worshipPath = link.worshipDestination.map { [$0] } ?? []
         }
     }
 

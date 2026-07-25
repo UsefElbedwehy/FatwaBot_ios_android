@@ -1,5 +1,6 @@
 package com.fatwabot.app.push
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -34,6 +35,10 @@ class FatwaBotMessagingService : FirebaseMessagingService() {
         scope.launch { registrar.register(token) }
     }
 
+    // Lint can't see the POST_NOTIFICATIONS check through `canPost()`, so it
+    // reports MissingPermission on the notify() call. The guard is real — this
+    // is a false positive, not an unchecked post.
+    @SuppressLint("MissingPermission")
     override fun onMessageReceived(message: RemoteMessage) {
         val notification = message.notification ?: return
         ensureChannel()

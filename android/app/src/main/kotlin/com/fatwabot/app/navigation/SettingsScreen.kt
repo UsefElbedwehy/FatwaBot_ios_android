@@ -132,21 +132,27 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
 @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
 private interface DiagnosticsEntryPoint {
     fun tracker(): com.fatwabot.app.analytics.FirebaseAnalyticsTracker
+    fun analytics(): com.fatwabot.core.common.AnalyticsTracking
 }
 
 /** Diagnostics opt-out. Crash + usage reporting is on by default (a crash you
  * can't see is a crash you can't fix, and nothing personal is collected), but
  * this is a worship app — someone who would rather send nothing at all
  * shouldn't have to uninstall to get that. Flipping it disables the SDKs
- * themselves, not just our call sites. */
+ * themselves, not just our call sites — and, via the composite, also drops
+ * whatever our own ingest still has queued, so nothing recorded before the
+ * decision is transmitted after it. */
 @Composable
 private fun DiagnosticsSection() {
     val context = LocalContext.current
-    val tracker = remember {
+    val entryPoint = remember {
         dagger.hilt.android.EntryPointAccessors
             .fromApplication(context.applicationContext, DiagnosticsEntryPoint::class.java)
-            .tracker()
     }
+    // Concrete tracker for the current choice; the composite to apply a change,
+    // so Firebase and our own recorder both hear about it.
+    val tracker = remember(entryPoint) { entryPoint.tracker() }
+    val analytics = remember(entryPoint) { entryPoint.analytics() }
     var enabled by remember { mutableStateOf(tracker.isCollectionEnabled) }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -172,7 +178,7 @@ private fun DiagnosticsSection() {
                     checked = enabled,
                     onCheckedChange = {
                         enabled = it
-                        tracker.setCollectionEnabled(it)
+                        analytics.setCollectionEnabled(it)
                     },
                 )
             }

@@ -11,6 +11,7 @@ import {
 } from "./in_memory_admin_repo.ts";
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
 import { InMemoryGamificationRepo } from "./in_memory_gamification_repo.ts";
+import { InMemoryAnalyticsRepo } from "./in_memory_analytics_repo.ts";
 import { InMemoryLeaderboardRepo } from "./in_memory_leaderboard_repo.ts";
 import { InMemorySearchHistoryRepo } from "./in_memory_search_repo.ts";
 import { InMemoryDeliveryLogRepo, InMemoryNotificationPrefsRepo } from "./in_memory_notification_repo.ts";
@@ -33,6 +34,7 @@ function deps() {
     jwtSecret: "test-secret",
     verifier: new DevIdentityProviderVerifier(),
     gamification: new InMemoryGamificationRepo(),
+    analytics: new InMemoryAnalyticsRepo(),
     leaderboard: new InMemoryLeaderboardRepo(),
     searchHistory: new InMemorySearchHistoryRepo(),
     notificationPrefs: new InMemoryNotificationPrefsRepo(),

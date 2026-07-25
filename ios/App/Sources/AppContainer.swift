@@ -57,6 +57,21 @@ extension Container {
         self { SystemLocationProvider() }.singleton
     }
 
+    /// Product analytics through our OWN ingest — no third-party SDK on iOS
+    /// (docs/features/analytics-and-crash-reporting.md). Batched + disk-queued,
+    /// and gated on the user's Settings choice, read fresh on every call so
+    /// revoking consent takes effect immediately.
+    var analyticsTracking: Factory<AnalyticsTracking> {
+        self {
+            BackendAnalyticsRecorder(
+                store: FileAnalyticsEventQueueStore(directory: AppEnvironment.sharedContainerURL),
+                client: self.authenticatedClient(),
+                appVersion: AppEnvironment.appVersion,
+                isEnabled: { AnalyticsPreferences.isEnabled() }
+            )
+        }.singleton
+    }
+
     var onboardingCompletionStore: Factory<OnboardingCompletionStore> {
         self { OnboardingCompletionStore(directory: AppEnvironment.sharedContainerURL) }
     }

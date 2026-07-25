@@ -20,9 +20,13 @@ import com.fatwabot.core.network.ClientContext
 import com.fatwabot.core.network.DeviceInfo
 import com.fatwabot.core.network.EncryptedPrefsAuthTokenStore
 import com.fatwabot.app.analytics.AnalyticsPreferences
+import com.fatwabot.app.analytics.CompositeAnalyticsTracking
 import com.fatwabot.app.analytics.FirebaseAnalyticsTracker
 import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.AnalyticsEventQueueStoring
 import com.fatwabot.core.common.AnalyticsTracking
+import com.fatwabot.core.common.FileAnalyticsEventQueueStore
+import com.fatwabot.core.network.BackendAnalyticsRecorder
 import com.google.firebase.Firebase
 import com.google.firebase.analytics.analytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -186,12 +190,40 @@ abstract class AppModule {
             preferences = preferences,
         )
 
-        // Bound to the concrete type as well, so MainActivity can call
-        // applyPersistedChoice()/setCollectionEnabled while features only ever
-        // see the interface (ADR-0010).
         @Provides
         @Singleton
-        fun provideAnalyticsTracking(tracker: FirebaseAnalyticsTracker): AnalyticsTracking = tracker
+        fun provideAnalyticsEventQueueStore(
+            @ApplicationContext context: Context,
+        ): AnalyticsEventQueueStoring =
+            FileAnalyticsEventQueueStore(File(context.filesDir, FileAnalyticsEventQueueStore.FILE_NAME))
+
+        /** Our own ingest, the half of the dual-send that iOS also feeds. Shares
+         * [AnalyticsPreferences] with the Firebase tracker so one Settings switch
+         * governs both, re-read per call so revoking takes effect immediately. */
+        @Provides
+        @Singleton
+        fun provideBackendAnalyticsRecorder(
+            queueStore: AnalyticsEventQueueStoring,
+            client: AuthenticatedApiClientProtocol,
+            preferences: AnalyticsPreferences,
+        ): BackendAnalyticsRecorder = BackendAnalyticsRecorder(
+            store = queueStore,
+            client = client,
+            appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
+            isEnabled = { preferences.isEnabled },
+        )
+
+        // The interface binds to the composite, so every feature call-site
+        // dual-sends. The concrete FirebaseAnalyticsTracker and
+        // BackendAnalyticsRecorder stay bound as well, so MainActivity can call
+        // applyPersistedChoice()/flush() while features only ever see the
+        // interface (ADR-0010).
+        @Provides
+        @Singleton
+        fun provideAnalyticsTracking(
+            firebase: FirebaseAnalyticsTracker,
+            backend: BackendAnalyticsRecorder,
+        ): AnalyticsTracking = CompositeAnalyticsTracking(listOf(firebase, backend))
 
         @Provides
         @Singleton

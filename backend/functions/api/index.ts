@@ -13,6 +13,7 @@ import {
 } from "./supabase_admin_repo.ts";
 import { verifierFromEnv } from "./auth/provider_verify.ts";
 import { SupabaseGamificationRepo } from "./supabase_gamification_repo.ts";
+import { SupabaseAnalyticsRepo } from "./supabase_analytics_repo.ts";
 import { SupabaseLeaderboardRepo } from "./supabase_leaderboard_repo.ts";
 import { SupabaseSearchHistoryRepo } from "./supabase_search_repo.ts";
 import { SupabaseDeliveryLogRepo, SupabaseNotificationPrefsRepo } from "./supabase_notification_repo.ts";
@@ -43,6 +44,7 @@ const deps = {
   // stub on a staging project.
   verifier: verifierFromEnv((key) => Deno.env.get(key)),
   gamification: new SupabaseGamificationRepo(client),
+  analytics: new SupabaseAnalyticsRepo(client),
   leaderboard: new SupabaseLeaderboardRepo(client),
   searchHistory: new SupabaseSearchHistoryRepo(client),
   notificationPrefs: new SupabaseNotificationPrefsRepo(client),

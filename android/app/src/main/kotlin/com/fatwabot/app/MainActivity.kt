@@ -13,7 +13,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
 import com.fatwabot.app.analytics.FirebaseAnalyticsTracker
 import com.fatwabot.core.common.AnalyticsEvents
+import com.fatwabot.core.common.AnalyticsTracking
 import com.fatwabot.core.common.DeepLink
+import com.fatwabot.core.network.BackendAnalyticsRecorder
 import androidx.lifecycle.lifecycleScope
 import com.fatwabot.app.navigation.AppRoot
 import com.fatwabot.app.push.PushTokenRegistrar
@@ -27,7 +29,15 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var pushRegistrar: PushTokenRegistrar
-    @Inject lateinit var analytics: FirebaseAnalyticsTracker
+
+    /** The dual-send composite (Firebase + our own ingest) — what events go through. */
+    @Inject lateinit var analytics: AnalyticsTracking
+
+    /** Concrete, only for mirroring the persisted opt-out into the SDKs. */
+    @Inject lateinit var firebaseAnalytics: FirebaseAnalyticsTracker
+
+    /** Concrete, only for the flush lifecycle below. */
+    @Inject lateinit var backendAnalytics: BackendAnalyticsRecorder
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Swap the splash window background (Theme.FatwaBot.Splash) for the real
@@ -37,7 +47,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         ThemeModeController.init(this)
         // Before anything is reported: mirror the user's opt-out into both SDKs.
-        analytics.applyPersistedChoice()
+        firebaseAnalytics.applyPersistedChoice()
+        // Ship whatever the last session left queued (mirrors iOS flushing in
+        // `.task`). Safe to do unconditionally: flush is a no-op when the queue is
+        // empty or the user has opted out.
+        flushAnalytics()
         registerPushToken()
         DeepLink.from(intent?.data)?.let { reportWidgetOpen(it) }
         setContent {
@@ -73,6 +87,28 @@ class MainActivity : ComponentActivity() {
             deepLinkSink?.invoke(link)
             reportWidgetOpen(link)
         }
+    }
+
+    /**
+     * The app is going out of view — get the batch out now rather than waiting for
+     * `batchThreshold` (mirrors iOS flushing on `scenePhase == .background`).
+     *
+     * This is the activity's own `onStop` rather than a `ProcessLifecycleOwner`
+     * observer: the app is single-activity, so onStop already *is* "the app went
+     * to background", and it needs no new `lifecycle-process` dependency. The
+     * price is a redundant flush on configuration change, which costs nothing —
+     * an empty queue short-circuits, and the ingest is idempotent per
+     * `client_event_id`.
+     */
+    override fun onStop() {
+        super.onStop()
+        flushAnalytics()
+    }
+
+    /** Fire-and-forget: a failed or cancelled flush leaves events queued for the
+     * next attempt, and analytics must never block or surface an error. */
+    private fun flushAnalytics() {
+        lifecycleScope.launch { backendAnalytics.flush() }
     }
 
     /** Which widget routes actually get tapped — the one signal that tells us

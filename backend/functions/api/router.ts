@@ -13,6 +13,7 @@ import type { ContentRepo } from "./content_types.ts";
 import type { AdminAuthRepo, AdminContentRepo, AdminUsersRepo, AuditLogRepo } from "./admin_types.ts";
 import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
 import type { GamificationRepo } from "./gamification_types.ts";
+import type { AnalyticsRepo } from "./analytics_types.ts";
 import type { LeaderboardRepo } from "./leaderboard_types.ts";
 import type { SearchHistoryRepo } from "./search_types.ts";
 import type { DeliveryLogRepo, NotificationPrefsRepo } from "./notification_types.ts";
@@ -21,6 +22,7 @@ import { handleSendCampaign } from "./handlers/send_campaign.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
 import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile, handleUpdatePushToken } from "./handlers/accounts.ts";
 import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
+import { handleSubmitAnalyticsEvents } from "./handlers/analytics.ts";
 import {
   handleJoinLeaderboard,
   handleLeaveLeaderboard,
@@ -75,6 +77,8 @@ export interface Deps {
   jwtSecret: string;
   verifier: IdentityProviderVerifier;
   gamification: GamificationRepo;
+  /** Product analytics — own store, separate from `gamification` (migration 0023). */
+  analytics: AnalyticsRepo;
   leaderboard: LeaderboardRepo;
   searchHistory: SearchHistoryRepo;
   notificationPrefs: NotificationPrefsRepo;
@@ -199,6 +203,8 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           return await handleLinkProvider(ctx, deps, req, await readBody(req));
         case "/v1/gamification/events":
           return await handleSubmitEvents(ctx, deps, req, await readBody(req));
+        case "/v1/analytics/events":
+          return await handleSubmitAnalyticsEvents(ctx, deps, req, await readBody(req));
         case "/v1/search-history":
           return await handleRecordSearch(ctx, deps, req, await readBody(req));
       }

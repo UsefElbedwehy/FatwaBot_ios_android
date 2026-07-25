@@ -216,3 +216,7 @@
 "home.tagline" = "Answers in light of the way of Ahl as-Sunnah wa al-Jama\'ah";
 "home.coming_soon.title" = "Coming soon, in shaa Allah";
 "home.coming_soon.body" = "Smart search for fatwas and hadith is on its way.";
+
+"settings.diagnostics_section" = "Diagnostics";
+"settings.diagnostics.title" = "Share usage reports";
+"settings.diagnostics.subtitle" = "Helps us fix problems. Never includes your searches, location, or name.";

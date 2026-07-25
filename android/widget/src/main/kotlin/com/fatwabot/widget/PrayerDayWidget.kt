@@ -51,7 +51,11 @@ private fun PrayerDayContent(context: Context, snapshot: PrayerWidgetSnapshot?) 
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now(zone)
     val todays = snapshot?.upcoming
-        ?.filter { LocalDate.ofInstant(Instant.ofEpochSecond(it.timeEpochSeconds), zone) == today }
+        // `LocalDate.ofInstant` is API 34; minSdk here is 26 and core library
+        // desugaring is not enabled, so calling it threw NoSuchMethodError on
+        // Android 8–13 — i.e. this widget rendered nothing on most devices.
+        // `Instant.atZone(...).toLocalDate()` is equivalent and API 26.
+        ?.filter { Instant.ofEpochSecond(it.timeEpochSeconds).atZone(zone).toLocalDate() == today }
         ?.take(6)
         .orEmpty()
 

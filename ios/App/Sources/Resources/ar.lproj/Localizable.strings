@@ -216,3 +216,7 @@
 "home.tagline" = "البحث عن الإجابة على ضوء منهج أهل السنة والجماعة";
 "home.coming_soon.title" = "قريباً بإذن الله";
 "home.coming_soon.body" = "البحث الذكي عن الفتاوى والأحاديث قيد الإعداد، وسيصلك قريباً.";
+
+"settings.diagnostics_section" = "التشخيص";
+"settings.diagnostics.title" = "مشاركة تقارير الاستخدام";
+"settings.diagnostics.subtitle" = "تساعدنا في إصلاح المشكلات. لا تتضمن بحثك أو موقعك أو اسمك أبداً.";
