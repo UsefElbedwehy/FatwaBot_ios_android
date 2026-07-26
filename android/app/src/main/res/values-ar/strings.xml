@@ -44,6 +44,8 @@
     <string name="worship_prayer_times">أوقات الصلاة</string>
     <string name="worship_qibla">القبلة</string>
     <string name="worship_tasbeeh">السُّبحة</string>
+    <!-- Bundled fallback for the server-driven Tasbeeh notice (key "tasbeeh.notice"). -->
+    <string name="tasbeeh_notice">هذا نص تنبيه مؤقت. يمكن تعديله من لوحة التحكم دون تحديث التطبيق.</string>
     <string name="worship_azkar">الأذكار</string>
     <string name="worship_dua">الأدعية</string>
     <string name="worship_remembrance">الأذكار والأدعية</string>

@@ -52,6 +52,7 @@ import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.designsystem.BrandEmptyState
 import com.fatwabot.core.designsystem.ColorTokens
 import com.fatwabot.core.designsystem.DarkTokens
+import com.fatwabot.core.designsystem.InfoNotice
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.LocalReduceMotion
 import com.fatwabot.core.designsystem.MotionTokens
@@ -59,8 +60,17 @@ import com.fatwabot.core.designsystem.RingProgress
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.motionAnimationSpec
 
+/**
+ * @param notice Optional advisory note shown above the counter. Passed in rather
+ *   than read here so this feature module stays free of config/network knowledge
+ *   (ADR-0010) — the composition root resolves it from the server string pack
+ *   with a bundled fallback, so it can change without an app release.
+ */
 @Composable
-fun TasbeehScreen(viewModel: TasbeehViewModel = hiltViewModel()) {
+fun TasbeehScreen(
+    viewModel: TasbeehViewModel = hiltViewModel(),
+    notice: String? = null,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     var showResetConfirm by remember { mutableStateOf(false) }
@@ -79,6 +89,9 @@ fun TasbeehScreen(viewModel: TasbeehViewModel = hiltViewModel()) {
                 IconButton(onClick = { showHistory = true }) {
                     Icon(Icons.Filled.History, contentDescription = stringResource(R.string.tasbeeh_history_title), tint = tokens.primary)
                 }
+            }
+            if (!notice.isNullOrBlank()) {
+                InfoNotice(notice, tokens = tokens)
             }
             PresetChips(state, viewModel, tokens)
             TapTarget(state, viewModel, tokens)

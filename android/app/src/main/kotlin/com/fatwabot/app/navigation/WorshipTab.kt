@@ -46,7 +46,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.platform.LocalContext
+import com.fatwabot.core.config.ConfigService
 import com.fatwabot.core.content.HadithCollectionSummary
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import java.util.Locale
 import com.fatwabot.feature.awrad.AwradBoardScreen
 import com.fatwabot.feature.hadith.HadithCollectionsScreen
 import com.fatwabot.feature.hadith.HadithReadingScreen
@@ -73,6 +80,36 @@ fun com.fatwabot.core.common.DeepLink.worshipDestination(): WorshipDestination? 
     com.fatwabot.core.common.DeepLink.HADITH -> WorshipDestination.HADITH
     com.fatwabot.core.common.DeepLink.JOURNEY -> WorshipDestination.JOURNEY
     com.fatwabot.core.common.DeepLink.HOME -> null
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+private interface ConfigServiceEntryPoint {
+    fun configService(): ConfigService
+}
+
+/**
+ * Advisory note for the Tasbeeh screen. Server-provided (ADR-0011) so it can be
+ * edited without a release; falls back to the bundled placeholder when the server
+ * hasn't supplied one, and to nothing if an operator blanks it deliberately.
+ *
+ * Resolved here in the app layer, not inside `:feature:tasbeeh`, so the feature
+ * module keeps no dependency on config/network (ADR-0010).
+ */
+@Composable
+private fun tasbeehNotice(): String? {
+    val context = LocalContext.current
+    val bundled = stringResource(R.string.tasbeeh_notice)
+    return remember(bundled) {
+        val configService = EntryPointAccessors.fromApplication(
+            context.applicationContext, ConfigServiceEntryPoint::class.java,
+        ).configService()
+        val locale = Locale.getDefault().language
+        when (val remote = configService.string("tasbeeh.notice", locale)) {
+            null -> bundled
+            else -> remote.ifEmpty { null }
+        }
+    }
 }
 
 enum class WorshipDestination(@StringRes val titleRes: Int) {
@@ -112,7 +149,7 @@ fun WorshipTab(
         WorshipDestination.TASBEEH -> WorshipDetailScaffold(
             title = stringResource(WorshipDestination.TASBEEH.titleRes),
             onBack = { onDestinationChange(null) },
-        ) { TasbeehScreen(viewModel = hiltViewModel()) }
+        ) { TasbeehScreen(viewModel = hiltViewModel(), notice = tasbeehNotice()) }
         // One screen, two segments. The destination only decides which segment
         // opens, so the existing `fatwabot://azkar` / `fatwabot://dua` links and
         // the per-destination analytics keys keep working unchanged.

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -249,6 +251,49 @@ fun BrandEmptyState(
             style = MaterialTheme.typography.bodyMedium,
             color = tokens.onSurfaceSecondary,
             textAlign = TextAlign.Center,
+        )
+    }
+}
+
+// MARK: Info notice
+
+/**
+ * Soft informational banner — an ⓘ glyph beside a short passage, used to carry
+ * a study/advisory note above a screen's content.
+ *
+ * The copy is deliberately NOT baked in: callers pass a resolved string so it can
+ * come from the server string pack (ADR-0011) and be changed without a release.
+ * Rendered in brand tones rather than the system blue so it reads as part of the
+ * app instead of an OS alert.
+ */
+@Composable
+fun InfoNotice(
+    text: String,
+    modifier: Modifier = Modifier,
+    tokens: ColorTokens = brandTokens(),
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(tokens.primaryContainer.copy(alpha = 0.55f), shape)
+            .border(1.dp, tokens.primary.copy(alpha = 0.14f), shape)
+            .padding(14.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            Icons.Filled.Info,
+            contentDescription = null,
+            tint = tokens.primary,
+            modifier = Modifier.size(17.dp),
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = tokens.onSurface,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.weight(1f),
         )
     }
 }

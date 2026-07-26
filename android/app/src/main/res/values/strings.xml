@@ -44,6 +44,8 @@
     <string name="worship_prayer_times">Prayer times</string>
     <string name="worship_qibla">Qibla</string>
     <string name="worship_tasbeeh">Tasbeeh</string>
+    <!-- Bundled fallback for the server-driven Tasbeeh notice (key "tasbeeh.notice"). -->
+    <string name="tasbeeh_notice">This is a placeholder notice. It can be edited from the admin dashboard without releasing an app update.</string>
     <string name="worship_azkar">Azkar</string>
     <string name="worship_dua">Du\'a</string>
     <!-- Title of the merged Azkar + Du'a screen (one Worship tile, two segments). -->

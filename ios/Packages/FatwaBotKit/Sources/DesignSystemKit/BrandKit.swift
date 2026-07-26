@@ -237,3 +237,46 @@ public struct BrandEmptyState: View {
         .padding(.horizontal, 24)
     }
 }
+
+// MARK: - Info notice
+
+/// Soft informational banner — an ⓘ glyph beside a short passage, used to carry
+/// a study/advisory note above a screen's content.
+///
+/// The copy is deliberately NOT baked in: callers pass a resolved string so it can
+/// come from the server string pack (ADR-0011) and be changed without a release.
+/// Rendered in brand tones rather than the system blue so it reads as part of the
+/// app instead of an OS alert.
+public struct InfoNotice: View {
+    private let text: String
+    private let tokens: ColorTokens
+
+    public init(_ text: String, tokens: ColorTokens) {
+        self.text = text
+        self.tokens = tokens
+    }
+
+    public var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 17))
+                .foregroundStyle(Color(hexToken: tokens.primary))
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.footnote)
+                .foregroundStyle(Color(hexToken: tokens.onSurface))
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            Color(hexToken: tokens.primaryContainer).opacity(0.55),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color(hexToken: tokens.primary).opacity(0.14), lineWidth: 1)
+        )
+    }
+}

@@ -7,8 +7,15 @@ public struct TasbeehScreen: View {
     @State private var showHistory = false
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(viewModel: TasbeehViewModel) {
+    /// Optional advisory note shown above the counter. Passed in rather than
+    /// read here so this feature module stays free of config/network knowledge
+    /// (ADR-0010) — the composition root resolves it from the server string pack
+    /// with a bundled fallback, so it can change without an app release.
+    private let notice: String?
+
+    public init(viewModel: TasbeehViewModel, notice: String? = nil) {
         _viewModel = State(initialValue: viewModel)
+        self.notice = notice
     }
 
     private var tokens: ColorTokens {
@@ -19,6 +26,9 @@ public struct TasbeehScreen: View {
     public var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                if let notice, !notice.isEmpty {
+                    InfoNotice(notice, tokens: tokens)
+                }
                 presetChips
                 tapTarget
                 controls

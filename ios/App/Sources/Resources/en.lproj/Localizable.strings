@@ -222,3 +222,5 @@
 "settings.diagnostics.subtitle" = "Helps us fix problems. Never includes your searches, location, or name.";
 
 "worship.remembrance" = "Azkar & Du'a";
+
+"tasbeeh.notice" = "This is a placeholder notice. It can be edited from the admin dashboard without releasing an app update.";

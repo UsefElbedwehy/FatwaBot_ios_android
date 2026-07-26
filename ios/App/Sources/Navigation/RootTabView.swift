@@ -140,6 +140,18 @@ struct RootTabView: View {
             }
     }
 
+    /// Advisory note for the Tasbeeh screen. Server-provided (ADR-0011) so it can
+    /// be edited without a release; falls back to the bundled placeholder when the
+    /// server hasn't supplied one, and to nothing if an operator blanks it
+    /// deliberately.
+    private var tasbeehNotice: String? {
+        let locale = Locale.current.language.languageCode?.identifier ?? "ar"
+        if let remote = Container.shared.configService().string("tasbeeh.notice", locale: locale) {
+            return remote.isEmpty ? nil : remote
+        }
+        return String(localized: "tasbeeh.notice")
+    }
+
     /// Stable, non-PII screen key. A pushed worship destination wins over the
     /// tab, since that's the screen actually on top.
     private var currentScreenKey: String {
@@ -207,7 +219,7 @@ struct RootTabView: View {
                     .navigationTitle(Text("worship.qibla"))
             }
         case .tasbeeh:
-            TasbeehScreen(viewModel: Container.shared.tasbeehViewModel())
+            TasbeehScreen(viewModel: Container.shared.tasbeehViewModel(), notice: tasbeehNotice)
                 .navigationTitle(Text("worship.tasbeeh"))
                 .navigationBarTitleDisplayMode(.inline)
         case .azkar, .dua:

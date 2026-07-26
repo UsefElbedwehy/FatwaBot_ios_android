@@ -40,7 +40,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.core.content.AzkarCategory
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.designsystem.BrandEmptyState
-import com.fatwabot.core.designsystem.BrandSectionHeader
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
@@ -86,7 +85,9 @@ fun AzkarCategoryListScreen(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                BrandSectionHeader(stringResource(R.string.azkar_title), icon = Icons.Filled.MenuBook, tokens = tokens)
+                // No section header here: this list is hosted by the merged
+                // Azkar + Du'a screen, whose segmented control already reads
+                // "الأذكار", so a header would just repeat the segment label.
                 state.categories.forEach { category ->
                     CategoryRow(
                         category = category,
