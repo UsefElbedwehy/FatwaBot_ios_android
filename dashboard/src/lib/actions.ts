@@ -6,8 +6,10 @@ import {
   AdminApiError,
   adminLogin,
   createContent,
+  createStringPackVersion,
   getLocales,
   setContentPublished,
+  setStringPackPublished,
   updateContent,
 } from "./admin-api";
 import { clearAdminSession, setAdminSession } from "./session";
@@ -16,6 +18,8 @@ import { getCollectionDef } from "./collections";
 export interface FormState {
   error?: string;
   success?: boolean;
+  /** Optional detail shown next to the success tick (e.g. "Published v5"). */
+  message?: string;
 }
 
 async function parseFieldsFromForm(collection: string, formData: FormData): Promise<Record<string, unknown>> {
@@ -125,4 +129,67 @@ export async function setPublishedAction(collection: string, id: string, publish
   await setContentPublished(collection, id, published);
   revalidatePath(`/content/${collection}`);
   revalidatePath(`/content/${collection}/${id}`);
+}
+
+// --- String packs (ADR-0011) -------------------------------------------------
+// Saving never edits a row: both buttons POST a new version, and the backend
+// numbers it max(version) + 1 for the locale. Publishing therefore ships a
+// version clients haven't seen, which is the only way a copy change reaches an
+// installed app (clients skip anything at or below their current version).
+
+function revalidateStrings(locale: string): void {
+  revalidatePath("/configuration/strings");
+  revalidatePath(`/configuration/strings?locale=${locale}`);
+  revalidatePath("/audit");
+}
+
+/** The editor posts the whole map as one JSON field: rows are added/removed
+ * client-side, so per-key form field names would need reconciling on both
+ * sides for no benefit. `intent` comes from the clicked submit button. */
+export async function saveStringPackAction(
+  locale: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const raw = String(formData.get("strings") ?? "");
+  const published = formData.get("intent") === "publish";
+
+  let strings: Record<string, string>;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error();
+    strings = parsed as Record<string, string>;
+  } catch {
+    return { error: "Could not read the edited strings — reload the page and try again." };
+  }
+  if (Object.keys(strings).length === 0) {
+    return { error: "A string pack needs at least one key." };
+  }
+
+  try {
+    const pack = await createStringPackVersion(locale, strings, published);
+    revalidateStrings(locale);
+    // Phrased as a record of what this save did, not as a claim about current
+    // state: the publish/unpublish controls can change that afterwards while
+    // this message is still on screen. Live state lives in the page header.
+    return {
+      success: true,
+      message: published
+        ? `Created and published v${pack.version} — apps pick it up on their next sync.`
+        : `Created draft v${pack.version} — apps never see a draft.`,
+    };
+  } catch (err) {
+    if (err instanceof AdminApiError) return { error: err.message };
+    throw err;
+  }
+}
+
+/** Publishes/unpublishes a version that already exists — no new version. */
+export async function setStringPackPublishedAction(
+  locale: string,
+  version: number,
+  published: boolean,
+): Promise<void> {
+  await setStringPackPublished(locale, version, published);
+  revalidateStrings(locale);
 }

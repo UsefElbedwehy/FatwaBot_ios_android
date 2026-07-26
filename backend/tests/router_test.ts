@@ -9,6 +9,7 @@ import {
   InMemoryAdminUsersRepo,
   InMemoryAuditLogRepo,
 } from "./in_memory_admin_repo.ts";
+import { InMemoryAdminStringsRepo } from "./in_memory_admin_strings_repo.ts";
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
 import { InMemoryGamificationRepo } from "./in_memory_gamification_repo.ts";
 import { InMemoryAnalyticsRepo } from "./in_memory_analytics_repo.ts";
@@ -30,6 +31,7 @@ function deps() {
     adminContent: new InMemoryAdminContentRepo(),
     adminAuth: new InMemoryAdminAuthRepo(),
     adminUsers: new InMemoryAdminUsersRepo(),
+    adminStrings: new InMemoryAdminStringsRepo(),
     auditLog: new InMemoryAuditLogRepo(),
     jwtSecret: "test-secret",
     verifier: new DevIdentityProviderVerifier(),

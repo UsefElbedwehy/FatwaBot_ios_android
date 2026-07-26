@@ -11,6 +11,7 @@ import {
   SupabaseAdminUsersRepo,
   SupabaseAuditLogRepo,
 } from "./supabase_admin_repo.ts";
+import { SupabaseAdminStringsRepo } from "./supabase_admin_strings_repo.ts";
 import { verifierFromEnv } from "./auth/provider_verify.ts";
 import { SupabaseGamificationRepo } from "./supabase_gamification_repo.ts";
 import { SupabaseAnalyticsRepo } from "./supabase_analytics_repo.ts";
@@ -37,6 +38,7 @@ const deps = {
   adminContent: new SupabaseAdminContentRepo(client),
   adminAuth: new SupabaseAdminAuthRepo(client),
   adminUsers: new SupabaseAdminUsersRepo(client),
+  adminStrings: new SupabaseAdminStringsRepo(client),
   auditLog: new SupabaseAuditLogRepo(client),
   jwtSecret,
   // Real Apple/Google ID-token verification (signature via each provider's

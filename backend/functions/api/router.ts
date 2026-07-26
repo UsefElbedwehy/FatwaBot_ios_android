@@ -11,6 +11,7 @@ import type { ConfigRepo } from "./types.ts";
 import type { IdentityRepo } from "./identity_types.ts";
 import type { ContentRepo } from "./content_types.ts";
 import type { AdminAuthRepo, AdminContentRepo, AdminUsersRepo, AuditLogRepo } from "./admin_types.ts";
+import type { AdminStringsRepo } from "./admin_strings_types.ts";
 import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
 import type { GamificationRepo } from "./gamification_types.ts";
 import type { AnalyticsRepo } from "./analytics_types.ts";
@@ -65,6 +66,12 @@ import {
   handleUpdateContent,
 } from "./handlers/admin_content.ts";
 import { handleListUsers } from "./handlers/admin_users.ts";
+import {
+  handleCreateStringPackVersion,
+  handleGetStringPack,
+  handleListStringPacks,
+  handleSetStringPackPublished,
+} from "./handlers/admin_strings.ts";
 
 export interface Deps {
   repo: ConfigRepo;
@@ -73,6 +80,8 @@ export interface Deps {
   adminContent: AdminContentRepo;
   adminAuth: AdminAuthRepo;
   adminUsers: AdminUsersRepo;
+  /** config.string_packs editor — versioned inserts, not row edits (ADR-0011). */
+  adminStrings: AdminStringsRepo;
   auditLog: AuditLogRepo;
   jwtSecret: string;
   verifier: IdentityProviderVerifier;
@@ -256,6 +265,8 @@ async function authenticate(req: Request, secret: string) {
 
 const COLLECTION_SEGMENT = "[A-Za-z0-9-]{1,40}";
 const ID_SEGMENT = "[A-Za-z0-9-]{1,64}";
+// Same shape as the public /v1/config/strings/{locale} route (bcp47-ish).
+const LOCALE_SEGMENT = "[A-Za-z0-9-]{2,20}";
 
 /** Admin surface (ADR-0009): every route except login requires a valid admin
  * bearer token. Kept as its own function since PATCH doesn't fit the mobile
@@ -287,6 +298,47 @@ async function routeAdmin(
       url.searchParams.get("query"),
       url.searchParams.get("limit"),
       url.searchParams.get("before"),
+    );
+  }
+
+  if (path === "/admin/v1/string-packs") {
+    if (method !== "GET") return methodNotAllowed();
+    return await handleListStringPacks(ctx, deps.adminStrings);
+  }
+
+  const stringPackMatch = path.match(new RegExp(`^/admin/v1/string-packs/(${LOCALE_SEGMENT})$`));
+  if (stringPackMatch) {
+    const locale = stringPackMatch[1];
+    if (method === "GET") {
+      return await handleGetStringPack(ctx, deps.adminStrings, locale, url.searchParams.get("version"));
+    }
+    if (method === "POST") {
+      return await handleCreateStringPackVersion(
+        ctx,
+        deps.adminStrings,
+        deps.auditLog,
+        adminId,
+        locale,
+        await readBody(req),
+      );
+    }
+    return methodNotAllowed();
+  }
+
+  const stringPackVersionMatch = path.match(
+    new RegExp(`^/admin/v1/string-packs/(${LOCALE_SEGMENT})/(\\d{1,9})$`),
+  );
+  if (stringPackVersionMatch) {
+    if (method !== "PATCH") return methodNotAllowed();
+    const [, locale, version] = stringPackVersionMatch;
+    return await handleSetStringPackPublished(
+      ctx,
+      deps.adminStrings,
+      deps.auditLog,
+      adminId,
+      locale,
+      Number(version),
+      await readBody(req),
     );
   }
 

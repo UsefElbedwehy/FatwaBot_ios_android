@@ -26,6 +26,10 @@ export default async function AuditLogPage({
               {c.title}
             </option>
           ))}
+          {/* Not a CONTENT_COLLECTIONS entry — string packs are keyed by
+              (locale, version) rather than a row id, so they have their own
+              editor and audit rows (collection "string-packs"). */}
+          <option value="string-packs">String Packs</option>
         </select>
         <button type="submit" className="rounded-lg border border-stone-300 px-3 py-2 text-sm hover:bg-stone-50">
           Filter

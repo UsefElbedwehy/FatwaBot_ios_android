@@ -10,6 +10,7 @@ import {
   InMemoryAdminUsersRepo,
   InMemoryAuditLogRepo,
 } from "./in_memory_admin_repo.ts";
+import { InMemoryAdminStringsRepo } from "./in_memory_admin_strings_repo.ts";
 import type { AdminUserRow } from "../functions/api/admin_types.ts";
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
 import { InMemoryGamificationRepo } from "./in_memory_gamification_repo.ts";
@@ -46,6 +47,7 @@ async function makeDeps() {
       adminContent: new InMemoryAdminContentRepo(),
       adminUsers,
       adminAuth,
+      adminStrings: new InMemoryAdminStringsRepo(),
       auditLog: new InMemoryAuditLogRepo(),
       jwtSecret: SECRET,
       verifier: new DevIdentityProviderVerifier(),
