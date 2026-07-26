@@ -84,6 +84,11 @@ struct RootTabView: View {
     @State private var gamificationViewModel = Container.shared.gamificationViewModel()
     @State private var leaderboardViewModel = Container.shared.leaderboardViewModel()
     @State private var searchHistoryViewModel = Container.shared.searchHistoryViewModel()
+    // Hoisted like the others: the merged Azkar/Du'a screen switches between
+    // them, and recreating a view model on every segment flip would re-run its
+    // content load.
+    @State private var azkarViewModel = Container.shared.azkarViewModel()
+    @State private var duaViewModel = Container.shared.duaViewModel()
     private let analytics = Container.shared.analyticsTracking()
 
     @Environment(\.colorScheme) private var colorScheme
@@ -205,14 +210,16 @@ struct RootTabView: View {
             TasbeehScreen(viewModel: Container.shared.tasbeehViewModel())
                 .navigationTitle(Text("worship.tasbeeh"))
                 .navigationBarTitleDisplayMode(.inline)
-        case .azkar:
-            AzkarCategoryListScreen(viewModel: Container.shared.azkarViewModel())
-                .navigationTitle(Text("worship.azkar"))
-                .navigationBarTitleDisplayMode(.inline)
-        case .dua:
-            DuaLibraryScreen(viewModel: Container.shared.duaViewModel())
-                .navigationTitle(Text("worship.dua"))
-                .navigationBarTitleDisplayMode(.inline)
+        case .azkar, .dua:
+            // One screen, two segments. The destination only decides which
+            // segment opens, so existing deep links keep working unchanged.
+            RemembranceScreen(
+                initial: destination == .dua ? .dua : .azkar,
+                azkarViewModel: azkarViewModel,
+                duaViewModel: duaViewModel
+            )
+            .navigationTitle(Text("worship.remembrance"))
+            .navigationBarTitleDisplayMode(.inline)
         case .awrad:
             AwradBoardScreen(viewModel: Container.shared.awradViewModel())
                 .navigationTitle(Text("worship.awrad"))
@@ -254,6 +261,7 @@ private struct FatwaBottomBar: View {
 
     @Binding var selection: AppTab
     let tokens: ColorTokens
+    @Environment(\.colorScheme) private var colorScheme
 
     private let barHeight: CGFloat = 108
     /// How far the Home circle rises above the band.
@@ -270,6 +278,15 @@ private struct FatwaBottomBar: View {
         ZStack(alignment: .top) {
             NavCradleShape()
                 .fill(Color(hexToken: tokens.primary))
+                // `primary` is lifted in the dark palette so it can serve as a
+                // foreground on the near-black surface. At the size of this band
+                // that lift reads as pink rather than as the brand maroon, so
+                // knock it back with an opaque dark wash — the band is a brand
+                // *surface*, and wants the deep tone the light theme uses.
+                .overlay(
+                    NavCradleShape()
+                        .fill(Color.black.opacity(colorScheme == .dark ? 0.42 : 0))
+                )
                 .overlay(
                     NavCradleShape()
                         .stroke(Color.white.opacity(0.16), lineWidth: 2)
@@ -322,7 +339,7 @@ private struct FatwaBottomBar: View {
             .frame(width: 92, height: 92)
             .background(
                 Circle()
-                    .fill(Color(hexToken: tokens.surface))
+                    .fill(Color(hexToken: colorScheme == .dark ? tokens.onSurface : tokens.surface))
                     .shadow(color: Color(hexToken: tokens.onSurface).opacity(0.18), radius: 9, x: 0, y: 3)
             )
         }
@@ -397,11 +414,9 @@ struct WorshipTabView: View {
                 NavigationLink(value: WorshipDestination.tasbeeh) {
                     WorshipTile(icon: "circle.grid.3x3.fill", titleKey: "worship.tasbeeh", tokens: tokens)
                 }
+                // Azkar + Du'a share one tile now; the screen behind it segments.
                 NavigationLink(value: WorshipDestination.azkar) {
-                    WorshipTile(icon: "book.closed.fill", titleKey: "worship.azkar", tokens: tokens)
-                }
-                NavigationLink(value: WorshipDestination.dua) {
-                    WorshipTile(icon: "hands.sparkles.fill", titleKey: "worship.dua", tokens: tokens)
+                    WorshipTile(icon: "book.closed.fill", titleKey: "worship.remembrance", tokens: tokens)
                 }
                 NavigationLink(value: WorshipDestination.awrad) {
                     WorshipTile(icon: "leaf.fill", titleKey: "worship.awrad", tokens: tokens)

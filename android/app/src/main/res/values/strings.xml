@@ -44,8 +44,10 @@
     <string name="worship_prayer_times">Prayer times</string>
     <string name="worship_qibla">Qibla</string>
     <string name="worship_tasbeeh">Tasbeeh</string>
-    <string name="worship_azkar">Adhkar</string>
-    <string name="worship_dua">Supplications</string>
+    <string name="worship_azkar">Azkar</string>
+    <string name="worship_dua">Du\'a</string>
+    <!-- Title of the merged Azkar + Du'a screen (one Worship tile, two segments). -->
+    <string name="worship_remembrance">Azkar &amp; Du\'a</string>
     <string name="worship_awrad">Awrad</string>
     <string name="worship_hadith">Hadith</string>
     <string name="journey_leaderboards">Leaderboards</string>

@@ -53,7 +53,7 @@
 "worship.prayer_times" = "Prayer times";
 "worship.qibla" = "Qibla";
 "worship.azkar" = "Azkar";
-"worship.dua" = "Duas";
+"worship.dua" = "Du'a";
 "worship.tasbeeh" = "Tasbeeh";
 "quick.qibla" = "Qibla";
 "quick.tasbeeh" = "Tasbeeh";
@@ -220,3 +220,5 @@
 "settings.diagnostics_section" = "Diagnostics";
 "settings.diagnostics.title" = "Share usage reports";
 "settings.diagnostics.subtitle" = "Helps us fix problems. Never includes your searches, location, or name.";
+
+"worship.remembrance" = "Azkar & Du'a";

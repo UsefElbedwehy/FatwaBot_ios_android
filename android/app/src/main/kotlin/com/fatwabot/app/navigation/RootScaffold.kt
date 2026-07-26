@@ -12,6 +12,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -187,6 +188,7 @@ private fun screenKey(tab: AppTab, destination: WorshipDestination?): String = w
 @Composable
 private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
     val cs = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val barHeight = 108.dp
     val homeLift = 26.dp
@@ -206,6 +208,12 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                 .drawBehind {
                     val path = cradlePath(size, 54.dp.toPx(), 18.dp.toPx(), 22.dp.toPx())
                     drawPath(path, cs.primary)
+                    // `primary` is lifted in the dark palette so it can serve as a
+                    // foreground on the near-black surface. At the size of this band
+                    // that lift reads as pink rather than as the brand maroon, so
+                    // knock it back with an opaque dark wash — the band is a brand
+                    // *surface*, and wants the deep tone the light theme uses.
+                    if (isDark) drawPath(path, Color.Black.copy(alpha = 0.42f))
                     drawPath(path, Color.White.copy(alpha = 0.16f), style = Stroke(width = 2.dp.toPx()))
                 },
         ) {
@@ -222,7 +230,7 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                 SideItem(AppTab.SETTINGS, Icons.Filled.MoreHoriz, selected, cs) { onSelect(AppTab.SETTINGS) }
                 SideItem(AppTab.WORSHIP, Icons.Filled.GridView, selected, cs) { onSelect(AppTab.WORSHIP) }
             }
-            HomeCircle(cs, Modifier.align(Alignment.TopCenter).offset(y = -homeLift)) { onSelect(AppTab.HOME) }
+            HomeCircle(cs, isDark, Modifier.align(Alignment.TopCenter).offset(y = -homeLift)) { onSelect(AppTab.HOME) }
         }
     }
 }
@@ -273,12 +281,21 @@ private fun SideItem(tab: AppTab, icon: ImageVector, selected: AppTab, cs: andro
 }
 
 @Composable
-private fun HomeCircle(cs: androidx.compose.material3.ColorScheme, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun HomeCircle(
+    cs: androidx.compose.material3.ColorScheme,
+    isDark: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     Column(
         modifier = modifier
             .size(92.dp)
             .clip(CircleShape)
-            .background(cs.surface)
+            // In dark, `surface` is near-black — the same value as the page behind
+            // the band, so the disc read as a hole punched through it rather than a
+            // raised chip. `onSurface` is the warm cream that plays the role
+            // `surface` plays in light: an opaque light disc lifted off the maroon.
+            .background(if (isDark) cs.onSurface else cs.surface)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

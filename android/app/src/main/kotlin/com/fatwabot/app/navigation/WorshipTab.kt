@@ -46,14 +46,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.fatwabot.core.content.AzkarCategory
-import com.fatwabot.core.content.Dua
 import com.fatwabot.core.content.HadithCollectionSummary
 import com.fatwabot.feature.awrad.AwradBoardScreen
-import com.fatwabot.feature.azkar.AzkarCategoryListScreen
-import com.fatwabot.feature.azkar.AzkarSessionScreen
-import com.fatwabot.feature.dua.DuaLibraryScreen
-import com.fatwabot.feature.dua.DuaReadingScreen
 import com.fatwabot.feature.hadith.HadithCollectionsScreen
 import com.fatwabot.feature.hadith.HadithReadingScreen
 import com.fatwabot.feature.prayer.PrayerScreen
@@ -119,34 +113,17 @@ fun WorshipTab(
             title = stringResource(WorshipDestination.TASBEEH.titleRes),
             onBack = { onDestinationChange(null) },
         ) { TasbeehScreen(viewModel = hiltViewModel()) }
-        WorshipDestination.AZKAR -> {
-            var selectedCategory by remember { mutableStateOf<AzkarCategory?>(null) }
-            WorshipDetailScaffold(
-                title = selectedCategory?.name ?: stringResource(WorshipDestination.AZKAR.titleRes),
-                onBack = { if (selectedCategory != null) selectedCategory = null else onDestinationChange(null) },
-            ) {
-                val category = selectedCategory
-                if (category == null) {
-                    AzkarCategoryListScreen(onCategorySelected = { selectedCategory = it })
-                } else {
-                    AzkarSessionScreen(category = category)
-                }
-            }
-        }
-        WorshipDestination.DUA -> {
-            var selectedDua by remember { mutableStateOf<Dua?>(null) }
-            WorshipDetailScaffold(
-                title = selectedDua?.title ?: stringResource(WorshipDestination.DUA.titleRes),
-                onBack = { if (selectedDua != null) selectedDua = null else onDestinationChange(null) },
-            ) {
-                val dua = selectedDua
-                if (dua == null) {
-                    DuaLibraryScreen(onDuaSelected = { selectedDua = it })
-                } else {
-                    DuaReadingScreen(dua = dua)
-                }
-            }
-        }
+        // One screen, two segments. The destination only decides which segment
+        // opens, so the existing `fatwabot://azkar` / `fatwabot://dua` links and
+        // the per-destination analytics keys keep working unchanged.
+        WorshipDestination.AZKAR, WorshipDestination.DUA -> RemembranceScreen(
+            initial = if (destination == WorshipDestination.DUA) {
+                RemembranceSegment.DUA
+            } else {
+                RemembranceSegment.AZKAR
+            },
+            onExit = { onDestinationChange(null) },
+        )
         WorshipDestination.AWRAD -> WorshipDetailScaffold(
             title = stringResource(WorshipDestination.AWRAD.titleRes),
             onBack = { onDestinationChange(null) },
@@ -172,6 +149,15 @@ fun WorshipTab(
     }
 }
 
+/** Grid label. Only AZKAR differs from its own title: its tile is the entry point
+ * for the merged Azkar + Du'a screen, so it announces both. `titleRes` stays the
+ * name of the Azkar library itself — that's what the segment label needs. */
+@StringRes
+private fun tileTitleRes(destination: WorshipDestination): Int = when (destination) {
+    WorshipDestination.AZKAR -> R.string.worship_remembrance
+    else -> destination.titleRes
+}
+
 private fun iconFor(destination: WorshipDestination) = when (destination) {
     WorshipDestination.PRAYER -> Icons.Filled.AccessTime
     WorshipDestination.QIBLA -> Icons.Filled.Explore
@@ -185,7 +171,12 @@ private fun iconFor(destination: WorshipDestination) = when (destination) {
 
 @Composable
 private fun WorshipMenu(hasLocation: Boolean, onSelect: (WorshipDestination) -> Unit) {
-    val visible = WorshipDestination.entries.filter { it != WorshipDestination.QIBLA || hasLocation }
+    // DUA is still a routable destination (deep links, analytics) — it just no
+    // longer gets its own tile: AZKAR's tile now opens the merged Azkar + Du'a
+    // screen, so a second tile would land on the same place.
+    val visible = WorshipDestination.entries.filter {
+        (it != WorshipDestination.QIBLA || hasLocation) && it != WorshipDestination.DUA
+    }
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
@@ -226,7 +217,7 @@ private fun WorshipTile(destination: WorshipDestination, onClick: () -> Unit) {
             }
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 12.dp))
             Text(
-                stringResource(destination.titleRes),
+                stringResource(tileTitleRes(destination)),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
@@ -235,9 +226,11 @@ private fun WorshipTile(destination: WorshipDestination, onClick: () -> Unit) {
     }
 }
 
+/** Shared back-bar chrome for every pushed worship screen. Not private: the merged
+ * Azkar + Du'a screen lives in its own file and needs the same bar. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun WorshipDetailScaffold(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+internal fun WorshipDetailScaffold(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(

@@ -78,16 +78,28 @@ public struct DesignTokens: Equatable, Sendable {
             onPrimary: "#FFFFFF",
             outline: "#E3D5CC"
         ),
+        // Dark palette notes — `primary` has to do two jobs at once: it fills
+        // large surfaces (the nav band, the search cap) AND is used as a
+        // foreground for headings and icons. The old #D08770 was tuned only for
+        // the second job: a washed-out salmon that read as a different brand
+        // once it filled the nav band, and it forced `onPrimary` to be *dark*,
+        // which is backwards for a fill colour.
+        //
+        // #B8514A is a lifted brick that still reads as the maroon family: dark
+        // enough that near-white sits on it legibly, light enough to carry as a
+        // heading against the near-black surface. Surfaces gained a clearer
+        // elevation delta (a 3-point luminance step was invisible), and the gold
+        // accent was brightened, since #B8860B is nearly black on a dark ground.
         dark: ColorTokens(
-            primary: "#D08770",
-            primaryContainer: "#3A2422",
-            accent: "#D4A73F",
-            surface: "#171210",
-            surfaceElevated: "#221A17",
-            onSurface: "#F1E7E0",
-            onSurfaceSecondary: "#B5A398",
-            onPrimary: "#2B1B17",
-            outline: "#463832"
+            primary: "#B8514A",
+            primaryContainer: "#3B2320",
+            accent: "#E0B457",
+            surface: "#14100F",
+            surfaceElevated: "#221B19",
+            onSurface: "#F5EBE4",
+            onSurfaceSecondary: "#BCA79C",
+            onPrimary: "#FFF6F1",
+            outline: "#3E312D"
         ),
         shape: ShapeTokens(cardRadius: 18, controlRadius: 12),
         productName: "Fatwa Bot",

@@ -96,14 +96,14 @@ fun SearchHome() {
             letterSpacing = 3.sp,
             fontWeight = FontWeight.Medium,
             color = cs.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 8.dp),
         )
 
         // Rosette divider (arrow-tipped rules + 8-petal flower).
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth().widthIn(max = 234.dp).padding(top = 26.dp, bottom = 32.dp),
+            modifier = Modifier.fillMaxWidth().widthIn(max = 234.dp).padding(top = 34.dp, bottom = 42.dp),
         ) {
             DividerRule(pointsStart = true, color = cs.primary, modifier = Modifier.weight(1f))
             RosetteMark(size = 18.dp, color = cs.primary)
@@ -115,17 +115,17 @@ fun SearchHome() {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             IntentCard(R.string.home_card_fatwa, Modifier.weight(1f), { showComingSoon = true }) {
                 // Flipped so the magnifier handle points bottom-left, matching the mockup.
-                Icon(Icons.Filled.Search, null, tint = cs.primary, modifier = Modifier.size(26.dp).graphicsLayer(scaleX = -1f))
+                Icon(Icons.Filled.Search, null, tint = cs.primary, modifier = Modifier.size(21.dp).graphicsLayer(scaleX = -1f))
             }
             IntentCard(R.string.home_card_hadith, Modifier.weight(1f), { showComingSoon = true }) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = cs.primary, modifier = Modifier.size(26.dp))
+                Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = cs.primary, modifier = Modifier.size(21.dp))
             }
             IntentCard(R.string.home_card_question, Modifier.weight(1f), { showComingSoon = true }) {
-                QuestionBubbleIcon(cs.primary, 28.dp)
+                QuestionBubbleIcon(cs.primary, 23.dp)
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(30.dp))
         // Search bar — rounded rect with the maroon magnifier cap pinned to the
         // left in both languages.
         val searchShape = RoundedCornerShape(18.dp)
@@ -134,9 +134,9 @@ fun SearchHome() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)
-                    .shadow(7.dp, searchShape)
+                    .shadow(5.dp, searchShape)
                     .clip(searchShape)
-                    .background(cs.surface)
+                    .background(cs.brandCardFill)
                     .clickable { showComingSoon = true },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -156,7 +156,7 @@ fun SearchHome() {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 18.dp, start = 8.dp, end = 8.dp),
+            modifier = Modifier.padding(top = 30.dp, start = 8.dp, end = 8.dp),
         ) {
             RosetteMark(size = 15.dp, color = cs.secondary)
             Text(
@@ -180,15 +180,28 @@ fun SearchHome() {
     }
 }
 
+/**
+ * Fill for the neumorphic home cards and the search field.
+ *
+ * Light mode is deliberately cream-on-cream (`surface` over the `surface` wash) —
+ * that's the mockup, and the shadow is what separates the card. In dark, though,
+ * `surface` IS the page background ([brandScreenBackground] gradients from it),
+ * so a card filled with it is invisible. Cards step up to `surfaceElevated`,
+ * which `Theme.kt` maps onto Material's `surfaceContainer` slot (`surface` and
+ * `background` are both the token `surface`, so neither works here).
+ */
+private val androidx.compose.material3.ColorScheme.brandCardFill: Color
+    @Composable get() = if (isSystemInDarkTheme()) surfaceContainer else surface
+
 @Composable
 private fun IntentCard(titleRes: Int, modifier: Modifier, onClick: () -> Unit, icon: @Composable () -> Unit) {
     val cs = MaterialTheme.colorScheme
     Column(
         modifier = modifier
             .height(104.dp)
-            .shadow(6.dp, RoundedCornerShape(24.dp))
+            .shadow(4.dp, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
-            .background(cs.surface)
+            .background(cs.brandCardFill)
             .clickable(onClick = onClick)
             .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

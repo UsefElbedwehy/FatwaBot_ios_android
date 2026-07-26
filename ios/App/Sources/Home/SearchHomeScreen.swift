@@ -43,11 +43,11 @@ struct SearchHomeScreen: View {
                     .font(.system(size: 28, weight: .medium, design: .serif))
                     .tracking(3)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                    .padding(.top, 4)
+                    .padding(.top, 8)
 
                 divider
-                    .padding(.top, 26)
-                    .padding(.bottom, 32)
+                    .padding(.top, 34)
+                    .padding(.bottom, 42)
 
                 HStack(spacing: 12) {
                     ForEach(Intent.allCases) { intent in
@@ -56,7 +56,7 @@ struct SearchHomeScreen: View {
                 }
 
                 searchField
-                    .padding(.top, 16)
+                    .padding(.top, 30)
 
                 HStack(spacing: 8) {
                     RosetteMark(size: 15, color: Color(hexToken: tokens.accent))
@@ -65,7 +65,7 @@ struct SearchHomeScreen: View {
                         .foregroundStyle(Color(hexToken: tokens.primary))
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, 18)
+                .padding(.top, 30)
                 .padding(.horizontal, 12)
 
                 Spacer(minLength: 40)
@@ -116,7 +116,7 @@ struct SearchHomeScreen: View {
         Button { showComingSoon = true } label: {
             VStack(spacing: 12) {
                 intentIcon(intent)
-                    .frame(height: 30)
+                    .frame(height: 26)
                 Text(intent.titleKey)
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
@@ -135,14 +135,14 @@ struct SearchHomeScreen: View {
         let color = Color(hexToken: tokens.primary)
         switch intent {
         case .question:
-            QuestionBubbleIcon(color: color, size: 28)
+            QuestionBubbleIcon(color: color, size: 23)
         case .hadith:
             Image(systemName: "book.fill")
-                .font(.system(size: 26, weight: .medium))
+                .font(.system(size: 21, weight: .medium))
                 .foregroundStyle(color)
         case .fatwa:
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 26, weight: .semibold))
+                .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(color)
                 .scaleEffect(x: -1, y: 1)   // handle to bottom-left, matching the mockup
         }
@@ -177,12 +177,25 @@ struct SearchHomeScreen: View {
         .buttonStyle(.plain)
     }
 
-    /// Cream-on-cream neumorphism: soft dark drop + light top highlight, no border.
+    /// Cream-on-cream neumorphism: soft drop shadow + a light top-left highlight.
+    ///
+    /// Both halves have to flip for dark mode. The fill uses `surface` in light
+    /// (cream card on the cream wash) but `surfaceElevated` in dark — in the dark
+    /// palette `surface` IS the page background, so a card filled with it would
+    /// be invisible. And the highlight can't be white: a white glow on a dark
+    /// card reads as a rendering artefact, so it becomes a faint lift instead.
     private func neumorphicSurface(cornerRadius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(Color(hexToken: tokens.surface))
-            .shadow(color: Color(hexToken: tokens.onSurface).opacity(0.09), radius: 11, x: 4, y: 8)
-            .shadow(color: .white.opacity(0.85), radius: 7, x: -5, y: -5)
+        let isDark = colorScheme == .dark
+        return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(Color(hexToken: isDark ? tokens.surfaceElevated : tokens.surface))
+            .shadow(
+                color: Color.black.opacity(isDark ? 0.35 : 0.05),
+                radius: 9, x: 3, y: 5
+            )
+            .shadow(
+                color: (isDark ? Color.white.opacity(0.05) : Color.white.opacity(0.7)),
+                radius: 6, x: -4, y: -4
+            )
     }
 }
 
