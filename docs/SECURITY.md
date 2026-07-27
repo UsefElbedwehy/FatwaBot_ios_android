@@ -84,3 +84,33 @@ not an oversight.
   decision, not required by the current threat model.
 - **Certificate pinning** — none (see rationale above).
 - **Per-user RLS policies** — future backend hardening.
+
+## 🔴 Pre-launch gates (credential exposure)
+
+Two credentials were pasted in plaintext during development and must be treated
+as public. Both are **hard gates before the app reaches real users** — not
+polish items.
+
+### 1. Supabase personal access token (`sbp_fbbba32…`)
+Account-scoped: it can administer every Supabase project on the account, not
+just this one. Revoke at https://supabase.com/dashboard/account/tokens, then
+`supabase login` again so the CLI keeps working. Revoking causes no downtime —
+the deployed function and database authenticate with the project's own keys, not
+this token.
+
+### 2. Firebase service-account private key (project `fatwabot-5f898`)
+**Deliberately deferred to project finalization (owner decision, 2026-07-27).**
+Accepted knowingly: the app is pre-launch with no real users, and the key was
+exposed in a chat rather than committed or published, so the practical risk today
+is low. It stops being low the moment the app ships — anyone holding this key can
+send push notifications as us and reach Firebase services with admin rights.
+
+Rotation is **two consoles**, and generating a new key does NOT disable the old
+one — that's the step that actually closes the exposure:
+1. Firebase Console → Project settings → Service accounts → *Generate new private key*.
+2. Google Cloud Console → IAM & Admin → Service Accounts → `firebase-adminsdk-…`
+   → Keys → **delete the old key id**.
+3. `supabase secrets set FCM_SERVICE_ACCOUNT="$(cat <new>.json)"`, then delete the
+   downloaded file. It belongs only in Supabase secrets, never in the repo.
+
+Blocks: M4 #45 (beta / store listing) and any real-user distribution.
