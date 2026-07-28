@@ -1,3 +1,4 @@
+import AwradFeature
 import ContentKit
 import DesignSystemKit
 import Factory
@@ -227,14 +228,17 @@ private struct NotificationsSection: View {
     let tokens: ColorTokens
     @State private var prefs: PrayerNotificationPreferences
     @State private var contentPrefs: ContentReminderPreferences
+    @State private var wirdPrefs: WirdReminderPreferences
 
     private let contentStore = Container.shared.contentReminderPreferenceStore()
+    private let wirdStore = Container.shared.wirdReminderPreferenceStore()
 
     init(prayerViewModel: PrayerViewModel, tokens: ColorTokens) {
         self.prayerViewModel = prayerViewModel
         self.tokens = tokens
         _prefs = State(initialValue: prayerViewModel.notificationPreferences)
         _contentPrefs = State(initialValue: Container.shared.contentReminderPreferenceStore().load())
+        _wirdPrefs = State(initialValue: Container.shared.wirdReminderPreferenceStore().load())
     }
 
     var body: some View {
@@ -266,6 +270,13 @@ private struct NotificationsSection: View {
                 if contentPrefs.enabled {
                     countRow("settings.notif.content.per_day", value: $contentPrefs.perDay)
                 }
+                Divider().opacity(0.3)
+                // One "did you complete it?" notification per active wird, once a
+                // day, answerable straight from the notification.
+                toggleRow("settings.notif.wird.title", "settings.notif.wird.subtitle", isOn: $wirdPrefs.enabled)
+                if wirdPrefs.enabled {
+                    timeRow("settings.notif.wird.time")
+                }
             }
             .brandCard(tokens)
             .onChange(of: prefs) { _, newValue in
@@ -280,7 +291,46 @@ private struct NotificationsSection: View {
                         .reschedule(preferences: newValue, now: Date())
                 }
             }
+            .onChange(of: wirdPrefs) { _, newValue in
+                wirdStore.save(newValue)
+                // Same reasoning as the content reminders: turning it off has to
+                // cancel what is already pending, and a new time has to move the
+                // pending requests rather than wait for the next launch.
+                Task {
+                    await Container.shared.wirdReminderScheduler().reschedule(
+                        preferences: newValue,
+                        wirds: Container.shared.wirdStore().loadWirds()
+                    )
+                }
+            }
         }
+    }
+
+    /// Time-of-day picker for the wird reminder. Bound through a `Date` because
+    /// that is what `DatePicker` speaks, while the preference persists as plain
+    /// hour/minute — a stored `Date` would carry a calendar day with it and drift.
+    private func timeRow(_ label: LocalizedStringKey) -> some View {
+        let binding = Binding<Date>(
+            get: {
+                Calendar.current.date(
+                    from: DateComponents(hour: wirdPrefs.hour, minute: wirdPrefs.minute)
+                ) ?? Date()
+            },
+            set: { newValue in
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                wirdPrefs = WirdReminderPreferences(
+                    enabled: wirdPrefs.enabled,
+                    hour: parts.hour ?? WirdReminderPreferences.defaultHour,
+                    minute: parts.minute ?? WirdReminderPreferences.defaultMinute
+                )
+            }
+        )
+        return DatePicker(selection: binding, displayedComponents: .hourAndMinute) {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+        }
+        .tint(Color(hexToken: tokens.primary))
     }
 
     /// Stepper for "how many reminders a day", 0–5. Same shape as `offsetRow`

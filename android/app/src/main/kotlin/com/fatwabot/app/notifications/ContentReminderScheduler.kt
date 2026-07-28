@@ -16,6 +16,7 @@ import com.fatwabot.core.content.ContentSnippet
 import com.fatwabot.core.content.HadithCollectionDetail
 import com.fatwabot.core.content.PlannedContentReminder
 import com.fatwabot.core.prayer.NotificationPlanner
+import com.fatwabot.feature.awrad.WirdReminderPlanner
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 
@@ -64,14 +65,19 @@ class ContentReminderScheduler(
 
         // The budget comes from the prayer planner's own constant rather than a
         // second hardcoded 48 — if that reservation ever changes, content
-        // reminders shrink with it instead of pushing the total past the cap.
+        // reminders shrink with it instead of pushing the total past the cap. The
+        // wird reminders take their slice off the top for the same reason, and
+        // unconditionally: a reservation that appeared only once the user enabled
+        // wird reminders would overflow the cap the moment they did.
         val plan = ContentReminderPlanner.plan(
             azkar = azkar,
             hadith = hadith,
             preferences = preferences,
             now = now,
             timeZone = timeZone,
-            budget = ContentReminderPlanner.remainingBudget(NotificationPlanner.DEFAULT_BUDGET),
+            budget = WirdReminderPlanner.budgetAfterReserve(
+                ContentReminderPlanner.remainingBudget(NotificationPlanner.DEFAULT_BUDGET),
+            ),
         )
 
         plan.forEach { item ->

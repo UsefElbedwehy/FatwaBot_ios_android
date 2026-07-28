@@ -2,10 +2,13 @@ package com.fatwabot.app.navigation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.text.format.DateFormat
+import java.util.Locale
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -75,7 +78,9 @@ import com.fatwabot.app.BuildConfig
 import com.fatwabot.app.R
 import com.fatwabot.app.account.AccountViewModel
 import com.fatwabot.app.notifications.ContentReminderViewModel
+import com.fatwabot.app.notifications.WirdReminderViewModel
 import com.fatwabot.core.content.ContentReminderPreferences
+import com.fatwabot.feature.awrad.WirdReminderPreferences
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.network.AccountProvider
 import kotlinx.coroutines.launch
@@ -300,6 +305,13 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
         contentViewModel.update(next)
     }
 
+    val wirdViewModel: WirdReminderViewModel = hiltViewModel()
+    var wirdPrefs by remember { mutableStateOf(wirdViewModel.current()) }
+    fun updateWird(next: WirdReminderPreferences) {
+        wirdPrefs = next
+        wirdViewModel.update(next)
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         BrandSectionHeader(stringResource(R.string.settings_notifications), icon = Icons.Filled.NotificationsActive)
         BrandCard {
@@ -352,8 +364,67 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
                         updateContent(contentPrefs.copy(perDay = it))
                     }
                 }
+                Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                // One "did you complete it?" notification per active wird, once a
+                // day, answerable straight from the notification shade.
+                ToggleRow(
+                    stringResource(R.string.settings_notif_wird_title),
+                    stringResource(R.string.settings_notif_wird_subtitle),
+                    wirdPrefs.enabled,
+                ) {
+                    updateWird(wirdPrefs.copy(enabled = it))
+                }
+                if (wirdPrefs.enabled) {
+                    TimeRow(
+                        stringResource(R.string.settings_notif_wird_time),
+                        wirdPrefs.hour,
+                        wirdPrefs.minute,
+                    ) { hour, minute ->
+                        updateWird(wirdPrefs.copy(hour = hour, minute = minute))
+                    }
+                }
             }
         }
+    }
+}
+
+/**
+ * Time-of-day picker for the wird reminder. Uses the platform dialog rather than
+ * a Compose one so it inherits the user's 12/24-hour system setting — a worship
+ * app showing 8:00 PM to someone whose phone is on 24h reads as a bug.
+ */
+@Composable
+private fun TimeRow(label: String, hour: Int, minute: Int, onChange: (Int, Int) -> Unit) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                TimePickerDialog(
+                    context,
+                    { _, pickedHour, pickedMinute -> onChange(pickedHour, pickedMinute) },
+                    hour,
+                    minute,
+                    DateFormat.is24HourFormat(context),
+                ).show()
+            }
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            // Formatted through the system locale so Arabic renders Arabic-Indic
+            // digits, matching every other number on the screen.
+            String.format(Locale.getDefault(), "%02d:%02d", hour, minute),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 

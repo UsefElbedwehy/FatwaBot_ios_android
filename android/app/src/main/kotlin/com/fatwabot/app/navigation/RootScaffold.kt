@@ -63,6 +63,7 @@ import com.fatwabot.app.BuildConfig
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.fatwabot.app.notifications.ContentReminderViewModel
+import com.fatwabot.app.notifications.WirdReminderViewModel
 import com.fatwabot.core.common.AnalyticsEvents
 import com.fatwabot.core.common.AnalyticsTracking
 import com.fatwabot.core.common.DeepLink
@@ -119,6 +120,7 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     }
 
     val contentReminderViewModel: ContentReminderViewModel = hiltViewModel()
+    val wirdReminderViewModel: WirdReminderViewModel = hiltViewModel()
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) {
@@ -127,6 +129,10 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
         // notification budget. Safe on every launch: the plan is seeded by the
         // day, so re-registering lands on the same alarms at the same times.
         contentReminderViewModel.rescheduleFromStore()
+        // Last of the three, on the slice the other two left free. Also how a
+        // wird created or archived since the last launch gains or loses its
+        // reminder.
+        wirdReminderViewModel.rescheduleFromStore()
     }
 
     LaunchedEffect(Unit) {

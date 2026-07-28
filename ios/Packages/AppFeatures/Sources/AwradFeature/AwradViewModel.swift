@@ -40,6 +40,17 @@ public final class AwradViewModel {
         self.dayCompletions = store.loadDayCompletions()
     }
 
+    /// Re-reads everything off the store. The view model is a singleton that
+    /// outlives a backgrounding, and `WirdCompletionResponder` writes to the same
+    /// files from a notification action while no UI is alive — without this the
+    /// board would still show the wird as outstanding after the user answered
+    /// "yes" from the lock screen.
+    public func reload() {
+        wirds = store.loadWirds()
+        progress = store.loadProgress()
+        dayCompletions = store.loadDayCompletions()
+    }
+
     public func loadTemplates(locale: String) async {
         guard let contentService else { return }
         templates = await contentService.wirdTemplates(locale: locale)?.templates ?? []
@@ -121,7 +132,10 @@ public final class AwradViewModel {
 
     private var todayKey: String { Self.dateKey(for: now(), calendar: calendar) }
 
-    static func dateKey(for date: Date, calendar: Calendar) -> String {
+    /// `nonisolated` because `WirdCompletionResponder` derives the same key off
+    /// the main actor, from a notification action with no UI alive. It is pure
+    /// over its arguments, so there is nothing for the actor to protect.
+    nonisolated static func dateKey(for date: Date, calendar: Calendar) -> String {
         let components = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
     }

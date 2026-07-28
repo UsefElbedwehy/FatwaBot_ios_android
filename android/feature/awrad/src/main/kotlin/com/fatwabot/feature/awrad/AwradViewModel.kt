@@ -50,6 +50,22 @@ class AwradViewModel @Inject constructor(
     )
     val state: StateFlow<UiState> = _state.asStateFlow()
 
+    /**
+     * Re-reads everything off the store. The view model outlives a backgrounding,
+     * and [WirdCompletionResponder] writes to the same files from a notification
+     * action while no UI is alive — without this the board would still show the
+     * wird as outstanding after the user answered "yes" from the shade.
+     */
+    fun refresh() {
+        _state.update {
+            it.copy(
+                wirds = store.loadWirds(),
+                progress = store.loadProgress(),
+                dayCompletions = store.loadDayCompletions(),
+            )
+        }
+    }
+
     fun loadTemplates(locale: String) {
         _state.update { it.copy(templates = contentService?.wirdTemplates(locale)?.templates.orEmpty()) }
     }
@@ -105,7 +121,10 @@ class AwradViewModel @Inject constructor(
         }
         store.saveProgress(updated)
         _state.update { it.copy(progress = updated) }
-        activityEvents.record(eventType = "wird_ticked")
+        // `wird_id` matches what iOS has always sent. Without it the same user
+        // action produces a different event on each platform, and any per-wird
+        // gamification rule would silently only work for iOS.
+        activityEvents.record(eventType = "wird_ticked", metadata = mapOf("wird_id" to wirdId))
 
         val target = _state.value.wirds.firstOrNull { it.id == wirdId }?.target
         val countAfter = countBefore + amount

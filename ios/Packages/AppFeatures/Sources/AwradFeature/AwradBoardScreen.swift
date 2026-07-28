@@ -8,6 +8,7 @@ public struct AwradBoardScreen: View {
     @State private var showCreateSheet = false
     @State private var showStats = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     private let locale: String
 
     public init(viewModel: AwradViewModel, locale: String = "ar") {
@@ -58,7 +59,15 @@ public struct AwradBoardScreen: View {
         .sheet(isPresented: $showStats) {
             AwradStatsView(stats: viewModel.stats)
         }
-        .task { await viewModel.loadTemplates(locale: locale) }
+        .task {
+            // Picks up anything a notification "yes" wrote while the app was
+            // backgrounded (see WirdCompletionResponder).
+            viewModel.reload()
+            await viewModel.loadTemplates(locale: locale)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { viewModel.reload() }
+        }
     }
 
     // MARK: - Stats

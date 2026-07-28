@@ -42,6 +42,15 @@
     <string name="notif_channel_content">أذكار وأحاديث يومية</string>
     <string name="notif_content_azkar_title">ذكر لك</string>
     <string name="notif_content_hadith_title">حديث لك</string>
+    <string name="settings_notif_wird_title">تذكير الورد اليومي</string>
+    <string name="settings_notif_wird_subtitle">تذكير لكل ورد، تجيب عليه بـ«نعم» دون فتح التطبيق.</string>
+    <string name="settings_notif_wird_time">وقت التذكير</string>
+    <string name="notif_channel_wird">تذكير الورد اليومي</string>
+    <!-- %1$s هو اسم الورد — لا بد أن يعرف المستخدم عن أي ورد يُسأل. -->
+    <string name="notif_wird_title">هل أكملت %1$s؟</string>
+    <string name="notif_wird_body">أجب من هنا دون فتح التطبيق.</string>
+    <string name="notif_wird_action_yes">نعم</string>
+    <string name="notif_wird_action_later">لاحقاً</string>
     <string name="settings_guide_title">دليل الميزات</string>
     <string name="settings_guide_adhan_body">يرسل إشعارًا عند دخول وقت كل صلاة من الصلوات الخمس حسب موقعك.</string>
     <string name="settings_guide_pre_adhan_body">تنبيه مبكر قبل الأذان بعدد الدقائق الذي تحدده لتستعد للصلاة.</string>

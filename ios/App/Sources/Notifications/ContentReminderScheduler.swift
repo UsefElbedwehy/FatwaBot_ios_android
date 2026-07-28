@@ -1,3 +1,4 @@
+import AwradFeature
 import ContentKit
 import CoreKit
 import Foundation
@@ -46,14 +47,19 @@ final class ContentReminderScheduler: ContentReminderScheduling, @unchecked Send
         // The budget comes from the prayer planner's own constant rather than a
         // second hardcoded 48 — if that reservation ever changes, content
         // reminders shrink with it instead of pushing the total past iOS's 64
-        // and silently evicting prayer notifications.
+        // and silently evicting prayer notifications. The wird reminders take
+        // their slice off the top for the same reason, and unconditionally: a
+        // reservation that appeared only once the user enabled wird reminders
+        // would overflow the cap the moment they did.
         let plan = ContentReminderPlanner.plan(
             azkar: azkar,
             hadith: hadith,
             preferences: preferences,
             now: now,
             calendar: .current,
-            budget: ContentReminderPlanner.remainingBudget(prayerReserve: NotificationPlanner.iosBudget)
+            budget: WirdReminderPlanner.budgetAfterReserve(
+                ContentReminderPlanner.remainingBudget(prayerReserve: NotificationPlanner.iosBudget)
+            )
         )
 
         let pending = await center.pendingNotificationRequests()

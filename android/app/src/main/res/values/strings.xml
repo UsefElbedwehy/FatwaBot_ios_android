@@ -42,6 +42,15 @@
     <string name="notif_channel_content">Daily azkar &amp; hadith</string>
     <string name="notif_content_azkar_title">A remembrance for you</string>
     <string name="notif_content_hadith_title">A hadith for you</string>
+    <string name="settings_notif_wird_title">Daily wird reminder</string>
+    <string name="settings_notif_wird_subtitle">One reminder per wird — answer \"Yes\" without opening the app.</string>
+    <string name="settings_notif_wird_time">Reminder time</string>
+    <string name="notif_channel_wird">Daily wird reminder</string>
+    <!-- %1$s is the wird's name — the user has to know which one they are answering for. -->
+    <string name="notif_wird_title">Did you complete %1$s?</string>
+    <string name="notif_wird_body">Answer from here — no need to open the app.</string>
+    <string name="notif_wird_action_yes">Yes</string>
+    <string name="notif_wird_action_later">Later</string>
     <string name="settings_guide_title">Features guide</string>
     <string name="settings_guide_adhan_body">Sends a notification at the start of each of the five daily prayers, based on your location.</string>
     <string name="settings_guide_pre_adhan_body">An early reminder a chosen number of minutes before the adhan so you can prepare.</string>

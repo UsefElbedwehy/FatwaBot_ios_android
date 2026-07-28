@@ -1,3 +1,4 @@
+import AwradFeature
 import DesignSystemKit
 import Factory
 import NetworkingKit
@@ -15,6 +16,10 @@ struct FatwaBotApp: App {
         // Must be set before the app finishes launching, or a tap that cold-starts
         // the app is delivered before anyone is listening and the deep link is lost.
         UNUserNotificationCenter.current().delegate = NotificationTapDelegate.shared
+        // Same reason: the "نعم"/"لاحقاً" buttons only render if the category is
+        // registered before the notification is delivered, and a reminder can be
+        // delivered the instant the app finishes launching.
+        Container.shared.wirdReminderScheduler().registerCategory()
     }
 
     var body: some Scene {

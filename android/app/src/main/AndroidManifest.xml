@@ -42,6 +42,23 @@
             android:name=".notifications.ContentReminderAlarmReceiver"
             android:exported="false" />
 
+        <!-- Posts the daily "did you complete [wird]؟" notification. -->
+        <receiver
+            android:name=".notifications.WirdReminderAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Where the نعم / لاحقاً buttons land. exported="false": only our own
+             PendingIntents may fire it, so nothing outside the app can mark a
+             wird complete. -->
+        <receiver
+            android:name=".notifications.WirdReminderActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.fatwabot.app.WIRD_REMINDER_DONE" />
+                <action android:name="com.fatwabot.app.WIRD_REMINDER_LATER" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".push.FatwaBotMessagingService"
             android:exported="false">

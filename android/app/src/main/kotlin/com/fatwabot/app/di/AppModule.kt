@@ -54,6 +54,9 @@ import com.fatwabot.core.common.HapticsProviding
 import com.fatwabot.core.content.ContentFileStore
 import com.fatwabot.app.notifications.ContentReminderPreferenceStore
 import com.fatwabot.app.notifications.ContentReminderScheduler
+import com.fatwabot.app.notifications.WirdReminderPreferenceStore
+import com.fatwabot.app.notifications.WirdReminderScheduler
+import com.fatwabot.feature.awrad.WirdCompletionResponder
 import com.fatwabot.core.content.ContentService
 import com.fatwabot.feature.azkar.AzkarStoring
 import com.fatwabot.feature.azkar.FileAzkarStore
@@ -314,6 +317,40 @@ abstract class AppModule {
         fun provideContentReminderPreferenceStore(
             @ApplicationContext context: Context,
         ): ContentReminderPreferenceStore = ContentReminderPreferenceStore(context)
+
+        /**
+         * Daily "did you complete your wird?" reminders. A third alarm-id
+         * namespace, channel and budget slice, kept apart from prayer and content
+         * for the same reason those two are apart.
+         */
+        @Provides
+        @Singleton
+        fun provideWirdReminderScheduler(
+            @ApplicationContext context: Context,
+        ): WirdReminderScheduler = WirdReminderScheduler(
+            context = context,
+            stringProvider = { key -> notificationString(context, key) },
+        )
+
+        @Provides
+        @Singleton
+        fun provideWirdReminderPreferenceStore(
+            @ApplicationContext context: Context,
+        ): WirdReminderPreferenceStore = WirdReminderPreferenceStore(context)
+
+        /**
+         * Applies a notification "نعم" straight to the store. Injected into
+         * [com.fatwabot.app.notifications.WirdReminderActionReceiver], which runs
+         * with no UI alive — hence the store rather than a view model.
+         */
+        @Provides
+        fun provideWirdCompletionResponder(
+            store: WirdStoring,
+            activityEvents: ActivityEventRecording,
+        ): WirdCompletionResponder = WirdCompletionResponder(
+            store = store,
+            activityEvents = activityEvents,
+        )
 
         @Provides
         fun provideHaptics(@ApplicationContext context: Context): HapticsProviding = SystemHaptics(context)

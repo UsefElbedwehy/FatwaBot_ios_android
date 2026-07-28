@@ -192,6 +192,11 @@
 "notif.last_third.body" = "A blessed time for tahajjud and du'a";
 "notif.content.azkar.title" = "A remembrance for you";
 "notif.content.hadith.title" = "A hadith for you";
+/* %@ is the wird's name — the user has to know which one they are answering for. */
+"notif.wird.title" = "Did you complete %@?";
+"notif.wird.body" = "Answer from here — no need to open the app.";
+"notif.wird.action.yes" = "Yes";
+"notif.wird.action.later" = "Later";
 "settings.notifications_section" = "Notifications";
 "settings.notif.adhan.title" = "Adhan";
 "settings.notif.adhan.subtitle" = "A notification at each prayer time.";
@@ -208,6 +213,9 @@
 "settings.notif.content.subtitle" = "Reminders at random times between 9am and 9pm.";
 "settings.notif.content.per_day" = "Reminders per day";
 "settings.notif.content.count_value %lld" = "%lld a day";
+"settings.notif.wird.title" = "Daily wird reminder";
+"settings.notif.wird.subtitle" = "One reminder per wird — answer \"Yes\" without opening the app.";
+"settings.notif.wird.time" = "Reminder time";
 "settings.guide_section" = "Features guide";
 "settings.guide.adhan" = "Sends a notification at the exact time of each of the five daily prayers, based on your location.";
 "settings.guide.pre_adhan" = "An early heads-up a set number of minutes before the adhan, so you can prepare.";

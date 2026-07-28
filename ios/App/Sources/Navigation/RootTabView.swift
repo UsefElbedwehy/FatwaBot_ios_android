@@ -129,6 +129,13 @@ struct RootTabView: View {
                         preferences: Container.shared.contentReminderPreferenceStore().load(),
                         now: Date()
                     )
+                    // Last of the three, on the slice the other two left free.
+                    // Re-registering is a no-op: the ids are derived from the wird
+                    // ids and the triggers repeat daily at a fixed time.
+                    await Container.shared.wirdReminderScheduler().reschedule(
+                        preferences: Container.shared.wirdReminderPreferenceStore().load(),
+                        wirds: Container.shared.wirdStore().loadWirds()
+                    )
                 }
                 await Container.shared.configService().refresh(locales: ["ar", "en"])
             }

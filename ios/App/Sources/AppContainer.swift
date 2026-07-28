@@ -174,6 +174,40 @@ extension Container {
         self { UserDefaultsContentReminderPreferenceStore() }.singleton
     }
 
+    /// The wird store, hoisted out of `awradViewModel` so the notification
+    /// action path and the UI path write through the SAME object. A second
+    /// `FileWirdStore` over the same directory would work too, but sharing one
+    /// makes the "one source of truth" explicit.
+    var wirdStore: Factory<WirdStoring> {
+        self { FileWirdStore(directory: AppEnvironment.sharedContainerURL) }.singleton
+    }
+
+    /// Applies a notification "نعم" straight to the store. Resolvable off the
+    /// main actor: it is what runs when the app is backgrounded or not running,
+    /// where no `AwradViewModel` exists.
+    var wirdCompletionResponder: Factory<WirdCompletionResponder> {
+        self {
+            WirdCompletionResponder(
+                store: self.wirdStore(),
+                activityEvents: self.activityEventRecording()
+            )
+        }
+    }
+
+    /// Daily "did you complete your wird?" reminders. A third id namespace and a
+    /// third budget slice, kept apart from prayer and content for the same reason
+    /// those two are apart — one scheduler clearing another's pending requests.
+    var wirdReminderScheduler: Factory<WirdReminderScheduling> {
+        self {
+            WirdReminderScheduler(stringProvider: { key in NSLocalizedString(key, comment: "") })
+        }
+        .singleton
+    }
+
+    var wirdReminderPreferenceStore: Factory<WirdReminderPreferenceStoring> {
+        self { UserDefaultsWirdReminderPreferenceStore() }.singleton
+    }
+
     var widgetStore: Factory<WidgetSnapshotStore?> {
         self {
             FileManager.default
@@ -256,7 +290,7 @@ extension Container {
         self { @MainActor in
             AwradViewModel(
                 contentService: self.contentService(),
-                store: FileWirdStore(directory: AppEnvironment.sharedContainerURL),
+                store: self.wirdStore(),
                 haptics: SystemHaptics(),
                 activityEvents: self.activityEventRecording()
             )

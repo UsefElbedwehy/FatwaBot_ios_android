@@ -192,6 +192,11 @@
 "notif.last_third.body" = "وقت مبارك للتهجد والدعاء";
 "notif.content.azkar.title" = "ذكر لك";
 "notif.content.hadith.title" = "حديث لك";
+/* %@ هو اسم الورد — لا بد أن يعرف المستخدم عن أي ورد يُسأل. */
+"notif.wird.title" = "هل أكملت %@؟";
+"notif.wird.body" = "أجب من هنا دون فتح التطبيق.";
+"notif.wird.action.yes" = "نعم";
+"notif.wird.action.later" = "لاحقاً";
 "settings.notifications_section" = "الإشعارات";
 "settings.notif.adhan.title" = "الأذان";
 "settings.notif.adhan.subtitle" = "إشعار عند دخول وقت كل صلاة.";
@@ -208,6 +213,9 @@
 "settings.notif.content.subtitle" = "تذكيرات في أوقات عشوائية بين ٩ صباحًا و٩ مساءً.";
 "settings.notif.content.per_day" = "عدد التذكيرات يوميًا";
 "settings.notif.content.count_value %lld" = "%lld يوميًا";
+"settings.notif.wird.title" = "تذكير الورد اليومي";
+"settings.notif.wird.subtitle" = "تذكير لكل ورد، تجيب عليه بـ«نعم» دون فتح التطبيق.";
+"settings.notif.wird.time" = "وقت التذكير";
 "settings.guide_section" = "دليل الميزات";
 "settings.guide.adhan" = "يرسل إشعارًا عند دخول وقت كل صلاة من الصلوات الخمس حسب موقعك.";
 "settings.guide.pre_adhan" = "تنبيه مبكر قبل الأذان بعدد الدقائق الذي تحدده لتستعد للصلاة.";
