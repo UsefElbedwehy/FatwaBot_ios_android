@@ -2,6 +2,7 @@ import DesignSystemKit
 import Factory
 import NetworkingKit
 import SwiftUI
+import UserNotifications
 
 @main
 struct FatwaBotApp: App {
@@ -11,6 +12,9 @@ struct FatwaBotApp: App {
 
     init() {
         AnalyticsPreferences.registerDefaults()
+        // Must be set before the app finishes launching, or a tap that cold-starts
+        // the app is delivered before anyone is listening and the deep link is lost.
+        UNUserNotificationCenter.current().delegate = NotificationTapDelegate.shared
     }
 
     var body: some Scene {

@@ -90,6 +90,9 @@ struct RootTabView: View {
     @State private var azkarViewModel = Container.shared.azkarViewModel()
     @State private var duaViewModel = Container.shared.duaViewModel()
     private let analytics = Container.shared.analyticsTracking()
+    /// Notification taps arrive here rather than through `.onOpenURL` — a tap is
+    /// not a URL open, so the delegate has to hand the link over in-process.
+    private let tapRouter = NotificationTapRouter.shared
 
     @Environment(\.colorScheme) private var colorScheme
     private var tokens: ColorTokens {
@@ -119,8 +122,24 @@ struct RootTabView: View {
                 if !ProcessInfo.processInfo.arguments.contains("-skipPermPrompts") {
                     _ = await Container.shared.notificationScheduler().requestAuthorization()
                     await prayerViewModel.start()
+                    // After the prayer schedule, so the two never race for the
+                    // 64 pending slots. Safe to run on every launch: the plan is
+                    // seeded by the day, so re-registering is a no-op.
+                    await Container.shared.contentReminderScheduler().reschedule(
+                        preferences: Container.shared.contentReminderPreferenceStore().load(),
+                        now: Date()
+                    )
                 }
                 await Container.shared.configService().refresh(locales: ["ar", "en"])
+            }
+            .onChange(of: tapRouter.pendingLink) { _, link in
+                guard let link else { return }
+                analytics.event(
+                    AnalyticsEvents.notificationOpenedApp,
+                    params: [AnalyticsEvents.paramRoute: link.rawValue]
+                )
+                open(link)
+                tapRouter.consume()
             }
             .onOpenURL { url in
                 guard let link = DeepLink(url: url) else { return }

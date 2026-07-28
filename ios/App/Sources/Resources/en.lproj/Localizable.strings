@@ -190,6 +190,8 @@
 "notif.iqama.body" = "The congregation is about to begin";
 "notif.last_third.title" = "The last third of the night";
 "notif.last_third.body" = "A blessed time for tahajjud and du'a";
+"notif.content.azkar.title" = "A remembrance for you";
+"notif.content.hadith.title" = "A hadith for you";
 "settings.notifications_section" = "Notifications";
 "settings.notif.adhan.title" = "Adhan";
 "settings.notif.adhan.subtitle" = "A notification at each prayer time.";
@@ -202,6 +204,10 @@
 "settings.notif.minutes_before" = "Minutes before adhan";
 "settings.notif.minutes_after" = "Minutes after adhan";
 "settings.notif.minutes_value %lld" = "%lld min";
+"settings.notif.content.title" = "Daily azkar & hadith";
+"settings.notif.content.subtitle" = "Reminders at random times between 9am and 9pm.";
+"settings.notif.content.per_day" = "Reminders per day";
+"settings.notif.content.count_value %lld" = "%lld a day";
 "settings.guide_section" = "Features guide";
 "settings.guide.adhan" = "Sends a notification at the exact time of each of the five daily prayers, based on your location.";
 "settings.guide.pre_adhan" = "An early heads-up a set number of minutes before the adhan, so you can prepare.";

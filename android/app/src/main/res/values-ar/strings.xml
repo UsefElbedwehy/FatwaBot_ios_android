@@ -35,6 +35,13 @@
     <string name="settings_stepper_decrease">إنقاص</string>
     <string name="settings_stepper_increase">زيادة</string>
     <string name="settings_minutes_value">%1$d د</string>
+    <string name="settings_notif_content_title">أذكار وأحاديث يومية</string>
+    <string name="settings_notif_content_subtitle">تذكيرات في أوقات عشوائية بين ٩ صباحًا و٩ مساءً.</string>
+    <string name="settings_notif_content_per_day">عدد التذكيرات يوميًا</string>
+    <string name="settings_notif_content_count_value">%1$d يوميًا</string>
+    <string name="notif_channel_content">أذكار وأحاديث يومية</string>
+    <string name="notif_content_azkar_title">ذكر لك</string>
+    <string name="notif_content_hadith_title">حديث لك</string>
     <string name="settings_guide_title">دليل الميزات</string>
     <string name="settings_guide_adhan_body">يرسل إشعارًا عند دخول وقت كل صلاة من الصلوات الخمس حسب موقعك.</string>
     <string name="settings_guide_pre_adhan_body">تنبيه مبكر قبل الأذان بعدد الدقائق الذي تحدده لتستعد للصلاة.</string>

@@ -52,6 +52,8 @@ import com.fatwabot.widget.StreakWidget
 import com.fatwabot.app.tasbeeh.SystemHaptics
 import com.fatwabot.core.common.HapticsProviding
 import com.fatwabot.core.content.ContentFileStore
+import com.fatwabot.app.notifications.ContentReminderPreferenceStore
+import com.fatwabot.app.notifications.ContentReminderScheduler
 import com.fatwabot.core.content.ContentService
 import com.fatwabot.feature.azkar.AzkarStoring
 import com.fatwabot.feature.azkar.FileAzkarStore
@@ -289,6 +291,29 @@ abstract class AppModule {
             context = context,
             stringProvider = { key -> notificationString(context, key) },
         )
+
+        /**
+         * Daily azkar/hadith reminders. Separate from [provideNotificationScheduler]
+         * because it owns a different alarm-id namespace, a different channel and a
+         * different budget slice — one scheduler cancelling the other's alarms is
+         * the bug this split avoids.
+         */
+        @Provides
+        @Singleton
+        fun provideContentReminderScheduler(
+            @ApplicationContext context: Context,
+            contentService: ContentService,
+        ): ContentReminderScheduler = ContentReminderScheduler(
+            context = context,
+            contentService = contentService,
+            stringProvider = { key -> notificationString(context, key) },
+        )
+
+        @Provides
+        @Singleton
+        fun provideContentReminderPreferenceStore(
+            @ApplicationContext context: Context,
+        ): ContentReminderPreferenceStore = ContentReminderPreferenceStore(context)
 
         @Provides
         fun provideHaptics(@ApplicationContext context: Context): HapticsProviding = SystemHaptics(context)

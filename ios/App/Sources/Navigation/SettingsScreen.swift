@@ -1,3 +1,4 @@
+import ContentKit
 import DesignSystemKit
 import Factory
 import NetworkingKit
@@ -225,11 +226,15 @@ private struct NotificationsSection: View {
     let prayerViewModel: PrayerViewModel
     let tokens: ColorTokens
     @State private var prefs: PrayerNotificationPreferences
+    @State private var contentPrefs: ContentReminderPreferences
+
+    private let contentStore = Container.shared.contentReminderPreferenceStore()
 
     init(prayerViewModel: PrayerViewModel, tokens: ColorTokens) {
         self.prayerViewModel = prayerViewModel
         self.tokens = tokens
         _prefs = State(initialValue: prayerViewModel.notificationPreferences)
+        _contentPrefs = State(initialValue: Container.shared.contentReminderPreferenceStore().load())
     }
 
     var body: some View {
@@ -255,10 +260,41 @@ private struct NotificationsSection: View {
                 }
                 Divider().opacity(0.3)
                 toggleRow("settings.notif.last_third.title", "settings.notif.last_third.subtitle", isOn: $prefs.lastThirdEnabled)
+                Divider().opacity(0.3)
+                // Daily azkar/hadith reminders at random waking-hour times.
+                toggleRow("settings.notif.content.title", "settings.notif.content.subtitle", isOn: $contentPrefs.enabled)
+                if contentPrefs.enabled {
+                    countRow("settings.notif.content.per_day", value: $contentPrefs.perDay)
+                }
             }
             .brandCard(tokens)
             .onChange(of: prefs) { _, newValue in
                 prayerViewModel.setNotificationPreferences(newValue)
+            }
+            .onChange(of: contentPrefs) { _, newValue in
+                contentStore.save(newValue)
+                // Re-plan immediately so turning it off actually cancels today's
+                // pending reminders rather than waiting for the next launch.
+                Task {
+                    await Container.shared.contentReminderScheduler()
+                        .reschedule(preferences: newValue, now: Date())
+                }
+            }
+        }
+    }
+
+    /// Stepper for "how many reminders a day", 0–5. Same shape as `offsetRow`
+    /// but over a count rather than minutes, so the unit label differs.
+    private func countRow(_ label: LocalizedStringKey, value: Binding<Int>) -> some View {
+        Stepper(value: value, in: ContentReminderPreferences.countRange) {
+            HStack {
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                Spacer()
+                Text("settings.notif.content.count_value \(value.wrappedValue)")
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Color(hexToken: tokens.primary))
             }
         }
     }

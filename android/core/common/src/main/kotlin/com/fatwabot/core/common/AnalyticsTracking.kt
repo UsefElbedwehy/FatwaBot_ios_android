@@ -80,6 +80,14 @@ object AnalyticsEvents {
     // Events
     const val SCREEN_VIEW = "screen_view"
     const val WIDGET_OPENED_APP = "widget_opened_app"
+
+    /**
+     * Deliberately distinct from [WIDGET_OPENED_APP]: that metric is what tells
+     * us whether the widgets earn their home-screen slot, and folding
+     * notification taps into it would inflate it with traffic the widgets never
+     * generated.
+     */
+    const val NOTIFICATION_OPENED_APP = "notification_opened_app"
     const val SEARCH_SUBMITTED = "search_submitted"
     const val NON_FATAL_ERROR = "non_fatal_error"
     const val TASBEEH_SESSION_COMPLETED = "tasbeeh_session_completed"

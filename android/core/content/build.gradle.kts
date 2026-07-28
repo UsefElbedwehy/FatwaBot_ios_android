@@ -22,6 +22,11 @@ android {
 
 dependencies {
     implementation(project(":core:network"))
+    // `api`, not `implementation`: ContentReminderPlanner exposes DeepLink and
+    // Instant in its public signatures, so consumers need them on their compile
+    // classpath too.
+    api(project(":core:common"))
+    api(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
 

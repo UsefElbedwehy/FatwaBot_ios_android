@@ -18,6 +18,7 @@ import com.fatwabot.core.common.DeepLink
 import com.fatwabot.core.network.BackendAnalyticsRecorder
 import androidx.lifecycle.lifecycleScope
 import com.fatwabot.app.navigation.AppRoot
+import com.fatwabot.app.notifications.ContentReminderAlarmReceiver
 import com.fatwabot.app.push.PushTokenRegistrar
 import com.fatwabot.app.theme.ThemeModeController
 import com.fatwabot.core.designsystem.FatwaBotTheme
@@ -53,7 +54,7 @@ class MainActivity : ComponentActivity() {
         // empty or the user has opted out.
         flushAnalytics()
         registerPushToken()
-        DeepLink.from(intent?.data)?.let { reportWidgetOpen(it) }
+        DeepLink.from(intent?.data)?.let { reportOpen(it, intent) }
         setContent {
             // Override uiMode per the user's appearance choice so every
             // isSystemInDarkTheme() read across the app reflects it.
@@ -85,7 +86,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         DeepLink.from(intent.data)?.let { link ->
             deepLinkSink?.invoke(link)
-            reportWidgetOpen(link)
+            reportOpen(link, intent)
         }
     }
 
@@ -111,12 +112,24 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { backendAnalytics.flush() }
     }
 
-    /** Which widget routes actually get tapped — the one signal that tells us
-     * whether the widgets are earning their place on the home screen. */
-    private fun reportWidgetOpen(link: DeepLink) = analytics.event(
-        AnalyticsEvents.WIDGET_OPENED_APP,
-        mapOf(AnalyticsEvents.PARAM_ROUTE to link.host),
-    )
+    /**
+     * Which routes actually get tapped. Widget and notification opens are counted
+     * separately — the widget number is the one signal that tells us whether the
+     * widgets are earning their place on the home screen, so daily-reminder taps
+     * must not be folded into it.
+     */
+    private fun reportOpen(link: DeepLink, intent: Intent?) {
+        val fromNotification = intent
+            ?.getBooleanExtra(ContentReminderAlarmReceiver.EXTRA_FROM_NOTIFICATION, false) == true
+        analytics.event(
+            if (fromNotification) {
+                AnalyticsEvents.NOTIFICATION_OPENED_APP
+            } else {
+                AnalyticsEvents.WIDGET_OPENED_APP
+            },
+            mapOf(AnalyticsEvents.PARAM_ROUTE to link.host),
+        )
+    }
 
     /** Fetch the current FCM token on launch and (re)register it with the backend. */
     private fun registerPushToken() {

@@ -35,6 +35,13 @@
     <string name="settings_stepper_decrease">Decrease</string>
     <string name="settings_stepper_increase">Increase</string>
     <string name="settings_minutes_value">%1$d min</string>
+    <string name="settings_notif_content_title">Daily azkar &amp; hadith</string>
+    <string name="settings_notif_content_subtitle">Reminders at random times between 9am and 9pm.</string>
+    <string name="settings_notif_content_per_day">Reminders per day</string>
+    <string name="settings_notif_content_count_value">%1$d a day</string>
+    <string name="notif_channel_content">Daily azkar &amp; hadith</string>
+    <string name="notif_content_azkar_title">A remembrance for you</string>
+    <string name="notif_content_hadith_title">A hadith for you</string>
     <string name="settings_guide_title">Features guide</string>
     <string name="settings_guide_adhan_body">Sends a notification at the start of each of the five daily prayers, based on your location.</string>
     <string name="settings_guide_pre_adhan_body">An early reminder a chosen number of minutes before the adhan so you can prepare.</string>

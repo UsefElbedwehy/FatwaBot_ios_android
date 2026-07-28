@@ -38,6 +38,10 @@
             android:name="com.fatwabot.feature.prayer.PrayerAlarmReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".notifications.ContentReminderAlarmReceiver"
+            android:exported="false" />
+
         <service
             android:name=".push.FatwaBotMessagingService"
             android:exported="false">

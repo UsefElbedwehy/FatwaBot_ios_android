@@ -156,6 +156,24 @@ extension Container {
         .singleton
     }
 
+    /// Daily azkar/hadith reminders. Separate from `notificationScheduler`
+    /// because it owns a different id namespace and a different budget slice —
+    /// one scheduler clearing the other's pending requests is the bug this split
+    /// avoids.
+    var contentReminderScheduler: Factory<ContentReminderScheduling> {
+        self {
+            ContentReminderScheduler(
+                contentService: self.contentService(),
+                stringProvider: { key in NSLocalizedString(key, comment: "") }
+            )
+        }
+        .singleton
+    }
+
+    var contentReminderPreferenceStore: Factory<ContentReminderPreferenceStoring> {
+        self { UserDefaultsContentReminderPreferenceStore() }.singleton
+    }
+
     var widgetStore: Factory<WidgetSnapshotStore?> {
         self {
             FileManager.default

@@ -66,6 +66,10 @@ public enum AnalyticsEvents {
     // Events
     public static let screenView = "screen_view"
     public static let widgetOpenedApp = "widget_opened_app"
+    /// Deliberately distinct from `widgetOpenedApp`: that metric is what tells us
+    /// whether the widgets earn their home-screen slot, and folding notification
+    /// taps into it would inflate it with traffic the widgets never generated.
+    public static let notificationOpenedApp = "notification_opened_app"
     public static let searchSubmitted = "search_submitted"
     public static let nonFatalError = "non_fatal_error"
     public static let tasbeehSessionCompleted = "tasbeeh_session_completed"

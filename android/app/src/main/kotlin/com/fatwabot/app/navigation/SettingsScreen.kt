@@ -74,6 +74,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.fatwabot.app.BuildConfig
 import com.fatwabot.app.R
 import com.fatwabot.app.account.AccountViewModel
+import com.fatwabot.app.notifications.ContentReminderViewModel
+import com.fatwabot.core.content.ContentReminderPreferences
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.network.AccountProvider
 import kotlinx.coroutines.launch
@@ -291,6 +293,13 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
         prayerViewModel.updateNotificationPreferences(next)
     }
 
+    val contentViewModel: ContentReminderViewModel = hiltViewModel()
+    var contentPrefs by remember { mutableStateOf(contentViewModel.current()) }
+    fun updateContent(next: ContentReminderPreferences) {
+        contentPrefs = next
+        contentViewModel.update(next)
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         BrandSectionHeader(stringResource(R.string.settings_notifications), icon = Icons.Filled.NotificationsActive)
         BrandCard {
@@ -329,8 +338,52 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
                 ToggleRow(stringResource(R.string.settings_notif_last_third_title), stringResource(R.string.settings_notif_last_third_subtitle), prefs.lastThirdEnabled) {
                     update(prefs.copy(lastThirdEnabled = it))
                 }
+                Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                // Daily azkar/hadith reminders at random waking-hour times.
+                ToggleRow(
+                    stringResource(R.string.settings_notif_content_title),
+                    stringResource(R.string.settings_notif_content_subtitle),
+                    contentPrefs.enabled,
+                ) {
+                    updateContent(contentPrefs.copy(enabled = it))
+                }
+                if (contentPrefs.enabled) {
+                    CountRow(stringResource(R.string.settings_notif_content_per_day), contentPrefs.perDay) {
+                        updateContent(contentPrefs.copy(perDay = it))
+                    }
+                }
             }
         }
+    }
+}
+
+/**
+ * Stepper for "how many reminders a day", 0–5. Same shape as [OffsetRow] but over
+ * a count rather than minutes, so the bounds and the unit label differ.
+ */
+@Composable
+private fun CountRow(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        IconButton(
+            onClick = { onChange((value - 1).coerceAtLeast(ContentReminderPreferences.COUNT_MIN)) },
+            enabled = value > ContentReminderPreferences.COUNT_MIN,
+        ) { Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.settings_stepper_decrease), tint = MaterialTheme.colorScheme.primary) }
+        Text(
+            stringResource(R.string.settings_notif_content_count_value, value),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.width(48.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        IconButton(
+            onClick = { onChange((value + 1).coerceAtMost(ContentReminderPreferences.COUNT_MAX)) },
+            enabled = value < ContentReminderPreferences.COUNT_MAX,
+        ) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.settings_stepper_increase), tint = MaterialTheme.colorScheme.primary) }
     }
 }
 
