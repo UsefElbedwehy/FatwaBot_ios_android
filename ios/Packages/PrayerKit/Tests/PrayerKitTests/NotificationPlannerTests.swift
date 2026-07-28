@@ -46,12 +46,20 @@ final class NotificationPlannerTests: XCTestCase {
         let days = try timeline(days: 1, from: DateComponents(year: 2026, month: 3, day: 20))
         let now = Date(timeIntervalSince1970: 0)
         let prefs = PrayerNotificationPreferences(
-            adhanEnabled: false, preAdhanEnabled: false, iqamaEnabled: true, iqamaOffsetMinutes: 20
+            adhanEnabled: false, preAdhanEnabled: false, iqamaEnabled: true
         )
         let plan = NotificationPlanner.plan(timeline: days, preferences: prefs, now: now)
         XCTAssertTrue(plan.allSatisfy { $0.kind == .iqama })
+
+        // The gap is per prayer now: Fajr waits longer than the rest, matching
+        // mosque practice. A single shared offset would put Fajr at 10 too.
+        let fajr = plan.first { $0.prayer == .fajr }!
+        XCTAssertEqual(fajr.fireDate.timeIntervalSince(days[0].time(.fajr)), 20 * 60)
         let asr = plan.first { $0.prayer == .asr }!
-        XCTAssertEqual(asr.fireDate.timeIntervalSince(days[0].time(.asr)), 1200)
+        XCTAssertEqual(asr.fireDate.timeIntervalSince(days[0].time(.asr)), 10 * 60)
+
+        // Sunrise is not a prayer and never gets a congregation reminder.
+        XCTAssertNil(plan.first { $0.prayer == .sunrise })
     }
 
     func testLastThirdFiresTwoThirdsIntoTheNight() throws {
@@ -107,5 +115,61 @@ final class NotificationPlannerTests: XCTestCase {
         XCTAssertEqual(ids.count, Set(ids).count, "ids must be unique for dedupe/reschedule")
         let again = NotificationPlanner.plan(timeline: days, preferences: prefs, now: now)
         XCTAssertEqual(plan, again)
+    }
+}
+
+/// The iqama gap became per-prayer. These cover the decode path, because getting
+/// it wrong silently resets a user's notification settings on upgrade — a failure
+/// nobody would report as a bug, they'd just quietly lose their configuration.
+final class IqamaOffsetMigrationTests: XCTestCase {
+    private func decode(_ json: String) throws -> PrayerNotificationPreferences {
+        try JSONDecoder().decode(PrayerNotificationPreferences.self, from: Data(json.utf8))
+    }
+
+    func testDefaultsFollowMosqueConvention() {
+        let prefs = PrayerNotificationPreferences()
+        XCTAssertEqual(prefs.iqamaOffset(for: .fajr), 20)
+        for prayer in [PrayerName.dhuhr, .asr, .maghrib, .isha] {
+            XCTAssertEqual(prefs.iqamaOffset(for: prayer), 10, "\(prayer) should default to 10")
+        }
+    }
+
+    /// Stored JSON on an already-installed device.
+    func testLegacyScalarIsCarriedOntoEveryPrayer() throws {
+        let prefs = try decode(#"{"adhanEnabled":true,"preAdhanEnabled":true,"preAdhanOffsetMinutes":10,"iqamaEnabled":true,"iqamaOffsetMinutes":15,"lastThirdEnabled":false}"#)
+        XCTAssertTrue(prefs.iqamaEnabled, "the user's on/off choice must survive")
+        for prayer in [PrayerName.fajr, .dhuhr, .asr, .maghrib, .isha] {
+            XCTAssertEqual(prefs.iqamaOffset(for: prayer), 15, "legacy 15 should carry to \(prayer)")
+        }
+    }
+
+    func testNewShapeRoundTrips() throws {
+        var prefs = PrayerNotificationPreferences(iqamaEnabled: true)
+        prefs.iqamaOffsetsByPrayer[PrayerName.asr.rawValue] = 25
+        let restored = try decode(String(data: JSONEncoder().encode(prefs), encoding: .utf8)!)
+        XCTAssertEqual(restored.iqamaOffset(for: .asr), 25)
+        XCTAssertEqual(restored.iqamaOffset(for: .fajr), 20)
+    }
+
+    /// A pack written by a newer build, or a hand-edited file, must not drop the
+    /// prayers it omits.
+    func testPartialDictionaryFallsBackPerPrayer() throws {
+        let prefs = try decode(#"{"iqamaEnabled":true,"iqamaOffsetsByPrayer":{"fajr":25}}"#)
+        XCTAssertEqual(prefs.iqamaOffset(for: .fajr), 25)
+        XCTAssertEqual(prefs.iqamaOffset(for: .isha), 10, "missing key falls back to the default")
+    }
+
+    func testOffsetsAreClampedOnDecode() throws {
+        let prefs = try decode(#"{"iqamaOffsetsByPrayer":{"fajr":9999,"asr":0}}"#)
+        XCTAssertEqual(prefs.iqamaOffset(for: .fajr), 60)
+        XCTAssertEqual(prefs.iqamaOffset(for: .asr), 1)
+    }
+
+    /// The legacy key is read once for migration and never written back.
+    func testEncodedOutputDropsTheLegacyKey() throws {
+        let data = try JSONEncoder().encode(PrayerNotificationPreferences(iqamaEnabled: true))
+        let json = String(data: data, encoding: .utf8)!
+        XCTAssertFalse(json.contains("iqamaOffsetMinutes"), "legacy key should not be re-emitted")
+        XCTAssertTrue(json.contains("iqamaOffsetsByPrayer"))
     }
 }

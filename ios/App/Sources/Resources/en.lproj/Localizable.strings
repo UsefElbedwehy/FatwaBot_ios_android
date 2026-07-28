@@ -224,3 +224,5 @@
 "worship.remembrance" = "Azkar & Du'a";
 
 "tasbeeh.notice" = "This is a placeholder notice. It can be edited from the admin dashboard without releasing an app update.";
+
+"settings.notif.iqama.notice" = "Mosques use a different gap for each prayer. These are common defaults — adjust any of them to match your mosque.";

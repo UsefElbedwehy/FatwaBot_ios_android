@@ -245,7 +245,13 @@ private struct NotificationsSection: View {
                 Divider().opacity(0.3)
                 toggleRow("settings.notif.iqama.title", "settings.notif.iqama.subtitle", isOn: $prefs.iqamaEnabled)
                 if prefs.iqamaEnabled {
-                    offsetRow("settings.notif.minutes_after", value: $prefs.iqamaOffsetMinutes)
+                    // The gap differs per prayer in practice, so each gets its own
+                    // stepper. The notice explains why there are five rows here
+                    // rather than the single one this used to be.
+                    InfoNotice(String(localized: "settings.notif.iqama.notice"), tokens: tokens)
+                    ForEach(PrayerName.allCases.filter(\.isPrayer), id: \.self) { prayer in
+                        iqamaRow(for: prayer)
+                    }
                 }
                 Divider().opacity(0.3)
                 toggleRow("settings.notif.last_third.title", "settings.notif.last_third.subtitle", isOn: $prefs.lastThirdEnabled)
@@ -255,6 +261,17 @@ private struct NotificationsSection: View {
                 prayerViewModel.setNotificationPreferences(newValue)
             }
         }
+    }
+
+    /// One stepper per prayer, bound through the offsets dictionary. Falls back to
+    /// the mosque default when a key is absent, so a partially populated
+    /// dictionary still renders a sane value instead of zero.
+    private func iqamaRow(for prayer: PrayerName) -> some View {
+        let binding = Binding(
+            get: { prefs.iqamaOffset(for: prayer) },
+            set: { prefs.iqamaOffsetsByPrayer[prayer.rawValue] = $0 }
+        )
+        return offsetRow(LocalizedStringKey("prayer.\(prayer.rawValue)"), value: binding)
     }
 
     private func toggleRow(_ title: LocalizedStringKey, _ subtitle: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
