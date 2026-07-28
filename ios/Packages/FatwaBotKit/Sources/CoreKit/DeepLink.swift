@@ -23,6 +23,15 @@ public enum DeepLink: String, CaseIterable, Sendable {
 
     public static let scheme = "fatwabot"
 
+    /// The `userInfo` key a local notification carries its route under.
+    ///
+    /// Lives here beside the routes themselves, not in the app target: feature
+    /// modules schedule their own notifications and must be able to attach a
+    /// route without depending on the app. A notification that omits it reaches
+    /// the tap handler with nothing to route on and silently does nothing —
+    /// which is exactly how prayer notification taps were inert.
+    public static let notificationUserInfoKey = "deepLink"
+
     /// `fatwabot://prayer`
     public var url: URL {
         // Safe: every case is a lowercase ASCII host, so this always parses.

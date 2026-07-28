@@ -1,3 +1,4 @@
+import CoreKit
 import Foundation
 import PrayerKit
 #if canImport(UserNotifications)
@@ -57,6 +58,10 @@ public final class PrayerNotificationScheduler: PrayerNotificationScheduling, @u
             content.body = stringProvider(item.bodyKey)
             content.sound = item.kind == .adhan ? .default : .default
             content.categoryIdentifier = Self.categoryPrefix + item.kind.rawValue
+            // Without this the tap handler has no route and the tap does nothing.
+            // Every prayer kind (adhan, pre-adhan, iqama, last-third) lands on
+            // the Prayer screen.
+            content.userInfo = [DeepLink.notificationUserInfoKey: DeepLink.prayer.rawValue]
 
             let components = Calendar.current.dateComponents(
                 [.year, .month, .day, .hour, .minute], from: item.fireDate

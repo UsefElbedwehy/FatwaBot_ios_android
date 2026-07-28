@@ -33,6 +33,16 @@ enum class DeepLink(val host: String) {
     companion object {
         const val SCHEME = "fatwabot"
 
+        /**
+         * Intent extra marking a tap as coming from a notification.
+         *
+         * Lives here beside the routes, not in `:app`: feature modules post their
+         * own notifications and must be able to set it without depending on the
+         * app module. Duplicating the literal in two receivers is how it drifts,
+         * and a drifted value silently mis-attributes the open as a widget tap.
+         */
+        const val EXTRA_FROM_NOTIFICATION = "from_notification"
+
         /** Parses an incoming URI, ignoring anything that isn't ours. */
         fun from(uri: Uri?): DeepLink? = parse(uri?.toString())
 

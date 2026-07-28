@@ -19,7 +19,7 @@ final class NotificationTapRouter {
     static let shared = NotificationTapRouter()
 
     /// The `userInfo` entry carrying `DeepLink.rawValue`.
-    nonisolated static let userInfoKey = "deepLink"
+    nonisolated static let userInfoKey = DeepLink.notificationUserInfoKey
 
     /// Set by the delegate, observed and cleared by `RootTabView`.
     var pendingLink: DeepLink?

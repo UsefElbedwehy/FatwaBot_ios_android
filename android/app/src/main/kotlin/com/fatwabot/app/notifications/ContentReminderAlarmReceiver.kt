@@ -62,7 +62,12 @@ class ContentReminderAlarmReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        /** Set on the tap intent so MainActivity can attribute the open correctly. */
-        const val EXTRA_FROM_NOTIFICATION = "from_notification"
+        /**
+         * Set on the tap intent so MainActivity can attribute the open correctly.
+         * Aliases the shared constant so every receiver and the activity resolve
+         * to ONE literal — two copies is how the value drifts and taps start
+         * being mis-attributed as widget opens.
+         */
+        const val EXTRA_FROM_NOTIFICATION = DeepLink.EXTRA_FROM_NOTIFICATION
     }
 }
