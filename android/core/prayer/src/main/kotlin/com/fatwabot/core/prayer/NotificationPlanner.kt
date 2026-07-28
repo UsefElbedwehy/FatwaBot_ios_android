@@ -26,15 +26,51 @@ data class PrayerNotificationPreferences(
     val preAdhanEnabled: Boolean = true,
     val preAdhanOffsetMinutes: Int = 10,
     val iqamaEnabled: Boolean = false,
-    val iqamaOffsetMinutes: Int = 20,
+    /**
+     * Iqama gap in minutes AFTER the adhan, **per prayer** — mosques don't use a
+     * single figure, Fajr typically waits longer than the rest. Keyed by
+     * [PrayerNameUi.key] ("fajr", "dhuhr", …) so the stored values line up with
+     * the iOS `iqamaOffsetsByPrayer` dictionary. Sunrise is not a prayer and
+     * never gets one.
+     */
+    val iqamaOffsetsByPrayer: Map<String, Int> = DEFAULT_IQAMA_OFFSETS,
     val lastThirdEnabled: Boolean = false,
 ) {
-    val clampedPreAdhan: Int get() = preAdhanOffsetMinutes.coerceIn(OFFSET_MIN, OFFSET_MAX)
-    val clampedIqama: Int get() = iqamaOffsetMinutes.coerceIn(OFFSET_MIN, OFFSET_MAX)
+    val clampedPreAdhan: Int get() = clamp(preAdhanOffsetMinutes)
+
+    /**
+     * Gap for one prayer, falling back to the mosque default so a partially
+     * populated map can never silently drop a prayer's reminder.
+     */
+    fun iqamaOffset(prayer: PrayerNameUi): Int = clamp(
+        iqamaOffsetsByPrayer[prayer.key]
+            ?: DEFAULT_IQAMA_OFFSETS[prayer.key]
+            ?: DEFAULT_IQAMA_OFFSET_MINUTES,
+    )
+
+    /** Copy with one prayer's gap replaced (clamped) — the settings steppers' setter. */
+    fun withIqamaOffset(prayer: PrayerNameUi, minutes: Int): PrayerNotificationPreferences =
+        copy(iqamaOffsetsByPrayer = iqamaOffsetsByPrayer + (prayer.key to clamp(minutes)))
 
     companion object {
         const val OFFSET_MIN = 1
         const val OFFSET_MAX = 60
+
+        /** Mosque convention (confirmed with the owner): Fajr waits longer. */
+        const val FAJR_IQAMA_OFFSET_MINUTES = 20
+        const val DEFAULT_IQAMA_OFFSET_MINUTES = 10
+
+        val DEFAULT_IQAMA_OFFSETS: Map<String, Int> = PrayerNameUi.entries
+            .filter { it.isPrayer }
+            .associate { prayer ->
+                prayer.key to if (prayer == PrayerNameUi.FAJR) {
+                    FAJR_IQAMA_OFFSET_MINUTES
+                } else {
+                    DEFAULT_IQAMA_OFFSET_MINUTES
+                }
+            }
+
+        fun clamp(minutes: Int): Int = minutes.coerceIn(OFFSET_MIN, OFFSET_MAX)
     }
 }
 
@@ -59,7 +95,7 @@ object NotificationPlanner {
             for (prayer in PrayerNameUi.entries) {
                 if (!prayer.isPrayer) continue
                 val prayerSeconds = day.times.getValue(prayer).epochSeconds
-                val lower = prayer.name.lowercase()
+                val lower = prayer.key
 
                 if (preferences.adhanEnabled && prayerSeconds > nowSeconds) {
                     planned += PlannedNotification(
@@ -80,8 +116,10 @@ object NotificationPlanner {
                     }
                 }
 
+                // Iqama reminder — a per-prayer number of minutes after the adhan.
+                // Sunrise is excluded above (isPrayer); Fajr..Isha all get one.
                 if (preferences.iqamaEnabled) {
-                    val fire = prayerSeconds + preferences.clampedIqama * 60L
+                    val fire = prayerSeconds + preferences.iqamaOffset(prayer) * 60L
                     if (fire > nowSeconds) {
                         planned += PlannedNotification(
                             id = "iqama-$key-$lower", prayer = prayer,

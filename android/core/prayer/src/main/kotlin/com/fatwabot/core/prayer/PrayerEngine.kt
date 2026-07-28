@@ -8,7 +8,14 @@ import kotlinx.datetime.Instant
 
 /** User-facing prayer names. SUNRISE is displayed but is not a prayer. */
 enum class PrayerNameUi(val isPrayer: Boolean) {
-    FAJR(true), SUNRISE(false), DHUHR(true), ASR(true), MAGHRIB(true), ISHA(true)
+    FAJR(true), SUNRISE(false), DHUHR(true), ASR(true), MAGHRIB(true), ISHA(true);
+
+    /**
+     * Stable lowercase identifier ("fajr", "dhuhr", …). Byte-identical to iOS
+     * `PrayerName.rawValue`, so persisted keys and notification ids compare
+     * across the two platforms.
+     */
+    val key: String get() = name.lowercase()
 }
 
 /**

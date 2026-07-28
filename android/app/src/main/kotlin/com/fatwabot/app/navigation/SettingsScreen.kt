@@ -80,9 +80,12 @@ import kotlinx.coroutines.launch
 import com.fatwabot.core.designsystem.BrandSectionHeader
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
+import com.fatwabot.core.designsystem.InfoNotice
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.core.prayer.PrayerNameUi
 import com.fatwabot.core.prayer.PrayerNotificationPreferences
 import com.fatwabot.feature.prayer.PrayerViewModel
+import com.fatwabot.feature.prayer.titleRes
 
 /**
  * Settings tab — profile-first, mirroring iOS SettingsScreen. Adds per-type
@@ -309,8 +312,17 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
                     update(prefs.copy(iqamaEnabled = it))
                 }
                 if (prefs.iqamaEnabled) {
-                    OffsetRow(stringResource(R.string.settings_notif_minutes_after), prefs.iqamaOffsetMinutes) {
-                        update(prefs.copy(iqamaOffsetMinutes = it))
+                    // The gap differs per prayer in practice, so each gets its own
+                    // stepper. The notice explains why there are five rows here
+                    // rather than the single one this used to be.
+                    InfoNotice(
+                        stringResource(R.string.settings_notif_iqama_notice),
+                        modifier = Modifier.padding(vertical = 6.dp),
+                    )
+                    for (prayer in PrayerNameUi.entries.filter { it.isPrayer }) {
+                        OffsetRow(stringResource(prayer.titleRes()), prefs.iqamaOffset(prayer)) {
+                            update(prefs.withIqamaOffset(prayer, it))
+                        }
                     }
                 }
                 Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))

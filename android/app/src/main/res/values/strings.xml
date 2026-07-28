@@ -29,6 +29,7 @@
     <string name="settings_notif_iqama_title">Iqama reminder</string>
     <string name="settings_notif_iqama_subtitle">A reminder a chosen number of minutes after the adhan.</string>
     <string name="settings_notif_minutes_after">Minutes after adhan</string>
+    <string name="settings_notif_iqama_notice">Mosques use a different gap for each prayer. These are common defaults — adjust any of them to match your mosque.</string>
     <string name="settings_notif_last_third_title">Last third of the night</string>
     <string name="settings_notif_last_third_subtitle">A reminder when the last third of the night begins.</string>
     <string name="settings_stepper_decrease">Decrease</string>

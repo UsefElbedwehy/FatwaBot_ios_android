@@ -29,6 +29,7 @@
     <string name="settings_notif_iqama_title">تذكير بالإقامة</string>
     <string name="settings_notif_iqama_subtitle">تذكير بعد الأذان بوقت تحدده.</string>
     <string name="settings_notif_minutes_after">دقائق بعد الأذان</string>
+    <string name="settings_notif_iqama_notice">تختلف مدة الإقامة بين الصلوات من مسجد لآخر. هذه قيم افتراضية شائعة، ويمكنك تعديل أي منها لتوافق مسجدك.</string>
     <string name="settings_notif_last_third_title">الثلث الأخير من الليل</string>
     <string name="settings_notif_last_third_subtitle">تنبيه عند بدء الثلث الأخير من الليل.</string>
     <string name="settings_stepper_decrease">إنقاص</string>
