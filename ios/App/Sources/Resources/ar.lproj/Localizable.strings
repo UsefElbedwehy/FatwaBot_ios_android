@@ -132,6 +132,12 @@
 "awrad.custom_target_placeholder" = "الهدف اليومي";
 "awrad.save_custom" = "حفظ الورد";
 "awrad.create_title" = "ورد جديد";
+"awrad.edit_target" = "تعديل الهدف";
+"awrad.fixed_badge" = "أساسي";
+"awrad.fixed.qiyam_al_layl" = "قيام الليل";
+"awrad.fixed.daily_quran" = "ورد يومي من القرآن";
+"awrad.fixed.morning_azkar" = "أذكار الصباح";
+"awrad.fixed.evening_azkar" = "أذكار المساء";
 "common.cancel" = "إلغاء";
 "worship.hadith" = "الأحاديث";
 "hadith.progress_read %lld %lld" = "%1$lld/%2$lld مقروء";

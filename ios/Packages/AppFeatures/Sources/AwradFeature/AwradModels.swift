@@ -12,6 +12,11 @@ public struct Wird: Codable, Equatable, Identifiable, Sendable {
     public var frequency: String
     public let createdAt: Date
     public var archivedAt: Date?
+    /// One of the four always-present slots (`FixedWirdSlot`). Persisted rather
+    /// than derived so the marker survives a store round-trip on its own, and
+    /// so a future slot whose id changed still reads back as fixed.
+    /// Fixed wirds can be ticked and retargeted, never archived or removed.
+    public let isFixed: Bool
 
     public init(
         id: String = UUID().uuidString,
@@ -21,7 +26,8 @@ public struct Wird: Codable, Equatable, Identifiable, Sendable {
         unit: String,
         frequency: String,
         createdAt: Date,
-        archivedAt: Date? = nil
+        archivedAt: Date? = nil,
+        isFixed: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -31,9 +37,37 @@ public struct Wird: Codable, Equatable, Identifiable, Sendable {
         self.frequency = frequency
         self.createdAt = createdAt
         self.archivedAt = archivedAt
+        self.isFixed = isFixed
     }
 
     public var isActive: Bool { archivedAt == nil }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, type, target, unit, frequency, createdAt, archivedAt, isFixed
+    }
+
+    /// Hand-written for the same reason `NotificationPreferences` is: records on
+    /// disk were written by a build that had no `isFixed`, and synthesized
+    /// decoding throws on a missing key. One throw fails the whole array decode
+    /// and `FileWirdStore` would hand back `[]` — every wird the user ever made,
+    /// silently gone. Every field therefore has a fallback.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let id = try c.decode(String.self, forKey: .id)
+        self.id = id
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        type = try c.decodeIfPresent(String.self, forKey: .type) ?? "custom"
+        target = try c.decodeIfPresent(Int.self, forKey: .target) ?? 1
+        unit = try c.decodeIfPresent(String.self, forKey: .unit) ?? "times"
+        frequency = try c.decodeIfPresent(String.self, forKey: .frequency) ?? "daily"
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date(timeIntervalSince1970: 0)
+        archivedAt = try c.decodeIfPresent(Date.self, forKey: .archivedAt)
+        // Falling back to the id keeps a seeded slot protected even if the flag
+        // is missing — an old record can only be missing it, never contradict it.
+        isFixed = try c.decodeIfPresent(Bool.self, forKey: .isFixed) ?? (FixedWirdSlot(wirdId: id) != nil)
+    }
 }
 
 /// One wird's tally for one local calendar day (`dateKey` = "yyyy-MM-dd").

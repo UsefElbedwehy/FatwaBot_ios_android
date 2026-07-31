@@ -178,8 +178,20 @@ extension Container {
     /// action path and the UI path write through the SAME object. A second
     /// `FileWirdStore` over the same directory would work too, but sharing one
     /// makes the "one source of truth" explicit.
+    ///
+    /// Wrapped in `SeededWirdStore` so the four fixed slots (`FixedWirdSlot`)
+    /// exist for every user on every read — existing installs included, not just
+    /// fresh ones. The names are resolved here because the localized strings live
+    /// in the app bundle, and they are frozen into the record at seeding time,
+    /// exactly like a template-created wird's name.
     var wirdStore: Factory<WirdStoring> {
-        self { FileWirdStore(directory: AppEnvironment.sharedContainerURL) }.singleton
+        self {
+            SeededWirdStore(
+                wrapping: FileWirdStore(directory: AppEnvironment.sharedContainerURL),
+                name: { slot in NSLocalizedString(slot.nameKey, comment: "") }
+            )
+        }
+        .singleton
     }
 
     /// Applies a notification "نعم" straight to the store. Resolvable off the

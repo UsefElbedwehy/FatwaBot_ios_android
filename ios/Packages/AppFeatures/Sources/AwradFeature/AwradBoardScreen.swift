@@ -7,6 +7,7 @@ public struct AwradBoardScreen: View {
     @State private var viewModel: AwradViewModel
     @State private var showCreateSheet = false
     @State private var showStats = false
+    @State private var editingWird: Wird?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     private let locale: String
@@ -58,6 +59,11 @@ public struct AwradBoardScreen: View {
         }
         .sheet(isPresented: $showStats) {
             AwradStatsView(stats: viewModel.stats)
+        }
+        .sheet(item: $editingWird) { wird in
+            WirdTargetSheet(wird: wird) { newTarget in
+                viewModel.setTarget(wirdId: wird.id, target: newTarget)
+            }
         }
         .task {
             // Picks up anything a notification "yes" wrote while the app was
@@ -139,9 +145,16 @@ public struct AwradBoardScreen: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(wird.name)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+                HStack(spacing: 6) {
+                    Text(wird.name)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color(hexToken: tokens.onSurface))
+                    // The only thing marking a fixed slot apart: it is one of the
+                    // four everyone has. No delete affordance is drawn for it —
+                    // and none is drawn for user wirds either, so its absence is
+                    // not what distinguishes them.
+                    if wird.isFixed { fixedBadge }
+                }
                 Text("\(count)/\(wird.target)")
                     .font(.caption)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
@@ -151,6 +164,16 @@ public struct AwradBoardScreen: View {
             .accessibilityElement(children: .combine)
 
             Spacer(minLength: 8)
+
+            Button {
+                editingWird = wird
+            } label: {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.body)
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("awrad.edit_target"))
 
             Button {
                 viewModel.tick(wirdId: wird.id)
@@ -164,6 +187,15 @@ public struct AwradBoardScreen: View {
             .accessibilityHint(Text("azkar.tap_to_count"))
         }
         .brandCard(tokens)
+    }
+
+    private var fixedBadge: some View {
+        Text("awrad.fixed_badge")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Color(hexToken: tokens.primary))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(Color(hexToken: tokens.primaryContainer), in: Capsule())
     }
 
     // MARK: - Mark day complete
@@ -228,6 +260,83 @@ private struct StatTile: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .brandCard(tokens)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Retargeting, the one edit a fixed slot allows (and a plain one allows too).
+/// The name is deliberately not editable: the four fixed slots are named by the
+/// product, and no wird has ever been renameable here.
+struct WirdTargetSheet: View {
+    let wird: Wird
+    let onSave: (Int) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var targetText: String
+
+    init(wird: Wird, onSave: @escaping (Int) -> Void) {
+        self.wird = wird
+        self.onSave = onSave
+        _targetText = State(initialValue: "\(wird.target)")
+    }
+
+    private var tokens: ColorTokens {
+        colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(wird.name)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+
+                targetField
+
+                Button("awrad.save_custom") {
+                    onSave(Int(targetText) ?? wird.target)
+                    dismiss()
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.accent)],
+                        startPoint: .leading, endPoint: .trailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+
+                Spacer()
+            }
+            .padding(20)
+            .brandScreenBackground(tokens)
+            .navigationTitle(Text("awrad.edit_target"))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("common.cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var targetField: some View {
+        let field = TextField("awrad.custom_target_placeholder", text: $targetText)
+            .font(.body)
+            .foregroundStyle(Color(hexToken: tokens.onSurface))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(hexToken: tokens.surface), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(hexToken: tokens.outline).opacity(0.7), lineWidth: 1)
+            )
+        #if os(iOS)
+        return field.keyboardType(.numberPad)
+        #else
+        return field
+        #endif
     }
 }
 

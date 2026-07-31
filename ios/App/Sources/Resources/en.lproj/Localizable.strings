@@ -132,6 +132,12 @@
 "awrad.custom_target_placeholder" = "Daily target";
 "awrad.save_custom" = "Save wird";
 "awrad.create_title" = "New Wird";
+"awrad.edit_target" = "Edit target";
+"awrad.fixed_badge" = "Essential";
+"awrad.fixed.qiyam_al_layl" = "Night Prayer (Qiyam)";
+"awrad.fixed.daily_quran" = "Daily Qur'an Wird";
+"awrad.fixed.morning_azkar" = "Morning Adhkar";
+"awrad.fixed.evening_azkar" = "Evening Adhkar";
 "common.cancel" = "Cancel";
 "worship.hadith" = "Hadith";
 "hadith.progress_read %lld %lld" = "%1$lld/%2$lld read";

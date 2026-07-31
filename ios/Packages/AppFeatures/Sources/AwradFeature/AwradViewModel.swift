@@ -124,9 +124,28 @@ public final class AwradViewModel {
     }
 
     /// Archives without deleting historical progress — stats remain accurate.
-    public func archiveWird(_ wirdId: String) {
-        guard let index = wirds.firstIndex(where: { $0.id == wirdId }) else { return }
+    ///
+    /// Refuses the four fixed slots (`FixedWirdSlot`): they are part of every
+    /// user's board by definition, so "remove" is not an option the UI offers and
+    /// not one the model honours if it is asked anyway. `SeededWirdStore` would
+    /// put the slot back on the next read regardless; failing here keeps the
+    /// in-memory board and the file in step instead of flickering.
+    @discardableResult
+    public func archiveWird(_ wirdId: String) -> Bool {
+        guard let index = wirds.firstIndex(where: { $0.id == wirdId }) else { return false }
+        guard !wirds[index].isFixed else { return false }
         wirds[index].archivedAt = now()
+        store.saveWirds(wirds)
+        return true
+    }
+
+    /// Retargeting is allowed for every wird, fixed ones included — "ورد يومي من
+    /// القرآن" is a different number of pages for different people, and a slot the
+    /// user cannot size to their own routine is a slot they will ignore.
+    /// Renaming is not offered, for any wird, on either platform.
+    public func setTarget(wirdId: String, target: Int) {
+        guard let index = wirds.firstIndex(where: { $0.id == wirdId }) else { return }
+        wirds[index].target = max(1, target)
         store.saveWirds(wirds)
     }
 
