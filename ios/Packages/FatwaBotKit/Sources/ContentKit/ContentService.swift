@@ -1,5 +1,6 @@
 import CoreKit
 import Foundation
+import OSLog
 import NetworkingKit
 
 /// Content sync (docs/features/content-pipeline.md). Mirrors ConfigService's
@@ -7,6 +8,7 @@ import NetworkingKit
 /// (cache → bundled seed → nil), `refresh` fetches deltas and is silent on
 /// failure — content stays fully usable with zero connectivity.
 public actor ContentService {
+    private let logger = Logger(subsystem: "com.fatwabot.app", category: "content-sync")
     private let store: ContentFileStore
     private let client: APIClientProtocol
 
@@ -61,57 +63,121 @@ public actor ContentService {
 
     // MARK: - Refresh (per-collection independent failure)
 
-    @discardableResult
-    public func refreshAzkar(locale: String) async -> Bool {
-        guard let fresh = try? await client.get(
-            ContentEndpoints.azkar(sinceVersion: azkar(locale: locale)?.version)
-        ) else { return false }
-        guard fresh != cachedAzkar[locale] else { return false }
-        cachedAzkar[locale] = fresh
-        store.save(fresh, key: "azkar.\(locale)")
-        return true
+    /// Why a refresh did not change anything — the distinction `try?` erased.
+    ///
+    /// Every `refresh*` used to return `false` for both "the server had nothing
+    /// new" and "the request failed", which made a broken sync indistinguishable
+    /// from a healthy one. That is how an entire content release went invisible:
+    /// the app kept serving a stale cache and nothing, anywhere, said so.
+    ///
+    /// Failures are still non-fatal — the app is offline-first and the cached
+    /// copy is a valid answer — but they are now recorded and logged rather than
+    /// swallowed.
+    public enum RefreshOutcome: Equatable, Sendable {
+        case updated
+        case unchanged
+        case failed(String)
+
+        public var didUpdate: Bool { self == .updated }
+        public var isFailure: Bool { if case .failed = self { return true }; return false }
+    }
+
+    /// Last failure per content key, for diagnostics. Cleared on success.
+    public private(set) var lastFailures: [String: String] = [:]
+
+    private func record(_ key: String, _ outcome: RefreshOutcome) -> RefreshOutcome {
+        if case let .failed(message) = outcome {
+            lastFailures[key] = message
+            logger.error("content refresh failed for \(key, privacy: .public): \(message, privacy: .public)")
+        } else {
+            lastFailures.removeValue(forKey: key)
+        }
+        return outcome
+    }
+
+    /// Runs one fetch, converting a thrown error into an observable outcome.
+    private func refresh<T>(
+        key: String,
+        endpoint: Endpoint<T>,
+        isUnchanged: (T) -> Bool,
+        apply: (T) -> Void
+    ) async -> RefreshOutcome {
+        do {
+            let fresh = try await client.get(endpoint)
+            if isUnchanged(fresh) { return record(key, .unchanged) }
+            apply(fresh)
+            return record(key, .updated)
+        } catch {
+            return record(key, .failed(String(describing: error)))
+        }
     }
 
     @discardableResult
-    public func refreshDuas(locale: String) async -> Bool {
-        guard let fresh = try? await client.get(
-            ContentEndpoints.duas(sinceVersion: duas(locale: locale)?.version)
-        ) else { return false }
-        guard fresh != cachedDuas[locale] else { return false }
-        cachedDuas[locale] = fresh
-        store.save(fresh, key: "duas.\(locale)")
-        return true
+    public func refreshAzkar(locale: String) async -> RefreshOutcome {
+        await refresh(
+            key: "azkar.\(locale)",
+            endpoint: ContentEndpoints.azkar(sinceVersion: azkar(locale: locale)?.version),
+            isUnchanged: { $0 == self.cachedAzkar[locale] },
+            apply: { fresh in
+                self.cachedAzkar[locale] = fresh
+                self.store.save(fresh, key: "azkar.\(locale)")
+            }
+        )
     }
 
     @discardableResult
-    public func refreshHadithCollections(locale: String) async -> Bool {
-        guard let fresh = try? await client.get(ContentEndpoints.hadithCollections) else { return false }
-        guard fresh.collections != cachedHadithSummaries[locale] else { return false }
-        cachedHadithSummaries[locale] = fresh.collections
-        store.save(fresh, key: "hadith-collections.\(locale)")
-        return true
+    public func refreshDuas(locale: String) async -> RefreshOutcome {
+        await refresh(
+            key: "duas.\(locale)",
+            endpoint: ContentEndpoints.duas(sinceVersion: duas(locale: locale)?.version),
+            isUnchanged: { $0 == self.cachedDuas[locale] },
+            apply: { fresh in
+                self.cachedDuas[locale] = fresh
+                self.store.save(fresh, key: "duas.\(locale)")
+            }
+        )
     }
 
     @discardableResult
-    public func refreshHadithDetail(slug: String, locale: String) async -> Bool {
-        let key = "\(slug)_\(locale)"
-        guard let fresh = try? await client.get(
-            ContentEndpoints.hadithDetail(slug: slug, sinceVersion: hadithDetail(slug: slug, locale: locale)?.version)
-        ) else { return false }
-        guard fresh != cachedHadithDetail[key] else { return false }
-        cachedHadithDetail[key] = fresh
-        store.save(fresh, key: "hadith-\(slug).\(locale)")
-        return true
+    public func refreshHadithCollections(locale: String) async -> RefreshOutcome {
+        await refresh(
+            key: "hadith-collections.\(locale)",
+            endpoint: ContentEndpoints.hadithCollections,
+            isUnchanged: { $0.collections == self.cachedHadithSummaries[locale] },
+            apply: { fresh in
+                self.cachedHadithSummaries[locale] = fresh.collections
+                self.store.save(fresh, key: "hadith-collections.\(locale)")
+            }
+        )
     }
 
     @discardableResult
-    public func refreshWirdTemplates(locale: String) async -> Bool {
-        guard let fresh = try? await client.get(
-            ContentEndpoints.wirdTemplates(sinceVersion: wirdTemplates(locale: locale)?.version)
-        ) else { return false }
-        guard fresh != cachedWird[locale] else { return false }
-        cachedWird[locale] = fresh
-        store.save(fresh, key: "wird-templates.\(locale)")
-        return true
+    public func refreshHadithDetail(slug: String, locale: String) async -> RefreshOutcome {
+        let cacheKey = "\(slug)_\(locale)"
+        return await refresh(
+            key: "hadith-\(slug).\(locale)",
+            endpoint: ContentEndpoints.hadithDetail(
+                slug: slug,
+                sinceVersion: hadithDetail(slug: slug, locale: locale)?.version
+            ),
+            isUnchanged: { $0 == self.cachedHadithDetail[cacheKey] },
+            apply: { fresh in
+                self.cachedHadithDetail[cacheKey] = fresh
+                self.store.save(fresh, key: "hadith-\(slug).\(locale)")
+            }
+        )
+    }
+
+    @discardableResult
+    public func refreshWirdTemplates(locale: String) async -> RefreshOutcome {
+        await refresh(
+            key: "wird-templates.\(locale)",
+            endpoint: ContentEndpoints.wirdTemplates(sinceVersion: wirdTemplates(locale: locale)?.version),
+            isUnchanged: { $0 == self.cachedWird[locale] },
+            apply: { fresh in
+                self.cachedWird[locale] = fresh
+                self.store.save(fresh, key: "wird-templates.\(locale)")
+            }
+        )
     }
 }

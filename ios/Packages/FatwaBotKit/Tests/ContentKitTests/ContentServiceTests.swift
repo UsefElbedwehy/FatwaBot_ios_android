@@ -51,7 +51,7 @@ final class ContentServiceTests: XCTestCase {
         let service = ContentService(store: store, client: client)
 
         let changed = await service.refreshAzkar(locale: "ar")
-        XCTAssertTrue(changed)
+        XCTAssertEqual(changed, .updated)
         let updated = await service.azkar(locale: "ar")
         XCTAssertEqual(updated?.version, 999)
 
@@ -70,7 +70,7 @@ final class ContentServiceTests: XCTestCase {
 
         _ = await service.refreshAzkar(locale: "ar")
         let secondRefresh = await service.refreshAzkar(locale: "ar")
-        XCTAssertFalse(secondRefresh, "identical payload should report no change")
+        XCTAssertEqual(secondRefresh, .unchanged, "identical payload should report no change")
     }
 
     // MARK: - Case 3: malformed response leaves cache untouched
@@ -85,7 +85,8 @@ final class ContentServiceTests: XCTestCase {
         let changed = await service.refreshAzkar(locale: "ar")
         let after = await service.azkar(locale: "ar")
 
-        XCTAssertFalse(changed)
+        // A malformed payload is now a *reported* failure, not a silent no-op.
+        XCTAssertTrue(changed.isFailure)
         XCTAssertEqual(before, after, "malformed refresh must not corrupt or clear the cache")
     }
 
@@ -107,5 +108,46 @@ final class ContentServiceTests: XCTestCase {
         XCTAssertEqual(en?.version, 5)
         XCTAssertNotEqual(ar?.version, 5)
         XCTAssertEqual(ar?.categories.first?.slug, "morning", "ar cache must be unaffected by an en refresh")
+    }
+
+    // MARK: - A failed sync must not look like a healthy one
+
+    func testAFailedRefreshIsReportedRatherThanSwallowed() async {
+        // The stub throws for any path it has no response for.
+        let service = ContentService(store: tempStore(), client: StubClient())
+        let outcome = await service.refreshAzkar(locale: "ar")
+
+        XCTAssertTrue(outcome.isFailure, "a transport error must surface as .failed")
+        XCTAssertNotEqual(outcome, .unchanged, "the bug: failure was indistinguishable from no-change")
+        let failures = await service.lastFailures
+        XCTAssertNotNil(failures["azkar.ar"], "the failure must be recorded for diagnostics")
+    }
+
+    func testASuccessfulRefreshClearsAPreviousFailure() async {
+        let client = StubClient()
+        let service = ContentService(store: tempStore(), client: client)
+
+        _ = await service.refreshAzkar(locale: "ar")
+        var failures = await service.lastFailures
+        XCTAssertNotNil(failures["azkar.ar"])
+
+        client.responses["v1/content/azkar"] = Data("{\"version\": 2, \"categories\": []}".utf8)
+        let outcome = await service.refreshAzkar(locale: "ar")
+
+        XCTAssertEqual(outcome, .updated)
+        failures = await service.lastFailures
+        XCTAssertNil(failures["azkar.ar"], "a recovered endpoint must not stay marked broken")
+    }
+
+    func testSyncSummaryDistinguishesUpdatedFromFailed() async {
+        let client = StubClient()
+        // Only azkar answers; everything else throws.
+        client.responses["v1/content/azkar"] = Data("{\"version\": 9, \"categories\": []}".utf8)
+        let service = ContentService(store: tempStore(), client: client)
+
+        let summary = await service.syncAll(locale: "ar")
+        XCTAssertTrue(summary.updated.contains("azkar"))
+        XCTAssertTrue(summary.hasFailures, "unreachable endpoints must be reported")
+        XCTAssertTrue(summary.failed.contains("duas"))
     }
 }

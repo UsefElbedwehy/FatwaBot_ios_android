@@ -25,6 +25,17 @@ public struct HadithReadingScreen: View {
         Group {
             if let entry = viewModel.currentEntry {
                 content(entry)
+            } else if viewModel.currentDetail != nil {
+                // The collection loaded and holds nothing. Previously this fell
+                // through to the spinner, so an empty collection was
+                // indistinguishable from one still loading — it span forever
+                // under a title reading "Hadith #0".
+                BrandEmptyState(
+                    systemImage: "hourglass",
+                    messageKey: "hadith.collection_empty",
+                    tokens: tokens
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ProgressView().tint(Color(hexToken: tokens.primary))
             }

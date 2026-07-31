@@ -264,3 +264,5 @@
 "leaderboard.scoring_notice" = "Ranking counts your four fixed awrad, azkar, hadith and tasbeeh — each capped per week, so consistency wins, not volume. Custom awrad stay personal and aren't ranked.";
 
 "hadith.under_review" = "Under scholarly review — available soon";
+
+"hadith.collection_empty" = "Nothing to read here yet — this collection is still under review.";
