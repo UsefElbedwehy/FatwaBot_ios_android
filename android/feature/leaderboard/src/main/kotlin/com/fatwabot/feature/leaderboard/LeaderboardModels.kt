@@ -26,6 +26,7 @@ data class LeaderboardMembership(
     val handle: String,
     @SerialName("publish_name") val publishName: Boolean,
     val city: String? = null,
+    val country: String? = null,
 )
 
 @Serializable
@@ -35,6 +36,11 @@ internal data class ListBoardsResponse(val boards: List<LeaderboardBoard>)
 internal data class JoinLeaderboardRequest(
     @SerialName("publish_name") val publishName: Boolean,
     val city: String? = null,
+    /**
+     * ISO 3166-1 alpha-2. Sent only for country-scope boards; the backend
+     * stores it only for those, and rejects the join without it.
+     */
+    val country: String? = null,
 )
 
 @Serializable

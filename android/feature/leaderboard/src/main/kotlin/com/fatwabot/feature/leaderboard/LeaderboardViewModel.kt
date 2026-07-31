@@ -18,6 +18,7 @@ import kotlinx.serialization.json.Json
 class LeaderboardViewModel @Inject constructor(
     private val client: AuthenticatedApiClientProtocol,
     private val haptics: HapticsProviding,
+    private val region: RegionResolving,
 ) : ViewModel() {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -43,9 +44,26 @@ class LeaderboardViewModel @Inject constructor(
 
     /** Optimistically flips `joined` locally so the UI reacts immediately;
      * the subsequent `load()` reconciles with the server's authoritative state. */
-    suspend fun join(key: String, publishName: Boolean, city: String?) {
+    /**
+     * @param city an explicit choice from the UI. When null, a regional board
+     *   derives one from the prayer-times location rather than failing — the
+     *   user has already told the app where they are.
+     */
+    suspend fun join(key: String, publishName: Boolean, city: String? = null) {
+        val scope = _state.value.boards.firstOrNull { it.key == key }?.scope ?: "global"
+        val isRegional = scope == "city" || scope == "country"
+        // Only resolve for a board that needs it: a global join must not trigger
+        // a location read the user gets nothing from.
+        val resolved = if (isRegional) region.currentRegion() else LeaderboardRegion.Unknown
         runCatching {
-            val body = json.encodeToString(JoinLeaderboardRequest.serializer(), JoinLeaderboardRequest(publishName, city))
+            val body = json.encodeToString(
+                JoinLeaderboardRequest.serializer(),
+                JoinLeaderboardRequest(
+                    publishName = publishName,
+                    city = if (scope == "city") city ?: resolved.city else null,
+                    country = if (scope == "country") resolved.countryCode else null,
+                ),
+            )
             client.postRaw("v1/leaderboards/$key/join", body)
         }.fold(
             onSuccess = { haptics.targetReached(); load() },

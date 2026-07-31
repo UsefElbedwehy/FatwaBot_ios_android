@@ -21,12 +21,14 @@ export class InMemoryLeaderboardRepo implements LeaderboardRepo {
     userId: string,
     publishName: boolean,
     city: string | null,
+    country: string | null,
   ): Promise<LeaderboardMembership> {
     const membership: LeaderboardMembership = {
       userId,
       handle: nextHandle(),
       publishName,
       city,
+      country,
       joinedAt: new Date(),
     };
     this.memberships.set(`${leaderboardKey}:${userId}`, membership);
@@ -42,7 +44,7 @@ export class InMemoryLeaderboardRepo implements LeaderboardRepo {
     _ctx: AppContext,
     leaderboardKey: string,
     userId: string,
-    changes: { publishName?: boolean; city?: string | null },
+    changes: { publishName?: boolean; city?: string | null; country?: string | null },
   ): Promise<LeaderboardMembership | null> {
     const key = `${leaderboardKey}:${userId}`;
     const existing = this.memberships.get(key);
@@ -51,6 +53,7 @@ export class InMemoryLeaderboardRepo implements LeaderboardRepo {
       ...existing,
       publishName: changes.publishName ?? existing.publishName,
       city: changes.city !== undefined ? changes.city : existing.city,
+      country: changes.country !== undefined ? changes.country : existing.country,
     };
     this.memberships.set(key, updated);
     return Promise.resolve(updated);

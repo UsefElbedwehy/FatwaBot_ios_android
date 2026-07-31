@@ -44,6 +44,8 @@ import androidx.glance.appwidget.updateAll
 import com.fatwabot.core.prayer.PrayerNotificationPreferences
 import com.fatwabot.core.prayer.WidgetSnapshotStore
 import com.fatwabot.feature.prayer.LocationProviding
+import com.fatwabot.feature.leaderboard.LeaderboardRegion
+import com.fatwabot.feature.leaderboard.RegionResolving
 import com.fatwabot.feature.prayer.PrayerNotificationScheduler
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.widget.DailyChallengeWidget
@@ -395,6 +397,23 @@ abstract class AppModule {
         fun provideDuaStore(
             @ApplicationContext context: Context,
         ): DuaStoring = FileDuaStore(File(context.filesDir, "dua-favorites.json"))
+
+        /**
+         * Reuses what prayer times already resolved: `UserLocation` carries the
+         * reverse-geocoded locality and country code, so joining a regional
+         * board costs no geocode, no network call, and no second permission
+         * prompt. Lives here rather than in :feature:leaderboard because that
+         * module must not depend on :feature:prayer (ADR-0010).
+         */
+        @Provides
+        @Singleton
+        fun provideRegionResolver(
+            location: LocationProviding,
+        ): RegionResolving = RegionResolving {
+            location.cached()?.let {
+                LeaderboardRegion(city = it.name, countryCode = it.countryCode?.uppercase())
+            } ?: LeaderboardRegion.Unknown
+        }
 
         @Provides
         @Singleton

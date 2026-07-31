@@ -37,7 +37,7 @@ class LeaderboardViewModelTest {
     @Test
     fun `load populates boards from server`() = runTest {
         val client = FakeApiClient(onGet = { path -> assertEquals("v1/leaderboards", path); boardJson })
-        val viewModel = LeaderboardViewModel(client, NoopHaptics())
+        val viewModel = LeaderboardViewModel(client, NoopHaptics(), UnknownRegionResolver())
 
         viewModel.load()
 
@@ -51,7 +51,7 @@ class LeaderboardViewModelTest {
     @Test
     fun `load surfaces error on failure`() = runTest {
         val client = FakeApiClient(onGet = { throw RuntimeException("unauthorized") })
-        val viewModel = LeaderboardViewModel(client, NoopHaptics())
+        val viewModel = LeaderboardViewModel(client, NoopHaptics(), UnknownRegionResolver())
 
         viewModel.load()
 
@@ -66,7 +66,7 @@ class LeaderboardViewModelTest {
             onGet = { boardJson },
             onPostRaw = { path, _ -> joinPath = path; """{"handle":"anon_1","publish_name":false,"city":null}""" },
         )
-        val viewModel = LeaderboardViewModel(client, NoopHaptics())
+        val viewModel = LeaderboardViewModel(client, NoopHaptics(), UnknownRegionResolver())
 
         viewModel.join("weekly_fajr", publishName = false, city = null)
 
@@ -84,13 +84,13 @@ class LeaderboardViewModelTest {
             override fun targetReached() { targetReachedCount += 1 }
         }
         val client = FakeApiClient(onGet = { boardJson })
-        val viewModel = LeaderboardViewModel(client, haptics)
+        val viewModel = LeaderboardViewModel(client, haptics, UnknownRegionResolver())
 
         viewModel.join("weekly_fajr", publishName = false, city = null)
         assertEquals(1, haptics.targetReachedCount)
 
         val failingClient = FakeApiClient(onGet = { boardJson }, onPostRaw = { _, _ -> throw RuntimeException("offline") })
-        val failingViewModel = LeaderboardViewModel(failingClient, haptics)
+        val failingViewModel = LeaderboardViewModel(failingClient, haptics, UnknownRegionResolver())
         failingViewModel.join("weekly_fajr", publishName = false, city = null)
         assertEquals("must not fire on a failed join", 1, haptics.targetReachedCount)
     }
@@ -103,7 +103,7 @@ class LeaderboardViewModelTest {
             onGet = { notJoinedJson },
             onPostEmptyRaw = { path -> leavePath = path; """{"left":true}""" },
         )
-        val viewModel = LeaderboardViewModel(client, NoopHaptics())
+        val viewModel = LeaderboardViewModel(client, NoopHaptics(), UnknownRegionResolver())
 
         viewModel.leave("weekly_fajr")
 

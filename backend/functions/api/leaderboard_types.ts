@@ -5,6 +5,8 @@ export interface LeaderboardMembership {
   handle: string;
   publishName: boolean;
   city: string | null;
+  /** ISO 3166-1 alpha-2, uppercased. Opt-in, same rule as `city`. */
+  country: string | null;
   joinedAt: Date;
 }
 
@@ -12,6 +14,12 @@ export interface SnapshotEntry {
   userId: string;
   rank: number;
   score: number;
+  /**
+   * Region this rank is relative to: empty for global boards, the country code
+   * for country scope, the city name for city scope. Empty rather than null
+   * because it is part of the lookup key on every read.
+   */
+  bucket: string;
 }
 
 /** Membership + materialized-snapshot storage. Leaderboard *definitions*
@@ -24,13 +32,14 @@ export interface LeaderboardRepo {
     userId: string,
     publishName: boolean,
     city: string | null,
+    country: string | null,
   ): Promise<LeaderboardMembership>;
   leave(ctx: AppContext, leaderboardKey: string, userId: string): Promise<void>;
   updateMembership(
     ctx: AppContext,
     leaderboardKey: string,
     userId: string,
-    changes: { publishName?: boolean; city?: string | null },
+    changes: { publishName?: boolean; city?: string | null; country?: string | null },
   ): Promise<LeaderboardMembership | null>;
   getMembership(
     ctx: AppContext,

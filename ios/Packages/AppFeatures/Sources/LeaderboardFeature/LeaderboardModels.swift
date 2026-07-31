@@ -46,6 +46,9 @@ struct ListBoardsResponse: Decodable {
 struct JoinLeaderboardRequest: Encodable {
     let publish_name: Bool
     let city: String?
+    /// ISO 3166-1 alpha-2. Sent only for country-scope boards; the backend
+    /// stores it only for those, and rejects the join without it.
+    let country: String?
 }
 
 // `city` clearing (explicit null) is a PATCH-only edge case not exposed by the

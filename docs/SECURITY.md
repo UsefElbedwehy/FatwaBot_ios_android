@@ -78,6 +78,26 @@ not an oversight.
   per-user RLS policies is a tracked improvement.
 - No tokens, JWTs, or PII are logged by client code.
 
+## Location data
+
+Prayer times and qibla are computed entirely on-device (ADR-0003). Coordinates
+have never been transmitted, and that has not changed.
+
+The regional leaderboards (`consistency_country`, `consistency_city`) are the
+**only** feature that sends anything location-derived, under these constraints:
+
+| | |
+|---|---|
+| **What is sent** | A city name and/or an ISO 3166-1 alpha-2 country code. Never coordinates, never a precise position. |
+| **When** | Only at the moment the user joins a regional board. Never on launch, never in the background, never for the global board. |
+| **Consent** | All three boards are `visibility = 'opt_in_only'`. Joining is an explicit action; leaving clears the association. |
+| **Source** | The already-resolved prayer-times location (`UserLocation.name` / `.countryCode`), which the user granted for prayer times. No new permission prompt, and no geocode request is issued for this feature. |
+| **Storage** | `gamification.leaderboard_memberships.city` / `.country`, and the derived `leaderboard_snapshots.bucket`. |
+| **If unknown** | The user is bucketed with others whose region is unknown. They are never silently folded into someone else's city. |
+
+The city/country granularity is deliberate: a leaderboard needs only enough
+precision to find peers, and anything finer would be collected for no purpose.
+
 ## Not implemented (by design or as future work)
 
 - **Biometric app-open lock** (Face ID / fingerprint) — none. A product/UX

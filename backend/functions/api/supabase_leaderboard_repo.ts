@@ -17,6 +17,7 @@ function toMembership(row: Record<string, unknown>): LeaderboardMembership {
     handle: row.handle as string,
     publishName: Boolean(row.publish_name),
     city: (row.city as string | null) ?? null,
+    country: (row.country as string | null) ?? null,
     joinedAt: new Date(row.joined_at as string),
   };
 }
@@ -30,6 +31,7 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
     userId: string,
     publishName: boolean,
     city: string | null,
+    country: string | null,
   ): Promise<LeaderboardMembership> {
     const { data, error } = await this.db
       .schema("gamification").from("leaderboard_memberships")
@@ -41,6 +43,7 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
           handle: generateHandle(),
           publish_name: publishName,
           city,
+          country,
         },
         { onConflict: "app_id,leaderboard_key,user_id" },
       )
@@ -62,11 +65,12 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
     ctx: AppContext,
     leaderboardKey: string,
     userId: string,
-    changes: { publishName?: boolean; city?: string | null },
+    changes: { publishName?: boolean; city?: string | null; country?: string | null },
   ): Promise<LeaderboardMembership | null> {
     const patch: Record<string, unknown> = {};
     if (changes.publishName !== undefined) patch.publish_name = changes.publishName;
     if (changes.city !== undefined) patch.city = changes.city;
+    if (changes.country !== undefined) patch.country = changes.country;
 
     const { data, error } = await this.db
       .schema("gamification").from("leaderboard_memberships")
@@ -118,6 +122,7 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
           user_id: e.userId,
           rank: e.rank,
           score: e.score,
+          bucket: e.bucket,
           computed_at: new Date().toISOString(),
         })),
         { onConflict: "app_id,leaderboard_key,period_key,user_id" },
@@ -128,10 +133,15 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
   async getSnapshot(ctx: AppContext, leaderboardKey: string, periodKey: string): Promise<SnapshotEntry[]> {
     const { data, error } = await this.db
       .schema("gamification").from("leaderboard_snapshots")
-      .select("user_id,rank,score")
+      .select("user_id,rank,score,bucket")
       .eq("app_id", ctx.appId).eq("leaderboard_key", leaderboardKey).eq("period_key", periodKey)
       .order("rank", { ascending: true });
     if (error) throw error;
-    return (data ?? []).map((r) => ({ userId: r.user_id, rank: r.rank, score: Number(r.score) }));
+    return (data ?? []).map((r) => ({
+      userId: r.user_id,
+      rank: r.rank,
+      score: Number(r.score),
+      bucket: (r.bucket as string | null) ?? "",
+    }));
   }
 }

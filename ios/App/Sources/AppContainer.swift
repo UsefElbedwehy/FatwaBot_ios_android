@@ -338,7 +338,23 @@ extension Container {
 
     @MainActor
     var leaderboardViewModel: Factory<LeaderboardViewModel> {
-        self { @MainActor in LeaderboardViewModel(client: self.authenticatedClient(), haptics: SystemHaptics()) }
+        self { @MainActor in
+            LeaderboardViewModel(
+                client: self.authenticatedClient(),
+                haptics: SystemHaptics(),
+                // Reuses what prayer times already resolved: `UserLocation`
+                // carries the reverse-geocoded locality and country code, so
+                // joining a regional board costs no geocode, no network call,
+                // and no second permission prompt.
+                region: ClosureRegionResolver { [provider = self.locationProvider()] in
+                    guard let cached = provider.cached() else { return .unknown }
+                    return LeaderboardRegion(
+                        city: cached.name,
+                        countryCode: cached.countryCode?.uppercased()
+                    )
+                }
+            )
+        }
     }
 
     /// The CoreKit boundary Dua (and any future searchable feature) is

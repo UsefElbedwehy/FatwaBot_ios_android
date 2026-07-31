@@ -52,7 +52,7 @@ async function deps() {
         name_translations: { ar: "لوحة المدينة", en: "City Board" },
         scope: "city",
         period: "lifetime",
-        metric: { terms: [] },
+        metric: { terms: [{ event_type: "azkar_completed", weight: 1, cap_per_period: 100 }] },
         tie_breakers: [],
         visibility: "public",
         display_requirements: { requires_published_name: false },
@@ -238,7 +238,7 @@ Deno.test("admin recompute ranks members by score and the profile reflects my_ra
     d,
   );
   assertEquals(recompute.status, 200);
-  assertEquals(await recompute.json(), { period_key: "lifetime", entries: 2 });
+  assertEquals(await recompute.json(), { period_key: "lifetime", entries: 2, buckets: 1 });
 
   const profile = await (
     await route(
@@ -250,4 +250,74 @@ Deno.test("admin recompute ranks members by score and the profile reflects my_ra
   assertEquals(board.my_rank, 1); // Alice scored higher (2 events vs Bob's 1)
   assertEquals(board.entries[0].score, 2);
   assertEquals(board.entries[1].score, 1);
+});
+
+Deno.test("city-scope boards rank within a city, not across all members", async () => {
+  const d = await deps();
+  const cairoA = await signIn(d);
+  const cairoB = await signIn(d);
+  const jakarta = await signIn(d);
+
+  const join = (token: string, city: string) =>
+    route(
+      post("/v1/leaderboards/city_board/join", { publish_name: false, city }, {
+        authorization: `Bearer ${token}`,
+      }),
+      d,
+    );
+  assertEquals((await join(cairoA.access_token, "Cairo")).status, 200);
+  assertEquals((await join(cairoB.access_token, "Cairo")).status, 200);
+  assertEquals((await join(jakarta.access_token, "Jakarta")).status, 200);
+
+  // Jakarta out-scores both Cairo members. If ranking were global, Jakarta
+  // would take rank 1 and push Cairo's best to rank 2 — the bug this guards.
+  const emit = (token: string, ids: string[]) =>
+    route(
+      post("/v1/gamification/events", {
+        events: ids.map((id) => ({
+          client_event_id: id,
+          event_type: "azkar_completed",
+          occurred_at: "2026-07-01T00:00:00Z",
+          timezone: "UTC",
+        })),
+      }, { authorization: `Bearer ${token}` }),
+      d,
+    );
+  await emit(jakarta.access_token, ["j1", "j2", "j3"]);
+  await emit(cairoA.access_token, ["a1", "a2"]);
+  await emit(cairoB.access_token, ["b1"]);
+
+  const adminLogin = await (
+    await route(post("/admin/v1/auth/login", { email: "admin@fatwabot.dev", password: "pw" }), d)
+  ).json();
+  const recompute = await (await route(
+    post("/admin/v1/leaderboards/city_board/recompute", undefined, {
+      authorization: `Bearer ${adminLogin.access_token}`,
+    }),
+    d,
+  )).json();
+  // Two cities => two independent rankings.
+  assertEquals(recompute.buckets, 2);
+  assertEquals(recompute.entries, 3);
+
+  const boardFor = async (token: string) => {
+    const body = await (await route(
+      new Request(`${BASE}/v1/leaderboards`, { headers: { authorization: `Bearer ${token}` } }),
+      d,
+    )).json();
+    return body.boards.find((b: { key: string }) => b.key === "city_board");
+  };
+
+  // Cairo's top member is rank 1 *of Cairo*, despite Jakarta scoring higher.
+  const aBoard = await boardFor(cairoA.access_token);
+  assertEquals(aBoard.my_rank, 1);
+  assertEquals(aBoard.entries.length, 2);
+
+  const bBoard = await boardFor(cairoB.access_token);
+  assertEquals(bBoard.my_rank, 2);
+
+  // Jakarta sees only itself, also as rank 1 of its own city.
+  const jBoard = await boardFor(jakarta.access_token);
+  assertEquals(jBoard.my_rank, 1);
+  assertEquals(jBoard.entries.length, 1);
 });
