@@ -21,3 +21,8 @@
 "widget.dua.name" = "دعاء اليوم";
 "widget.dua.desc" = "دعاء يتجدد على مدار اليوم";
 "widget.dua.title" = "دعاء";
+
+"widget.hadith.name" = "حديث اليوم";
+"widget.hadith.desc" = "حديث قصير يتجدد خلال اليوم.";
+"widget.hadith.title" = "حديث";
+"streak.badge.accessibility %lld" = "التتابع: %lld يوماً";

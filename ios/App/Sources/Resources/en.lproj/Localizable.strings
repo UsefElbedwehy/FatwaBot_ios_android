@@ -255,3 +255,5 @@
 "settings.contact.whatsapp" = "WhatsApp";
 "settings.contact.instagram" = "Instagram";
 "settings.contact.x" = "X";
+
+"streak.badge.accessibility %lld" = "Streak: %lld days";

@@ -5,6 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
+import androidx.glance.layout.size
+import androidx.glance.ColorFilter
+import androidx.glance.ImageProvider
+import androidx.glance.Image
 import androidx.glance.GlanceTheme
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
@@ -43,9 +47,20 @@ private fun StreakContent(context: Context, snapshot: GamificationWidgetSnapshot
     ) {
         if (streak != null) {
             Text(streak.name, style = TextStyle(color = InkProvider, fontSize = 12.sp))
+            // Flame + count, matching the Journey tab's badge so the widget and
+            // the screen it deep-links to are recognisably one thing. The brand
+            // mark is omitted at this size: overlaying two images is not
+            // something Glance can do without a pre-composed bitmap, and the
+            // mark would be ~8dp here — visual noise rather than branding.
+            Image(
+                provider = ImageProvider(R.drawable.ic_streak_flame),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(MaroonProvider),
+                modifier = GlanceModifier.size(30.dp),
+            )
             Text(
                 "${streak.currentLength}",
-                style = TextStyle(color = MaroonProvider, fontSize = 36.sp, fontWeight = FontWeight.Bold),
+                style = TextStyle(color = MaroonProvider, fontSize = 30.sp, fontWeight = FontWeight.Bold),
             )
             Text(
                 if (streak.graceRemaining > 0) context.getString(R.string.widget_streak_grace, streak.graceRemaining) else context.getString(R.string.widget_streak_best, streak.longestLength),

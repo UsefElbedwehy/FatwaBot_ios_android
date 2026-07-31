@@ -8,4 +8,5 @@
     <string name="gamification_grace_remaining">سماحية متبقية: %1$d</string>
     <string name="gamification_badge_earned">%1$s، تم الحصول عليها</string>
     <string name="gamification_badge_not_earned">%1$s، لم يتم الحصول عليها بعد</string>
+    <string name="streak_badge_accessibility">التتابع: %1$d يوماً</string>
 </resources>

@@ -1,4 +1,5 @@
 import CoreKit
+import DesignSystemKit
 import SwiftUI
 import WidgetKit
 
@@ -27,9 +28,18 @@ struct StreakView: View {
                     .font(.caption2)
                     .foregroundStyle(brandMuted)
                     .lineLimit(1)
-                Text("\(streak.currentLength)")
-                    .font(.system(size: 40, weight: .bold))
-                    .foregroundStyle(brandPrimary)
+                // Same flame + mark + count the Journey tab shows, so the widget
+                // and the screen it deep-links to are recognisably one thing.
+                StreakBadge(
+                    count: streak.currentLength,
+                    size: .medium,
+                    isActive: streak.currentLength > 0,
+                    // Light tokens deliberately: the widget card is a fixed
+                    // cream that never darkens, so dark tokens would be as
+                    // unreadable here as the system colours were.
+                    tokens: DesignTokens.bundledDefault.light
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer()
                 if streak.graceRemaining > 0 {
                     Text("widget.streak.grace \(streak.graceRemaining)")

@@ -255,3 +255,5 @@
 "settings.contact.whatsapp" = "واتساب";
 "settings.contact.instagram" = "إنستغرام";
 "settings.contact.x" = "إكس";
+
+"streak.badge.accessibility %lld" = "التتابع: %lld يوماً";

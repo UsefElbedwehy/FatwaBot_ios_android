@@ -57,6 +57,8 @@ import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.LocalReduceMotion
 import com.fatwabot.core.designsystem.MotionTokens
 import com.fatwabot.core.designsystem.RingProgress
+import com.fatwabot.core.designsystem.StreakBadge
+import com.fatwabot.core.designsystem.StreakBadgeSize
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.motionAnimationSpec
 import com.fatwabot.feature.gamification.R
@@ -131,7 +133,7 @@ private fun NoticeCard(error: String) {
 
 @Composable
 private fun StreakHeroCard(streak: GamificationStreak) {
-    val denom = maxOf(streak.longestLength, streak.currentLength, 1)
+    val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,18 +148,18 @@ private fun StreakHeroCard(streak: GamificationStreak) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(96.dp)) {
-            RingProgress(value = streak.currentLength.toFloat() / denom, strokeWidth = 9.dp, modifier = Modifier.fillMaxSize())
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "${streak.currentLength}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                BrandMark(color = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(14.dp))
-            }
-        }
+        // Flame + brand mark + count (owner decision, 2026-07). The ring this
+        // replaced encoded current/longest as a fraction, which reads as
+        // "progress toward a goal" — a streak has no goal, and a user at their
+        // personal best saw a full ring that never moved again.
+        StreakBadge(
+            count = streak.currentLength,
+            tokens = tokens,
+            size = StreakBadgeSize.LARGE,
+            isActive = streak.currentLength > 0,
+            contentDescription = stringResource(R.string.streak_badge_accessibility, streak.currentLength),
+            modifier = Modifier.size(96.dp),
+        )
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(streak.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             Text(stringResource(R.string.gamification_longest, streak.longestLength), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -84,7 +84,7 @@ targets:
       - package: PrayerKit
         products: [PrayerKit]
       - package: FatwaBotKit
-        products: [CoreKit]
+        products: [CoreKit, DesignSystemKit]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app.widgets

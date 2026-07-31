@@ -19,4 +19,6 @@
     <string name="widget_dua_title">Du\'a</string>
     <!-- %s is a live H:MM:SS countdown rendered by a Chronometer. -->
     <string name="widget_countdown_format">in %s</string>
+    <string name="widget_hadith">Daily Hadith</string>
+    <string name="widget_hadith_title">Hadith</string>
 </resources>

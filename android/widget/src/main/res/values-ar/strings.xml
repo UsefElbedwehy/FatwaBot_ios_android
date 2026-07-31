@@ -18,4 +18,6 @@
     <string name="widget_dua">دعاء اليوم</string>
     <string name="widget_dua_title">دعاء</string>
     <string name="widget_countdown_format">بعد %s</string>
+    <string name="widget_hadith">حديث اليوم</string>
+    <string name="widget_hadith_title">حديث</string>
 </resources>

@@ -113,25 +113,17 @@ private struct StreakHeroCard: View {
 
     var body: some View {
         HStack(spacing: 18) {
-            ZStack {
-                RingProgress(
-                    value: streak.longestLength > 0 ? Double(streak.currentLength) / Double(max(streak.longestLength, streak.currentLength)) : 1,
-                    lineWidth: 9,
-                    tokens: tokens
-                )
-                VStack(spacing: 2) {
-                    Text("\(streak.currentLength)")
-                        .font(.system(size: 34, weight: .heavy, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(Color(hexToken: tokens.primary))
-                    // Brand mark (mihrab arch), per stakeholder: the streak icon is
-                    // the app logo, not a fire emoji.
-                    MihrabArchShape()
-                        .fill(Color(hexToken: tokens.accent))
-                        .frame(width: 13, height: 15)
-                }
-            }
-            .frame(width: 96, height: 96)
+            // Flame + brand mark + count (owner decision, 2026-07). The ring this
+            // replaced encoded current/longest as a fraction, which reads as
+            // "progress toward a goal" — a streak has no goal, and a user at
+            // their personal best saw a full ring that never moved again.
+            StreakBadge(
+                count: streak.currentLength,
+                size: .large,
+                isActive: streak.currentLength > 0,
+                tokens: tokens
+            )
+            .frame(width: 96)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(streak.name)

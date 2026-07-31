@@ -21,3 +21,8 @@
 "widget.dua.name" = "Daily Du\'a";
 "widget.dua.desc" = "A rotating supplication";
 "widget.dua.title" = "Du\'a";
+
+"widget.hadith.name" = "Daily Hadith";
+"widget.hadith.desc" = "A short hadith, refreshed through the day.";
+"widget.hadith.title" = "Hadith";
+"streak.badge.accessibility %lld" = "Streak: %lld days";

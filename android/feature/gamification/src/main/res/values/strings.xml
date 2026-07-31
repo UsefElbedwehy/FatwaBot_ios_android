@@ -8,4 +8,5 @@
     <string name="gamification_grace_remaining">Grace remaining: %1$d</string>
     <string name="gamification_badge_earned">%1$s, earned</string>
     <string name="gamification_badge_not_earned">%1$s, not earned yet</string>
+    <string name="streak_badge_accessibility">Streak: %1$d days</string>
 </resources>
