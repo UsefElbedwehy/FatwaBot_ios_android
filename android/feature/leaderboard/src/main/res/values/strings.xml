@@ -9,4 +9,6 @@
     <string name="leaderboard_publish_name">Publish my name instead of an alias</string>
     <string name="leaderboard_city_placeholder">Your city</string>
     <string name="leaderboard_cancel">Cancel</string>
+    <string name="leaderboard_country">Country: %1$s</string>
+    <string name="leaderboard_country_unavailable">Your country isn\'t available yet. Set your location in prayer settings, then try again.</string>
 </resources>

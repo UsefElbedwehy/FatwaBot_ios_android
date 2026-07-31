@@ -82,10 +82,24 @@ export class InMemoryLeaderboardRepo implements LeaderboardRepo {
     entries: SnapshotEntry[],
   ): Promise<void> {
     this.snapshots.set(`${leaderboardKey}:${periodKey}`, entries);
+    // Mirrors the real repo writing computed_at, so a lazy recompute is seen as
+    // fresh on the next read instead of firing again every request.
+    this.computedAt.set(`${leaderboardKey}:${periodKey}`, new Date());
     return Promise.resolve();
   }
 
   getSnapshot(_ctx: AppContext, leaderboardKey: string, periodKey: string): Promise<SnapshotEntry[]> {
     return Promise.resolve(this.snapshots.get(`${leaderboardKey}:${periodKey}`) ?? []);
+  }
+
+  /** Tests drive this explicitly so staleness is deterministic. */
+  computedAt = new Map<string, Date>();
+
+  snapshotComputedAt(
+    _ctx: AppContext,
+    leaderboardKey: string,
+    periodKey: string,
+  ): Promise<Date | null> {
+    return Promise.resolve(this.computedAt.get(`${leaderboardKey}:${periodKey}`) ?? null);
   }
 }

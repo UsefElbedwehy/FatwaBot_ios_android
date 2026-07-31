@@ -105,6 +105,19 @@ export async function handleListLeaderboards(
   const boards = await Promise.all(defs.map(async (row) => {
     const period = row.fields.period as LeaderboardPeriod;
     const periodKey = periodKeyFor(period, now, seasonOf(row.fields));
+    // Refresh before reading if this period's snapshot is missing or has aged
+    // out (see SNAPSHOT_MAX_AGE_MS). Without this the board only ever changes
+    // when an admin manually triggers a recompute.
+    const computedAt = await deps.leaderboard.snapshotComputedAt(ctx, row.fields.key as string, periodKey);
+    if (computedAt === null || now.getTime() - computedAt.getTime() > SNAPSHOT_MAX_AGE_MS) {
+      // A failure here must not take the whole screen down: stale or empty
+      // standings are far better than an error where the leaderboard should be.
+      try {
+        await recomputeSnapshotFor(ctx, deps, row);
+      } catch {
+        // fall through and serve whatever was last materialized
+      }
+    }
     const [snapshot, memberships, myMembership] = await Promise.all([
       deps.leaderboard.getSnapshot(ctx, row.fields.key as string, periodKey),
       deps.leaderboard.listMemberships(ctx, row.fields.key as string),
@@ -254,7 +267,34 @@ export async function handleRecomputeSnapshot(
 ): Promise<Response> {
   const def = await findDefByKey(deps, ctx, key);
   if (!def) return apiError(404, "unknown_leaderboard", `No published leaderboard '${key}'`);
+  return json(await recomputeSnapshotFor(ctx, deps, def));
+}
 
+/**
+ * How long a materialized snapshot is served before the next read refreshes it.
+ *
+ * ## Why staleness-triggered rather than a scheduler
+ * Recompute had exactly one trigger: an admin POSTing it by hand. Nothing else
+ * called it — no pg_cron job exists — so a freshly seeded board would have
+ * shown empty standings forever, and a board that *was* computed would have
+ * frozen at whatever moment an admin last remembered to press the button. The
+ * feature would have looked broken for reasons no user could act on.
+ *
+ * Refreshing on read when the snapshot has aged past this bounds the work to
+ * once per window per board no matter how many clients ask, needs no external
+ * scheduler, and cannot leave the board permanently stale. Concurrent readers
+ * may both recompute; the snapshot upsert is keyed on
+ * (app, board, period, user), so the loser overwrites with the same numbers
+ * rather than corrupting anything.
+ */
+const SNAPSHOT_MAX_AGE_MS = 10 * 60 * 1000;
+
+export async function recomputeSnapshotFor(
+  ctx: AppContext,
+  deps: LeaderboardDeps,
+  def: AdminContentRow,
+): Promise<{ period_key: string; entries: number; buckets: number }> {
+  const key = def.fields.key as string;
   const period = def.fields.period as LeaderboardPeriod;
   const season = seasonOf(def.fields);
   const now = new Date();
@@ -266,7 +306,7 @@ export async function handleRecomputeSnapshot(
   const memberships = await deps.leaderboard.listMemberships(ctx, key);
   if (memberships.length === 0) {
     await deps.leaderboard.saveSnapshot(ctx, key, periodKey, []);
-    return json({ period_key: periodKey, entries: 0 });
+    return { period_key: periodKey, entries: 0, buckets: 0 };
   }
 
   const eventsByUser = await deps.gamification.listEventsForUsers(ctx, memberships.map((m) => m.userId));
@@ -303,5 +343,5 @@ export async function handleRecomputeSnapshot(
   }
 
   await deps.leaderboard.saveSnapshot(ctx, key, periodKey, entries);
-  return json({ period_key: periodKey, entries: entries.length, buckets: byBucket.size });
+  return { period_key: periodKey, entries: entries.length, buckets: byBucket.size };
 }

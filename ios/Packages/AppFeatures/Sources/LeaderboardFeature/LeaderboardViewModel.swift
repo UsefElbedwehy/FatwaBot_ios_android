@@ -10,6 +10,9 @@ import Observation
 @Observable
 public final class LeaderboardViewModel {
     public private(set) var boards: [LeaderboardBoard] = []
+    /// Region offered as the prefill when joining a regional board. Resolved
+    /// alongside the boards so the join sheet never has to await anything.
+    public private(set) var suggestedRegion: LeaderboardRegion = .unknown
     public private(set) var isLoading = false
     public private(set) var error: String?
 
@@ -33,6 +36,10 @@ public final class LeaderboardViewModel {
         do {
             let response: ListBoardsResponse = try await client.get("v1/leaderboards", query: [])
             boards = response.boards
+            // Only worth resolving if a regional board is actually on offer.
+            if response.boards.contains(where: { $0.scope == "city" || $0.scope == "country" }) {
+                suggestedRegion = await region.currentRegion()
+            }
         } catch {
             self.error = error.userFacingMessage
         }

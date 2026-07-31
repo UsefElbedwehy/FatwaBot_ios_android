@@ -257,3 +257,6 @@
 "settings.contact.x" = "إكس";
 
 "streak.badge.accessibility %lld" = "التتابع: %lld يوماً";
+
+"leaderboard.country" = "الدولة";
+"leaderboard.country_unavailable" = "تعذّر تحديد دولتك. اضبط موقعك في إعدادات الصلاة ثم أعد المحاولة.";

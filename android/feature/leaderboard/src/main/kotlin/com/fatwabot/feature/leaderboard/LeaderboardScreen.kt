@@ -106,6 +106,7 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
     joinTarget?.let { board ->
         JoinDialog(
             board = board,
+            suggestedRegion = state.suggestedRegion,
             onDismiss = { joinTarget = null },
             onConfirm = { publishName, city ->
                 joinTarget = null
@@ -231,10 +232,24 @@ private fun EntryRow(entry: LeaderboardEntry, isMe: Boolean, tokens: ColorTokens
 }
 
 @Composable
-private fun JoinDialog(board: LeaderboardBoard, onDismiss: () -> Unit, onConfirm: (Boolean, String?) -> Unit) {
+private fun JoinDialog(
+    board: LeaderboardBoard,
+    /**
+     * Prefill from the prayer-times location. The user can still overwrite it —
+     * the app's idea of "your city" and the one someone wants to compete in are
+     * not always the same (travel, a nearby larger city).
+     */
+    suggestedRegion: LeaderboardRegion,
+    onDismiss: () -> Unit,
+    onConfirm: (Boolean, String?) -> Unit,
+) {
     var publishName by remember { mutableStateOf(false) }
-    var city by remember { mutableStateOf("") }
     val isCityScope = board.scope == "city"
+    val isCountryScope = board.scope == "country"
+    var city by remember { mutableStateOf(if (isCityScope) suggestedRegion.city.orEmpty() else "") }
+    // A country board has nothing to ask the user for — it is derived — so the
+    // only thing that can block it is not knowing the country at all.
+    val missingCountry = isCountryScope && suggestedRegion.countryCode == null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -252,12 +267,24 @@ private fun JoinDialog(board: LeaderboardBoard, onDismiss: () -> Unit, onConfirm
                 if (isCityScope) {
                     OutlinedTextField(value = city, onValueChange = { city = it }, placeholder = { Text(stringResource(R.string.leaderboard_city_placeholder)) })
                 }
+                if (isCountryScope && suggestedRegion.countryCode != null) {
+                    Text(stringResource(R.string.leaderboard_country, suggestedRegion.countryCode))
+                }
+                if (missingCountry) {
+                    // Previously the user could tap Join and the server answered
+                    // 400 country_required — an error they had no way to act on.
+                    Text(
+                        stringResource(R.string.leaderboard_country_unavailable),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(publishName, if (isCityScope) city else null) },
-                enabled = !isCityScope || city.isNotBlank(),
+                enabled = (!isCityScope || city.isNotBlank()) && !missingCountry,
             ) { Text(stringResource(R.string.leaderboard_join)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.leaderboard_cancel)) } },

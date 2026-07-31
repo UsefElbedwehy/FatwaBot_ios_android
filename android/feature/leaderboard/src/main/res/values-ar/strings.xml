@@ -9,4 +9,6 @@
     <string name="leaderboard_publish_name">نشر اسمي بدلاً من اسم مستعار</string>
     <string name="leaderboard_city_placeholder">مدينتك</string>
     <string name="leaderboard_cancel">إلغاء</string>
+    <string name="leaderboard_country">الدولة: %1$s</string>
+    <string name="leaderboard_country_unavailable">تعذّر تحديد دولتك. اضبط موقعك في إعدادات الصلاة ثم أعد المحاولة.</string>
 </resources>

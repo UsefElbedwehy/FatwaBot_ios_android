@@ -55,4 +55,14 @@ export interface LeaderboardRepo {
     entries: SnapshotEntry[],
   ): Promise<void>;
   getSnapshot(ctx: AppContext, leaderboardKey: string, periodKey: string): Promise<SnapshotEntry[]>;
+  /**
+   * When this board's snapshot for `periodKey` was last materialized, or null
+   * if it never was. Drives the staleness check that keeps standings fresh
+   * without an external scheduler.
+   */
+  snapshotComputedAt(
+    ctx: AppContext,
+    leaderboardKey: string,
+    periodKey: string,
+  ): Promise<Date | null>;
 }

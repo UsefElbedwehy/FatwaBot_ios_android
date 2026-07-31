@@ -51,7 +51,7 @@ public struct LeaderboardScreen: View {
         .task { await viewModel.load() }
         .refreshable { await viewModel.load() }
         .sheet(item: $joinTarget) { board in
-            JoinSheet(board: board) { publishName, city in
+            JoinSheet(board: board, suggestedRegion: viewModel.suggestedRegion) { publishName, city in
                 joinTarget = nil
                 Task { await viewModel.join(key: board.key, publishName: publishName, city: city) }
             }
@@ -151,27 +151,56 @@ private struct EntryRow: View {
 
 private struct JoinSheet: View {
     let board: LeaderboardBoard
+    /// Prefill from the prayer-times location. The user can still overwrite it —
+    /// the app's idea of "your city" and the one someone wants to compete in are
+    /// not always the same (travel, a nearby larger city).
+    let suggestedRegion: LeaderboardRegion
     let onJoin: (Bool, String?) -> Void
 
     @State private var publishName = false
     @State private var city = ""
+    @State private var didPrefill = false
     @Environment(\.dismiss) private var dismiss
+
+    private var isCityScope: Bool { board.scope == "city" }
+    private var isCountryScope: Bool { board.scope == "country" }
+    /// A country board has nothing to ask the user for — it is derived — so the
+    /// only thing that can block it is not knowing the country at all.
+    private var missingCountry: Bool { isCountryScope && suggestedRegion.countryCode == nil }
 
     var body: some View {
         NavigationStack {
             Form {
                 Toggle("leaderboard.publish_name", isOn: $publishName)
-                if board.scope == "city" {
+                if isCityScope {
                     TextField("leaderboard.city_placeholder", text: $city)
                 }
+                if isCountryScope, let code = suggestedRegion.countryCode {
+                    LabeledContent("leaderboard.country", value: code)
+                }
+                if missingCountry {
+                    // Previously this sheet let the user tap Join and the server
+                    // answered 400 country_required — an error they had no way
+                    // to act on. Say what is wrong and what fixes it instead.
+                    Text("leaderboard.country_unavailable")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onAppear {
+                guard !didPrefill else { return }
+                didPrefill = true
+                if isCityScope, let suggested = suggestedRegion.city { city = suggested }
             }
             .navigationTitle(Text("leaderboard.join_sheet_title"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("leaderboard.confirm_join") {
-                        onJoin(publishName, board.scope == "city" ? city : nil)
+                        onJoin(publishName, isCityScope ? city : nil)
                     }
-                    .disabled(board.scope == "city" && city.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(
+                        (isCityScope && city.trimmingCharacters(in: .whitespaces).isEmpty) || missingCountry
+                    )
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }

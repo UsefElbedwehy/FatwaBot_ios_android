@@ -130,6 +130,22 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
     if (error) throw error;
   }
 
+  async snapshotComputedAt(
+    ctx: AppContext,
+    leaderboardKey: string,
+    periodKey: string,
+  ): Promise<Date | null> {
+    const { data, error } = await this.db
+      .schema("gamification").from("leaderboard_snapshots")
+      .select("computed_at")
+      .eq("app_id", ctx.appId).eq("leaderboard_key", leaderboardKey).eq("period_key", periodKey)
+      .order("computed_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    const row = (data ?? [])[0];
+    return row ? new Date(row.computed_at as string) : null;
+  }
+
   async getSnapshot(ctx: AppContext, leaderboardKey: string, periodKey: string): Promise<SnapshotEntry[]> {
     const { data, error } = await this.db
       .schema("gamification").from("leaderboard_snapshots")

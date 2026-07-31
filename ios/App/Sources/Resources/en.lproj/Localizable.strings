@@ -257,3 +257,6 @@
 "settings.contact.x" = "X";
 
 "streak.badge.accessibility %lld" = "Streak: %lld days";
+
+"leaderboard.country" = "Country";
+"leaderboard.country_unavailable" = "Your country isn't available yet. Set your location in prayer settings, then try again.";

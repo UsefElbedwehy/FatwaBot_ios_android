@@ -321,3 +321,38 @@ Deno.test("city-scope boards rank within a city, not across all members", async 
   assertEquals(jBoard.my_rank, 1);
   assertEquals(jBoard.entries.length, 1);
 });
+
+Deno.test("standings materialize without an admin ever pressing recompute", async () => {
+  const d = await deps();
+  const alice = await signIn(d);
+
+  await route(
+    post("/v1/leaderboards/global_weekly/join", { publish_name: false }, {
+      authorization: `Bearer ${alice.access_token}`,
+    }),
+    d,
+  );
+  await route(
+    post("/v1/gamification/events", {
+      events: [{
+        client_event_id: "lazy1",
+        event_type: "azkar_completed",
+        occurred_at: "2026-07-01T00:00:00Z",
+        timezone: "UTC",
+      }],
+    }, { authorization: `Bearer ${alice.access_token}` }),
+    d,
+  );
+
+  // No admin recompute call anywhere in this test — the read must do it.
+  const body = await (await route(
+    new Request(`${BASE}/v1/leaderboards`, {
+      headers: { authorization: `Bearer ${alice.access_token}` },
+    }),
+    d,
+  )).json();
+
+  const board = body.boards.find((b: { key: string }) => b.key === "global_weekly");
+  assertEquals(board.my_rank, 1);
+  assertEquals(board.entries.length, 1);
+});

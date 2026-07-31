@@ -26,6 +26,11 @@ class LeaderboardViewModel @Inject constructor(
         val boards: List<LeaderboardBoard> = emptyList(),
         val isLoading: Boolean = false,
         val error: String? = null,
+        /**
+         * Region offered as the prefill when joining a regional board. Resolved
+         * alongside the boards so the join dialog never has to await anything.
+         */
+        val suggestedRegion: LeaderboardRegion = LeaderboardRegion.Unknown,
     )
 
     private val _state = MutableStateFlow(UiState())
@@ -37,7 +42,15 @@ class LeaderboardViewModel @Inject constructor(
             val raw = client.getRaw("v1/leaderboards")
             json.decodeFromString(ListBoardsResponse.serializer(), raw).boards
         }.fold(
-            onSuccess = { boards -> _state.update { it.copy(boards = boards, isLoading = false) } },
+            onSuccess = { boards ->
+                // Only worth resolving if a regional board is actually on offer.
+                val suggested = if (boards.any { it.scope == "city" || it.scope == "country" }) {
+                    region.currentRegion()
+                } else {
+                    LeaderboardRegion.Unknown
+                }
+                _state.update { it.copy(boards = boards, isLoading = false, suggestedRegion = suggested) }
+            },
             onFailure = { error -> _state.update { it.copy(error = error.toString(), isLoading = false) } },
         )
     }
