@@ -94,3 +94,25 @@ Re-importing is safe: `buildSql` upserts on the natural key and carries
 `source_dataset` through `on conflict do update`, but **leaves the review columns
 untouched** — a previously approved (or human-reviewed) hadith stays as-is. See
 content-verification.md for the reviewer workflow over `content.needs_review`.
+
+
+## بلوغ المرام — the four "missing" numbers
+
+The imported collection holds 1,564 entries spanning numbers 1–1568, so four
+numbers are absent: **190, 333, 678, 1449**. All four were checked against the
+source (turath.io #17757, ت. ماهر ياسين الفحل, دار القبس 1435/2014, whose
+metadata declares `[ترقيم الكتاب موافق للمطبوع]`). **No hadith text is missing.**
+
+| Number | Why it is absent |
+|---|---|
+| 190 | Source numbers it jointly with 189 — `١٨٩ و١٩٠ - وعن ابن عمر، وعائشة` — one hadith carrying two narrators. Stored once, as 189. |
+| 678 | Same, joint with 677 — `٦٧٧ و٦٧٨ - وعن عائشة وأم سلمة`. Stored once, as 677. |
+| 333 | The printed edition skips it. Source runs 332 → 334 with only footnotes between. |
+| 1449 | The printed edition skips it. Source runs 1448 → 1450 with only footnotes between. |
+
+Entries 189 and 677 were confirmed to retain **both** narrators, so the joint
+numbering did not truncate either one.
+
+These are exactly the two failure modes worth distinguishing: an editorial
+numbering convention (190, 678), and the edition's own unused numbers (333,
+1449). Neither is import loss, and no re-import is warranted.
