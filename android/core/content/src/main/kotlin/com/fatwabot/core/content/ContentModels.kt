@@ -39,7 +39,37 @@ data class Dua(
     val transliteration: String? = null,
     val translation: String? = null,
     val source: String,
-)
+) {
+    /**
+     * What to show as the row's heading — mirror of iOS `Dua.displayTitle`.
+     *
+     * Hisn al-Muslim — the source of the whole imported library — titles its
+     * *chapters*, not its individual supplications, so every `title` comes back
+     * empty. Rendering the raw field left every row in the library showing
+     * nothing but "حصن المسلم", one identical line 132 categories deep.
+     *
+     * The opening words of the du'a are how these are actually referred to, so
+     * they make a better heading than a placeholder. Truncation is on a word
+     * boundary to avoid cutting an Arabic word in half.
+     */
+    val displayTitle: String
+        get() = title.trim().ifEmpty { snippet(arabicText) }
+
+    companion object {
+        internal fun snippet(text: String, limit: Int = 48): String {
+            // Strip the recitation marks the corpus wraps verses in, so a
+            // snippet starts on the words themselves rather than punctuation.
+            val cleaned = text
+                .replace("((", "").replace("))", "")
+                .replace("﴿", "").replace("﴾", "")
+                .trim()
+            if (cleaned.length <= limit) return cleaned
+            val prefix = cleaned.take(limit)
+            val lastSpace = prefix.lastIndexOf(' ')
+            return if (lastSpace <= 0) "$prefix…" else prefix.substring(0, lastSpace) + "…"
+        }
+    }
+}
 
 @Serializable
 data class DuaCategory(

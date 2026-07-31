@@ -171,7 +171,7 @@ private struct DuaRowCard: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .trailing, spacing: 3) {
-                Text(dua.title)
+                Text(dua.displayTitle)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
                     .frame(maxWidth: .infinity, alignment: .trailing)

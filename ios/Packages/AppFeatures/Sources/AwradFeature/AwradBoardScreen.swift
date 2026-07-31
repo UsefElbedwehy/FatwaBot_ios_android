@@ -145,16 +145,19 @@ public struct AwradBoardScreen: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(wird.name)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Color(hexToken: tokens.onSurface))
-                    // The only thing marking a fixed slot apart: it is one of the
-                    // four everyone has. No delete affordance is drawn for it —
-                    // and none is drawn for user wirds either, so its absence is
-                    // not what distinguishes them.
-                    if wird.isFixed { fixedBadge }
-                }
+                // Name first, badge under it. Inline, the badge stole width from
+                // the title and forced names like "Night Prayer (Qiyam)" to wrap
+                // across three lines with the badge floating beside the middle
+                // one. The name is what the user reads; it gets the full width.
+                Text(wird.name)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+                    .fixedSize(horizontal: false, vertical: true)
+                // The only thing marking a fixed slot apart: it is one of the
+                // four everyone has. No delete affordance is drawn for it —
+                // and none is drawn for user wirds either, so its absence is
+                // not what distinguishes them.
+                if wird.isFixed { fixedBadge }
                 Text("\(count)/\(wird.target)")
                     .font(.caption)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))

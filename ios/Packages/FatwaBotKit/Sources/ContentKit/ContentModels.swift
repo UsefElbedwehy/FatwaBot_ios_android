@@ -91,6 +91,37 @@ public struct Dua: Codable, Equatable, Identifiable, Sendable {
         self.translation = translation
         self.source = source
     }
+
+    /// What to show as the row's heading.
+    ///
+    /// Hisn al-Muslim — the source of the whole imported library — titles its
+    /// *chapters*, not its individual supplications, so every `Dua.title` comes
+    /// back empty. Rendering the raw field left every row in the library showing
+    /// nothing but "حصن المسلم", one identical line 132 categories deep.
+    ///
+    /// The opening words of the du'a are how these are actually referred to, so
+    /// they make a better heading than a placeholder. Truncation is on a word
+    /// boundary to avoid cutting an Arabic word in half.
+    public var displayTitle: String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        return Self.snippet(from: arabicText)
+    }
+
+    static func snippet(from text: String, limit: Int = 48) -> String {
+        // Strip the recitation marks the corpus wraps verses in, so a snippet
+        // starts on the words themselves rather than on punctuation.
+        let cleaned = text
+            .replacingOccurrences(of: "((", with: "")
+            .replacingOccurrences(of: "))", with: "")
+            .replacingOccurrences(of: "﴿", with: "")
+            .replacingOccurrences(of: "﴾", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleaned.count > limit else { return cleaned }
+        let prefix = cleaned.prefix(limit)
+        guard let lastSpace = prefix.lastIndex(of: " ") else { return String(prefix) + "…" }
+        return String(prefix[prefix.startIndex..<lastSpace]) + "…"
+    }
 }
 
 public struct DuaCategory: Codable, Equatable, Identifiable, Sendable {

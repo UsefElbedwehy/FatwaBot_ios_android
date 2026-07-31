@@ -216,7 +216,7 @@ private fun DuaRowCard(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    dua.title,
+                    dua.displayTitle,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = tokens.onSurface,

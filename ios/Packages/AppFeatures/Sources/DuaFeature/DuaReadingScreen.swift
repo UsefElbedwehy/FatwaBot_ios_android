@@ -72,7 +72,7 @@ public struct DuaReadingScreen: View {
     private var header: some View {
         VStack(spacing: 12) {
             ArchIconBadge(systemImage: "hands.sparkles", tokens: tokens, size: CGSize(width: 66, height: 76))
-            Text(dua.title)
+            Text(dua.displayTitle)
                 .font(.title2.weight(.bold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Color(hexToken: tokens.onSurface))

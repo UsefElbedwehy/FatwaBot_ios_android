@@ -107,7 +107,7 @@ fun DuaReadingScreen(
             ) {
                 ArchIconBadge(icon = Icons.Filled.AutoAwesome, size = 72.dp, tokens = tokens)
                 Text(
-                    dua.title,
+                    dua.displayTitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = tokens.onSurface,
