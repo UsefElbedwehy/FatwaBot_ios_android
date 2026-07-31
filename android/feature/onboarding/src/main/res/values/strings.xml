@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="onboarding_welcome_title">Welcome to Fatwa Bot</string>
+    <string name="onboarding_welcome_title">Welcome to Fatwa</string>
     <string name="onboarding_welcome_body">Your daily companion for prayer, worship, and steadfast habits.</string>
     <string name="onboarding_get_started">Get started</string>
     <string name="onboarding_highlights_title">What you\'ll find</string>

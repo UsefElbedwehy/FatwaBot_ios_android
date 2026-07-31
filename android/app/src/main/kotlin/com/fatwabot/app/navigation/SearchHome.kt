@@ -90,7 +90,7 @@ fun SearchHome() {
             modifier = Modifier.width(94.dp).height(132.dp),
         )
         Text(
-            "FATWA BOT",
+            "FATWA",
             fontFamily = FontFamily.Serif,
             fontSize = 28.sp,
             letterSpacing = 3.sp,

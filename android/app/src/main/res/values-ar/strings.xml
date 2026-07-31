@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">فتوى بوت</string>
+    <string name="app_name">فتوى</string>
     <string name="tab_home">الرئيسية</string>
     <string name="tab_worship">العبادة</string>
     <string name="tab_journey">المسيرة</string>
@@ -91,4 +91,12 @@
     <string name="settings_diagnostics">التشخيص</string>
     <string name="settings_diagnostics_share">مشاركة تقارير الأعطال والاستخدام</string>
     <string name="settings_diagnostics_note">تساعدنا في إصلاح المشكلات. لا تتضمن بحثك أو موقعك أو اسمك أبداً.</string>
+    <!-- Contact section. The addresses themselves are server-driven (ADR-0011 keys
+         contact.email / contact.whatsapp / contact.instagram / contact.x) — only
+         the labels are localized here. -->
+    <string name="settings_contact">التواصل</string>
+    <string name="settings_contact_email">البريد الإلكتروني</string>
+    <string name="settings_contact_whatsapp">واتساب</string>
+    <string name="settings_contact_instagram">إنستغرام</string>
+    <string name="settings_contact_x">إكس</string>
 </resources>

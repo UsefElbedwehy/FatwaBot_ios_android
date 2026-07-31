@@ -15,6 +15,10 @@ import UIKit
 /// button that does nothing when tapped.
 struct SettingsScreen: View {
     let prayerViewModel: PrayerViewModel
+    /// Resolved in the composition root (RootTabView) from the config string
+    /// packs, so this screen — and the design system it draws with — stay clear
+    /// of any config/network dependency (ADR-0010).
+    let contact: ContactLinks
     @State private var isLiveActivityEnabled = Container.shared.liveActivityPreference().isEnabled()
     @Environment(\.colorScheme) private var colorScheme
 
@@ -59,6 +63,12 @@ struct SettingsScreen: View {
                 FeaturesGuideSection(tokens: tokens)
 
                 DiagnosticsSection(tokens: tokens)
+
+                // Hidden entirely while the dashboard has supplied no channel —
+                // an empty "Contact" header helps nobody.
+                if !contact.isEmpty {
+                    ContactSection(links: contact, tokens: tokens)
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     BrandSectionHeader("settings.about_section", systemImage: "info.circle.fill", tokens: tokens)

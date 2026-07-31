@@ -102,7 +102,7 @@ public struct DesignTokens: Equatable, Sendable {
             outline: "#3E312D"
         ),
         shape: ShapeTokens(cardRadius: 18, controlRadius: 12),
-        productName: "Fatwa Bot",
+        productName: "Fatwa",
         themeVersion: 0
     )
 

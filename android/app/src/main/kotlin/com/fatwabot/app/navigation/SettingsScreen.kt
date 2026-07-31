@@ -100,7 +100,14 @@ import com.fatwabot.feature.prayer.titleRes
  * and a "?" features guide (stakeholder direction, 2026-07-12).
  */
 @Composable
-fun SettingsScreen(prayerViewModel: PrayerViewModel) {
+fun SettingsScreen(
+    prayerViewModel: PrayerViewModel,
+    /**
+     * Resolved in the composition root (RootScaffold) from the config string
+     * packs, so this screen keeps no config/network dependency (ADR-0010).
+     */
+    contact: ContactLinks,
+) {
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     Column(
         modifier = Modifier
@@ -121,6 +128,12 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
         FeaturesGuideSection()
 
         DiagnosticsSection()
+
+        // Hidden entirely while the dashboard has supplied no channel — an empty
+        // "Contact" header helps nobody.
+        if (!contact.isEmpty) {
+            ContactSection(links = contact)
+        }
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandSectionHeader(stringResource(R.string.settings_about), icon = Icons.Filled.Info)

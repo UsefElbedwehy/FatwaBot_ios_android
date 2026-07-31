@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Fatwa Bot</string>
+    <string name="app_name">Fatwa</string>
     <string name="tab_home">Home</string>
     <string name="tab_worship">Worship</string>
     <string name="tab_journey">Journey</string>
@@ -92,4 +92,12 @@
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_diagnostics_share">Share crash &amp; usage reports</string>
     <string name="settings_diagnostics_note">Helps us fix problems. Never includes your searches, location, or name.</string>
+    <!-- Contact section. The addresses themselves are server-driven (ADR-0011 keys
+         contact.email / contact.whatsapp / contact.instagram / contact.x) — only
+         the labels are localized here. -->
+    <string name="settings_contact">Contact</string>
+    <string name="settings_contact_email">Email</string>
+    <string name="settings_contact_whatsapp">WhatsApp</string>
+    <string name="settings_contact_instagram">Instagram</string>
+    <string name="settings_contact_x">X</string>
 </resources>

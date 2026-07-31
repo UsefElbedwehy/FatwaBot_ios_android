@@ -164,7 +164,7 @@
 "search_history.empty_state" = "سيظهر سجل بحثك هنا.";
 "search_history.clear_all" = "مسح الكل";
 "search_history.clear_all_confirm_title" = "مسح كل سجل البحث؟";
-"onboarding.welcome.title" = "مرحباً بك في Fatwa Bot";
+"onboarding.welcome.title" = "مرحباً بك في Fatwa";
 "onboarding.welcome.subtitle" = "رفيقك اليومي للصلاة والعبادة والعادات الثابتة.";
 "onboarding.get_started" = "ابدأ الآن";
 "onboarding.highlights.title" = "ماذا ستجد";
@@ -240,3 +240,12 @@
 "tasbeeh.notice" = "هذا نص تنبيه مؤقت. يمكن تعديله من لوحة التحكم دون تحديث التطبيق.";
 
 "settings.notif.iqama.notice" = "تختلف مدة الإقامة بين الصلوات من مسجد لآخر. هذه قيم افتراضية شائعة، ويمكنك تعديل أي منها لتوافق مسجدك.";
+
+/* Contact section. The addresses themselves are server-driven (ADR-0011 keys
+   contact.email / contact.whatsapp / contact.instagram / contact.x) — only the
+   labels are localized here. */
+"settings.contact_section" = "التواصل";
+"settings.contact.email" = "البريد الإلكتروني";
+"settings.contact.whatsapp" = "واتساب";
+"settings.contact.instagram" = "إنستغرام";
+"settings.contact.x" = "إكس";

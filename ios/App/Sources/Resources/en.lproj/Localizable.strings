@@ -164,7 +164,7 @@
 "search_history.empty_state" = "Your search history will appear here.";
 "search_history.clear_all" = "Clear All";
 "search_history.clear_all_confirm_title" = "Clear all search history?";
-"onboarding.welcome.title" = "Welcome to Fatwa Bot";
+"onboarding.welcome.title" = "Welcome to Fatwa";
 "onboarding.welcome.subtitle" = "Your daily companion for prayer, worship, and steady habits.";
 "onboarding.get_started" = "Get started";
 "onboarding.highlights.title" = "What you'll find";
@@ -240,3 +240,12 @@
 "tasbeeh.notice" = "This is a placeholder notice. It can be edited from the admin dashboard without releasing an app update.";
 
 "settings.notif.iqama.notice" = "Mosques use a different gap for each prayer. These are common defaults — adjust any of them to match your mosque.";
+
+/* Contact section. The addresses themselves are server-driven (ADR-0011 keys
+   contact.email / contact.whatsapp / contact.instagram / contact.x) — only the
+   labels are localized here. */
+"settings.contact_section" = "Contact";
+"settings.contact.email" = "Email";
+"settings.contact.whatsapp" = "WhatsApp";
+"settings.contact.instagram" = "Instagram";
+"settings.contact.x" = "X";

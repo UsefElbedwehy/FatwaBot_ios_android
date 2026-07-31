@@ -1,7 +1,7 @@
 import DesignSystemKit
 import SwiftUI
 
-/// Search-first Home (client redesign, 2026-07-24). Pixel-matches the FATWA BOT
+/// Search-first Home (client redesign, 2026-07-24). Pixel-matches the client
 /// mockup (design/homeDesign.jpeg): logo, wordmark, rosette divider, three
 /// neumorphic intent cards, an embossed search field, and the manhaj tagline.
 /// The fatwa/hadith/question search is the M5 AI-search surface (on hold) — the
@@ -39,7 +39,7 @@ struct SearchHomeScreen: View {
                     .frame(width: 94, height: 132)
                     .accessibilityHidden(true)
 
-                Text(verbatim: "FATWA BOT")
+                Text(verbatim: "FATWA")
                     .font(.system(size: 28, weight: .medium, design: .serif))
                     .tracking(3)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))

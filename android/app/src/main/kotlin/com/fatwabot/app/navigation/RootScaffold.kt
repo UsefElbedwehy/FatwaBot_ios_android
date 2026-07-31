@@ -171,7 +171,10 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
                     destination = worshipDestination,
                     onDestinationChange = { worshipDestination = it },
                 )
-                AppTab.SETTINGS -> SettingsScreen(prayerViewModel = prayerViewModel)
+                AppTab.SETTINGS -> SettingsScreen(
+                    prayerViewModel = prayerViewModel,
+                    contact = rememberContactLinks(),
+                )
             }
         }
     }

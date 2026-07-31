@@ -178,6 +178,30 @@ struct RootTabView: View {
         return String(localized: "tasbeeh.notice")
     }
 
+    /// Contact channels for the Settings screen. Server-provided (ADR-0011) so an
+    /// operator can change an address — or switch a channel off by blanking it —
+    /// without a release. Resolved here rather than in the screen so nothing
+    /// below the composition root learns about config (ADR-0010).
+    ///
+    /// Nothing is bundled as a fallback on purpose: until the dashboard supplies
+    /// a value the row is hidden, because a made-up address ships worse than no
+    /// address at all.
+    private var contactLinks: ContactLinks {
+        let locale = Locale.current.language.languageCode?.identifier ?? "ar"
+        let config = Container.shared.configService()
+        func value(_ key: String) -> String? {
+            let trimmed = (config.string(key, locale: locale) ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        return ContactLinks(
+            email: value("contact.email"),
+            whatsapp: value("contact.whatsapp"),
+            instagram: value("contact.instagram"),
+            x: value("contact.x")
+        )
+    }
+
     /// Stable, non-PII screen key. A pushed worship destination wins over the
     /// tab, since that's the screen actually on top.
     private var currentScreenKey: String {
@@ -229,7 +253,7 @@ struct RootTabView: View {
             }
         case .settings:
             NavigationStack {
-                SettingsScreen(prayerViewModel: prayerViewModel)
+                SettingsScreen(prayerViewModel: prayerViewModel, contact: contactLinks)
                     .bottomBarClearance()
                     .navigationTitle(Text("tabs.settings"))
             }
