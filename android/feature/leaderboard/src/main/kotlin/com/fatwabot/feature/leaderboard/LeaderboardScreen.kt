@@ -78,6 +78,13 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
         ) {
             state.error?.let { error -> NoticeCard(error, tokens) }
 
+            if (state.boards.isNotEmpty()) {
+                // Custom awrad are deliberately unranked (owner decision,
+                // 2026-07). Saying so is the difference between a rule and a
+                // user quietly concluding their effort doesn't register.
+                NoticeCard(stringResource(R.string.leaderboard_scoring_notice), tokens)
+            }
+
             state.boards.forEach { board ->
                 BoardCard(
                     board = board,

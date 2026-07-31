@@ -260,3 +260,5 @@
 
 "leaderboard.country" = "Country";
 "leaderboard.country_unavailable" = "Your country isn't available yet. Set your location in prayer settings, then try again.";
+
+"leaderboard.scoring_notice" = "Ranking counts your four fixed awrad, azkar, hadith and tasbeeh — each capped per week, so consistency wins, not volume. Custom awrad stay personal and aren't ranked.";

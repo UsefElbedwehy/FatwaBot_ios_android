@@ -26,6 +26,20 @@ public struct LeaderboardScreen: View {
                     .brandCard(tokens)
                 }
 
+                if !viewModel.boards.isEmpty {
+                    // Custom awrad are deliberately unranked (owner decision,
+                    // 2026-07). Saying so is the difference between a rule and
+                    // a user quietly concluding their effort doesn't register.
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(Color(hexToken: tokens.accent))
+                        Text("leaderboard.scoring_notice")
+                            .font(.footnote)
+                            .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                    }
+                    .brandCard(tokens)
+                }
+
                 ForEach(viewModel.boards) { board in
                     BoardCard(
                         board: board,

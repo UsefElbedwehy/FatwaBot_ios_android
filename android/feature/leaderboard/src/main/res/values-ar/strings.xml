@@ -11,4 +11,5 @@
     <string name="leaderboard_cancel">إلغاء</string>
     <string name="leaderboard_country">الدولة: %1$s</string>
     <string name="leaderboard_country_unavailable">تعذّر تحديد دولتك. اضبط موقعك في إعدادات الصلاة ثم أعد المحاولة.</string>
+    <string name="leaderboard_scoring_notice">يُحتسب في الترتيب أورادك الثابتة الأربعة والأذكار والأحاديث والتسبيح، ولكلٍّ حدٌّ أسبوعي، فالمداومة هي المعتبرة لا الكثرة. أما الأوراد المخصصة فتبقى خاصة بك ولا تدخل في الترتيب.</string>
 </resources>

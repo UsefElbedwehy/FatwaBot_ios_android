@@ -128,6 +128,43 @@ final class AwradViewModelTests: XCTestCase {
         XCTAssertEqual(events.recorded.map(\.eventType), ["wird_ticked"])
     }
 
+    // MARK: - Leaderboard currency
+    //
+    // Only the four fixed slots are ranked (owner decision, 2026-07). These two
+    // tests are the contract: if `fixed_wird_completed` ever stops firing, the
+    // leaderboard silently flatlines with no other symptom.
+
+    @MainActor
+    func testCrossingTargetOnAFixedSlotEmitsTheLeaderboardEvent() {
+        let events = SpyActivityEvents()
+        let store = InMemoryStore()
+        let seeded = SeededWirdStore(wrapping: store, now: { self.fixedNow }, calendar: utcCalendar)
+        let viewModel = makeViewModel(store: seeded, activityEvents: events)
+
+        let quran = viewModel.wirds.first { $0.id == FixedWirdSlot.dailyQuran.wirdId }!
+        XCTAssertEqual(quran.target, 1)
+
+        viewModel.tick(wirdId: quran.id)
+        XCTAssertEqual(events.recorded.map(\.eventType), ["wird_ticked", "fixed_wird_completed"])
+        XCTAssertEqual(events.recorded.last?.metadata["wird_id"], quran.id)
+
+        // Ticking past target must not score again — otherwise the cap is the
+        // only thing standing between this and "who tapped the most".
+        viewModel.tick(wirdId: quran.id)
+        XCTAssertEqual(events.recorded.filter { $0.eventType == "fixed_wird_completed" }.count, 1)
+    }
+
+    @MainActor
+    func testCustomWirdsAreDeliberatelyNotRanked() {
+        let events = SpyActivityEvents()
+        let viewModel = makeViewModel(activityEvents: events)
+        viewModel.createWird(fromTemplate: template(target: 1))
+        viewModel.tick(wirdId: viewModel.wirds[0].id)
+
+        XCTAssertEqual(events.recorded.map(\.eventType), ["wird_ticked"])
+        XCTAssertFalse(events.recorded.contains { $0.eventType == "fixed_wird_completed" })
+    }
+
     @MainActor
     func testMarkDayCompleteRecordsAnActivityEventOnlyWhenItActuallyCompletes() {
         let events = SpyActivityEvents()

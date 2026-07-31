@@ -33,7 +33,11 @@ class AwradViewModelTest {
 
     private class SpyActivityEvents : ActivityEventRecording {
         val recorded = mutableListOf<String>()
-        override fun record(eventType: String, metadata: Map<String, String>) { recorded += eventType }
+        val metadataFor = mutableMapOf<String, Map<String, String>>()
+        override fun record(eventType: String, metadata: Map<String, String>) {
+            recorded += eventType
+            metadataFor[eventType] = metadata
+        }
     }
 
     private class SpyHaptics : HapticsProviding {
@@ -119,6 +123,40 @@ class AwradViewModelTest {
 
         assertFalse("already completed today", viewModel.markDayComplete())
         assertEquals("must not fire again on the no-op re-call", 1, haptics.targetReachedCount)
+    }
+
+    // Only the four fixed slots are ranked (owner decision, 2026-07). These two
+    // tests are the contract: if `fixed_wird_completed` ever stops firing, the
+    // leaderboard silently flatlines with no other symptom. Mirrors iOS.
+
+    @Test
+    fun `crossing target on a fixed slot emits the leaderboard event`() {
+        val events = SpyActivityEvents()
+        val seeded = SeededWirdStore(InMemoryStore(), now = { fixedNow.epochSeconds })
+        val viewModel = makeViewModel(store = seeded, activityEvents = events)
+
+        val quran = viewModel.state.value.wirds.first { it.id == FixedWirdSlot.DAILY_QURAN.wirdId }
+        assertEquals(1, quran.target)
+
+        viewModel.tick(quran.id)
+        assertEquals(listOf("wird_ticked", "fixed_wird_completed"), events.recorded)
+        assertEquals(quran.id, events.metadataFor["fixed_wird_completed"]?.get("wird_id"))
+
+        // Ticking past target must not score again — otherwise the cap is the
+        // only thing standing between this and "who tapped the most".
+        viewModel.tick(quran.id)
+        assertEquals(1, events.recorded.count { it == "fixed_wird_completed" })
+    }
+
+    @Test
+    fun `custom wirds are deliberately not ranked`() {
+        val events = SpyActivityEvents()
+        val viewModel = makeViewModel(activityEvents = events)
+        viewModel.createWird(template(target = 1))
+
+        viewModel.tick(viewModel.state.value.wirds[0].id)
+        assertEquals(listOf("wird_ticked"), events.recorded)
+        assertFalse(events.recorded.contains("fixed_wird_completed"))
     }
 
     @Test

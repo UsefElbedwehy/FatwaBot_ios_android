@@ -11,4 +11,5 @@
     <string name="leaderboard_cancel">Cancel</string>
     <string name="leaderboard_country">Country: %1$s</string>
     <string name="leaderboard_country_unavailable">Your country isn\'t available yet. Set your location in prayer settings, then try again.</string>
+    <string name="leaderboard_scoring_notice">Ranking counts your four fixed awrad, azkar, hadith and tasbeeh — each capped per week, so consistency wins, not volume. Custom awrad stay personal and aren\'t ranked.</string>
 </resources>
