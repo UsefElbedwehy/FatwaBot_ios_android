@@ -148,3 +148,57 @@ Each fires on exactly one entry in 1,978, with no false rejections:
 - **Colon immediately after رواه** → companions, not collectors. العمدة 191 reads
   `رَوَاهُ: أَبُو هُرَيْرَةَ، وَعَائِشَةُ، وَأَنَسُ بْنُ مَالِكٍ`. A real takhrij names its collector
   first (`رَوَاهُ الْبَيْهَقِيُّ: عَنْ عَلِيٍّ…`), so the colon never comes first.
+
+
+## Translations
+
+`translation_translations` is empty for all 2,060 hadith. Unlike gradings there
+is nothing to extract — a translation is new text, not a clause already sitting
+in the matn — so it has to be sourced. Owner decision (2026-08-01): **license an
+existing published translation** rather than machine-translate.
+
+Nothing can be imported until that licence exists. The pipeline is ready so that
+day is an import, not a project: `scripts/import_hadith_translations.ts`
+(7 tests) validates a file and emits a migration.
+
+### What to ask the publisher for
+
+The licence terms matter less to the code than the *delivery format*. A PDF is
+close to useless; ask for:
+
+| | |
+|---|---|
+| **Format** | Structured text — JSON or CSV — not PDF or a print file. |
+| **Alignment key** | Each translation tagged with the **hadith number** it belongs to, matching the printed numbering. Without a key, aligning 1,564 paragraphs by hand is the real cost. |
+| **Scope** | Confirm which collections are covered. بلوغ المرام and العمدة are separate works and may be separate licences. |
+| **Attribution** | The exact credit line they require, and where it must appear. Add it to the collection's `description_translations`. |
+| **Redistribution** | That it covers use inside a mobile app, not just print. |
+
+### Import shape
+
+```json
+[{ "slug": "bulugh_almaram", "number": 1, "text": "..." }]
+```
+
+```
+deno run --allow-read scripts/import_hadith_translations.ts translations.json en \
+  > supabase/migrations/00XX_bulugh_translations_en.sql
+```
+
+The script rejects rather than repairs: duplicate numbers, blank text, and
+malformed keys all abort with nothing emitted. A subtly misaligned file attaches
+the wrong English to the wrong Arabic, and that error is invisible on review
+because both halves look correct on their own.
+
+**After applying, check the row count** — the generated SQL joins on
+(slug, number), so numbers absent from the database update nothing silently:
+
+```sql
+select c.slug, count(*) filter (where e.translation_translations ? 'en') as translated
+from content.hadith_entries e
+join content.hadith_collections c on c.id = e.collection_id
+group by c.slug;
+```
+
+Merging is by `||`, so importing English never drops a translation in another
+language.
