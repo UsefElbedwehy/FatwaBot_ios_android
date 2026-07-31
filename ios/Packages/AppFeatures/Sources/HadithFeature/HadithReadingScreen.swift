@@ -1,5 +1,6 @@
 import ContentKit
 import DesignSystemKit
+import CoreKit
 import SwiftUI
 
 /// Reading view (docs/features/hadith-collections.md screen 2): number badge,
@@ -57,13 +58,13 @@ public struct HadithReadingScreen: View {
                             .background(Color(hexToken: tokens.primaryContainer), in: Capsule())
                             .foregroundStyle(Color(hexToken: tokens.primary))
                         Spacer()
-                        Label(entry.grading, systemImage: "checkmark.seal.fill")
+                        Label(entry.grading.expandingArabicHonorifics, systemImage: "checkmark.seal.fill")
                             .font(.caption.weight(.medium))
                             .foregroundStyle(Color(hexToken: tokens.accent))
                     }
 
                     // Reverent centerpiece: the hadith text in an elevated card.
-                    Text(entry.arabicText)
+                    Text(entry.arabicText.expandingArabicHonorifics)
                         .font(.system(.title3, design: .serif))
                         .lineSpacing(8)
                         .multilineTextAlignment(.trailing)

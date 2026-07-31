@@ -1,5 +1,6 @@
 import ContentKit
 import DesignSystemKit
+import CoreKit
 import SwiftUI
 
 /// Reading view (docs/features/dua.md screen 3): Arabic text, toggleable
@@ -83,7 +84,7 @@ public struct DuaReadingScreen: View {
     // MARK: - Arabic centerpiece
 
     private var arabicCard: some View {
-        Text(dua.arabicText)
+        Text(dua.arabicText.expandingArabicHonorifics)
             .font(.system(size: 30, weight: .semibold, design: .serif))
             .lineSpacing(14)
             .multilineTextAlignment(.trailing)

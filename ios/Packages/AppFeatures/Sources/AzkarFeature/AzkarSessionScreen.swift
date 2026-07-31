@@ -1,5 +1,6 @@
 import ContentKit
 import DesignSystemKit
+import CoreKit
 import SwiftUI
 
 /// The reading/counting session (docs/features/azkar.md screen 2). Completion
@@ -58,7 +59,7 @@ public struct AzkarSessionScreen: View {
                 // Arabic dhikr — the prominent centerpiece card.
                 BrandCard(tokens, padding: 22) {
                     VStack(alignment: .trailing, spacing: 16) {
-                        Text(item.arabicText)
+                        Text(item.arabicText.expandingArabicHonorifics)
                             .font(.title.weight(.medium))
                             .foregroundStyle(Color(hexToken: tokens.onSurface))
                             .multilineTextAlignment(.trailing)

@@ -135,7 +135,7 @@ struct HadithWidgetView: View {
                     .foregroundStyle(brandPrimary)
                 Spacer()
             }
-            Text(entry.hadith.arabic)
+            Text(entry.hadith.arabic.expandingArabicHonorifics)
                 .font(family == .systemLarge ? .title3.weight(.semibold) : .callout.weight(.medium))
                 .foregroundStyle(brandInk)
                 .multilineTextAlignment(.trailing)
