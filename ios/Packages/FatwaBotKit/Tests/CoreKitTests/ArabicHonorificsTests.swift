@@ -44,3 +44,52 @@ final class ArabicHonorificsTests: XCTestCase {
         XCTAssertEqual(input.expandingArabicHonorifics, "رضي الله عنه ثُمَّ رضي الله عنهما")
     }
 }
+
+// MARK: - Takhrij trimming
+
+final class HadithDisplayTests: XCTestCase {
+
+    func testRemovesTheTrailingTakhrij() {
+        let matn = "«هُوَ الطَّهُورُ مَاؤُهُ الْحِلُّ مَيْتَتُهُ» أَخْرَجَهُ الْأَرْبَعَةُ."
+        XCTAssertEqual(
+            HadithDisplay.matnWithoutTakhrij(matn, grading: "أَخْرَجَهُ الْأَرْبَعَةُ."),
+            "«هُوَ الطَّهُورُ مَاؤُهُ الْحِلُّ مَيْتَتُهُ»"
+        )
+    }
+
+    func testLeavesTheMatnAloneWhenTheGradingIsAuthoredRatherThanQuoted() {
+        // العمدة's stamped grading appears nowhere in its text (migration 0030).
+        let matn = "قَالَ رَسُولُ اللَّهِ: «وَيْلٌ لِلْأَعْقَابِ مِنَ النَّارِ»."
+        XCTAssertEqual(HadithDisplay.matnWithoutTakhrij(matn, grading: "مُتَّفَقٌ عَلَيْهِ."), matn)
+    }
+
+    func testDoesNotCutMidTextWhenCommentaryFollows() {
+        // Removing a non-suffix clause would leave a hole mid-sentence, so this
+        // deliberately shows the takhrij twice instead.
+        let matn = "«وَلْيَضَعْ يَدَيْهِ» أَخْرَجَهُ الثَّلَاثَةُ. وَهُوَ أَقْوَى مِنْ حَدِيثِ وَائِلٍ."
+        XCTAssertEqual(
+            HadithDisplay.matnWithoutTakhrij(matn, grading: "أَخْرَجَهُ الثَّلَاثَةُ."),
+            matn.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        )
+    }
+
+    func testKeepsTheMatnWhenTrimmingWouldEmptyIt() {
+        let matn = "مُتَّفَقٌ عَلَيْهِ."
+        XCTAssertEqual(HadithDisplay.matnWithoutTakhrij(matn, grading: "مُتَّفَقٌ عَلَيْهِ."), matn)
+    }
+
+    func testEmptyGradingIsANoOp() {
+        let matn = "إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ."
+        XCTAssertEqual(HadithDisplay.matnWithoutTakhrij(matn, grading: ""), matn)
+    }
+
+    func testToleratesWhitespaceDifferencesBetweenStoredMatnAndGrading() {
+        // The grading was extracted from whitespace-normalized text, so the
+        // stored matn can differ in spacing and must still match.
+        let matn = "«الْمَتْنُ»   أَخْرَجَهُ\nمُسْلِمٌ."
+        XCTAssertEqual(
+            HadithDisplay.matnWithoutTakhrij(matn, grading: "أَخْرَجَهُ مُسْلِمٌ."),
+            "«الْمَتْنُ»"
+        )
+    }
+}

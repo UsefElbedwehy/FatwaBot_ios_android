@@ -72,3 +72,40 @@ public extension String {
     /// they stand for, so they render in fonts that lack the Unicode 14 glyphs.
     var expandingArabicHonorifics: String { ArabicHonorifics.expanded(self) }
 }
+
+// MARK: - Takhrij
+
+/// Display helpers for hadith text whose takhrij now lives in its own field.
+public enum HadithDisplay {
+    /// The matn with its trailing takhrij removed, when the grading is exactly
+    /// that trailing clause.
+    ///
+    /// Migration 0029 **copied** the takhrij into `grading` rather than moving
+    /// it, so the stored matn still ends with the attribution and the reader
+    /// showed it twice. Trimming here rather than in the database keeps that
+    /// decision intact: the stored text stays as printed, and a bad trim is a
+    /// display bug rather than lost scripture.
+    ///
+    /// Only a **suffix** is removed. Some entries carry the takhrij mid-text
+    /// followed by ibn Hajr's commentary; cutting there would leave a hole in
+    /// the sentence, so those are returned untouched and simply show the clause
+    /// twice — the safe failure.
+    ///
+    /// Returns the matn unchanged when `grading` is empty, is not the trailing
+    /// clause (العمدة's stamped "متفق عليه." appears nowhere in its matn), or
+    /// when removing it would leave nothing to read.
+    public static func matnWithoutTakhrij(_ matn: String, grading: String) -> String {
+        let text = matn.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let clause = grading.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard !clause.isEmpty, text.hasSuffix(clause) else { return text }
+
+        let remainder = String(text.dropLast(clause.count))
+            .trimmingCharacters(in: .whitespaces)
+        // A hadith that is *only* its attribution has nothing left to show.
+        // Tested by content rather than length: Arabic combines a letter and its
+        // harakat into one Character, so a legitimate short matn counts far
+        // fewer Characters than it has letters and a length threshold rejects it.
+        guard remainder.contains(where: \.isLetter) else { return text }
+        return remainder
+    }
+}

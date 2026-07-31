@@ -64,7 +64,11 @@ public struct HadithReadingScreen: View {
                     }
 
                     // Reverent centerpiece: the hadith text in an elevated card.
-                    Text(entry.arabicText.expandingArabicHonorifics)
+                    Text(
+                        HadithDisplay
+                            .matnWithoutTakhrij(entry.arabicText, grading: entry.grading)
+                            .expandingArabicHonorifics
+                    )
                         .font(.system(.title3, design: .serif))
                         .lineSpacing(8)
                         .multilineTextAlignment(.trailing)
