@@ -126,12 +126,27 @@ class AwradViewModel @Inject constructor(
         // gamification rule would silently only work for iOS.
         activityEvents.record(eventType = "wird_ticked", metadata = mapOf("wird_id" to wirdId))
 
-        val target = _state.value.wirds.firstOrNull { it.id == wirdId }?.target
+        val wird = _state.value.wirds.firstOrNull { it.id == wirdId }
+        val target = wird?.target
         val countAfter = countBefore + amount
-        if (target != null && countBefore < target && countAfter >= target) {
+        val justReachedTarget = target != null && countBefore < target && countAfter >= target
+        if (justReachedTarget) {
             haptics.targetReached()
         } else {
             haptics.tick()
+        }
+        // Leaderboard currency (owner decision, 2026-07). The scoring engine
+        // filters on event type alone — it cannot look inside metadata — so
+        // "rank only the four fixed slots" needs its own event rather than a
+        // filter over `wird_ticked`.
+        //
+        // Ranking on `wird_day_completed` instead would be unfair in both
+        // directions: it is all-or-nothing over *every* active wird, so a user
+        // with one trivial custom wird earns it more easily than a user with
+        // ten. The fixed four are on every board by construction, which is what
+        // makes them comparable between users at all.
+        if (justReachedTarget && wird?.isFixed == true) {
+            activityEvents.record(eventType = "fixed_wird_completed", metadata = mapOf("wird_id" to wirdId))
         }
     }
 

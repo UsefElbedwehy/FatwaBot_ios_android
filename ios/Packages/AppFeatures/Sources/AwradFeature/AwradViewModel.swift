@@ -97,13 +97,28 @@ public final class AwradViewModel {
             progress.append(WirdDailyProgress(wirdId: wirdId, dateKey: key, count: amount))
         }
         store.saveProgress(progress)
-        let target = wirds.first { $0.id == wirdId }?.target ?? 0
-        if countBefore < target, todayCount(for: wirdId) >= target {
+        let wird = wirds.first { $0.id == wirdId }
+        let target = wird?.target ?? 0
+        let justReachedTarget = countBefore < target && todayCount(for: wirdId) >= target
+        if justReachedTarget {
             haptics.targetReached()
         } else {
             haptics.tick()
         }
         activityEvents.record(eventType: "wird_ticked", metadata: ["wird_id": wirdId])
+        // Leaderboard currency (owner decision, 2026-07). The scoring engine
+        // filters on event type alone — it cannot look inside metadata — so
+        // "rank only the four fixed slots" needs its own event rather than a
+        // filter over `wird_ticked`.
+        //
+        // Ranking on `wird_day_completed` instead would be unfair in both
+        // directions: it is all-or-nothing over *every* active wird, so a user
+        // with one trivial custom wird earns it more easily than a user with
+        // ten. The fixed four are on every board by construction, which is what
+        // makes them comparable between users at all.
+        if justReachedTarget, wird?.isFixed == true {
+            activityEvents.record(eventType: "fixed_wird_completed", metadata: ["wird_id": wirdId])
+        }
     }
 
     /// Records today's completion only if every *active* wird has reached its

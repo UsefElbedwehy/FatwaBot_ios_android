@@ -85,6 +85,13 @@ class WirdCompletionResponder @Inject constructor(
             // one `wird_ticked` per call whatever the amount, so a one-shot jump to
             // target and a stepper drag are indistinguishable to gamification.
             activityEvents.record(eventType = "wird_ticked", metadata = mapOf("wird_id" to wirdId))
+            // The guard above means this branch is exactly "crossed the target
+            // just now", so the leaderboard event fires here on the same terms
+            // as the in-app path. Without it, answering "yes" from the shade
+            // would tick the wird but silently score nothing.
+            if (wird.isFixed) {
+                activityEvents.record(eventType = "fixed_wird_completed", metadata = mapOf("wird_id" to wirdId))
+            }
         }
 
         return WirdCompletionOutcome(
