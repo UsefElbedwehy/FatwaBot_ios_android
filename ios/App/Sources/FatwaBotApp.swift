@@ -1,4 +1,5 @@
 import AwradFeature
+import ContentKit
 import DesignSystemKit
 import Factory
 import NetworkingKit
@@ -28,7 +29,10 @@ struct FatwaBotApp: App {
                 .environment(theme)
                 .tint(Color(hexToken: theme.current(for: .light).primary))
                 .preferredColorScheme((AppearanceMode(rawValue: appearanceRaw) ?? .system).colorScheme)
-                .task { await flushAnalytics() }
+                .task {
+                    await flushAnalytics()
+                    await syncContent()
+                }
                 .onChange(of: scenePhase) { _, phase in
                     // Backgrounding is the natural batch boundary: it's when a
                     // session has actually ended, and the queue is otherwise only
@@ -37,8 +41,20 @@ struct FatwaBotApp: App {
                     if phase == .background {
                         Task { await flushAnalytics() }
                     }
+                    // Foregrounding is the other natural sync point: a long-lived
+                    // app would otherwise never pick up published content after
+                    // its one launch-time sync.
+                    if phase == .active {
+                        Task { await syncContent() }
+                    }
                 }
         }
+    }
+
+    /// Pulls published content on launch and on every foreground. Failures are
+    /// silent by design — the bundled seed keeps the app fully usable offline.
+    private func syncContent() async {
+        await Container.shared.contentService().syncAll(locale: ContentLocale.current)
     }
 
     private func flushAnalytics() async {

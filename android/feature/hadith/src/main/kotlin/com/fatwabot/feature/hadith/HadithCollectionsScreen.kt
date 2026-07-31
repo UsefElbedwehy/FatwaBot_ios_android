@@ -1,6 +1,8 @@
 package com.fatwabot.feature.hadith
 
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -100,9 +102,13 @@ private fun CollectionCard(
     onClick: () -> Unit,
 ) {
     val fraction = if (collection.entryCount > 0) readCount.toFloat() / collection.entryCount else 0f
+    // A collection with nothing approved yet is shown but not clickable: the
+    // backend only serves reviewed entries, so opening it lands on a blank
+    // reader that looks like a failure rather than a policy.
+    val underReview = collection.entryCount == 0
     BrandCard(
         tokens = tokens,
-        modifier = Modifier.clickable { onClick() },
+        modifier = if (underReview) Modifier.alpha(0.62f) else Modifier.clickable { onClick() },
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
@@ -112,7 +118,11 @@ private fun CollectionCard(
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(44.dp)) {
                 RingProgress(value = fraction, strokeWidth = 5.dp, modifier = Modifier.fillMaxSize())
                 Icon(
-                    if (completed) Icons.Filled.Check else Icons.AutoMirrored.Filled.MenuBook,
+                    when {
+                        underReview -> Icons.Filled.HourglassEmpty
+                        completed -> Icons.Filled.Check
+                        else -> Icons.AutoMirrored.Filled.MenuBook
+                    },
                     contentDescription = if (completed) stringResource(R.string.hadith_completed) else null,
                     tint = if (completed) tokens.accent else tokens.primary,
                     modifier = Modifier.size(20.dp),
@@ -126,17 +136,23 @@ private fun CollectionCard(
                     color = tokens.onSurface,
                 )
                 Text(
-                    stringResource(R.string.hadith_read_count, readCount, collection.entryCount),
+                    if (underReview) {
+                        stringResource(R.string.hadith_under_review)
+                    } else {
+                        stringResource(R.string.hadith_read_count, readCount, collection.entryCount)
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = tokens.onSurfaceSecondary,
                 )
             }
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = tokens.onSurfaceSecondary.copy(alpha = 0.7f),
-                modifier = Modifier.size(20.dp),
-            )
+            if (!underReview) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = tokens.onSurfaceSecondary.copy(alpha = 0.7f),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }

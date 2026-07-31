@@ -171,7 +171,7 @@ struct RootTabView: View {
     /// server hasn't supplied one, and to nothing if an operator blanks it
     /// deliberately.
     private var tasbeehNotice: String? {
-        let locale = Locale.current.language.languageCode?.identifier ?? "ar"
+        let locale = ContentLocale.current
         if let remote = Container.shared.configService().string("tasbeeh.notice", locale: locale) {
             return remote.isEmpty ? nil : remote
         }
@@ -187,7 +187,7 @@ struct RootTabView: View {
     /// a value the row is hidden, because a made-up address ships worse than no
     /// address at all.
     private var contactLinks: ContactLinks {
-        let locale = Locale.current.language.languageCode?.identifier ?? "ar"
+        let locale = ContentLocale.current
         let config = Container.shared.configService()
         func value(_ key: String) -> String? {
             let trimmed = (config.string(key, locale: locale) ?? "")
@@ -287,7 +287,10 @@ struct RootTabView: View {
                 .navigationTitle(Text("worship.awrad"))
                 .navigationBarTitleDisplayMode(.inline)
         case .hadith:
-            HadithCollectionsScreen(viewModel: Container.shared.hadithViewModel())
+            HadithCollectionsScreen(
+                viewModel: Container.shared.hadithViewModel(),
+                locale: ContentLocale.current
+            )
                 .navigationTitle(Text("worship.hadith"))
                 .navigationBarTitleDisplayMode(.inline)
         case .journey:

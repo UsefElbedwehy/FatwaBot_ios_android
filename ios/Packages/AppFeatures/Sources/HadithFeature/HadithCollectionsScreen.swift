@@ -32,16 +32,24 @@ public struct HadithCollectionsScreen: View {
                 ScrollView {
                     VStack(spacing: 14) {
                         ForEach(viewModel.collections) { collection in
-                            NavigationLink {
-                                HadithReadingScreen(viewModel: viewModel, slug: collection.slug, locale: locale)
-                                    .navigationTitle(Text(collection.name))
-                                    #if os(iOS)
-                                    .navigationBarTitleDisplayMode(.inline)
-                                    #endif
-                            } label: {
+                            // A collection with nothing approved yet is shown but
+                            // not navigable: the backend only serves reviewed
+                            // entries, so opening it lands on a blank reader that
+                            // looks like a failure rather than a policy.
+                            if collection.entryCount == 0 {
                                 row(collection)
+                            } else {
+                                NavigationLink {
+                                    HadithReadingScreen(viewModel: viewModel, slug: collection.slug, locale: locale)
+                                        .navigationTitle(Text(collection.name))
+                                        #if os(iOS)
+                                        .navigationBarTitleDisplayMode(.inline)
+                                        #endif
+                                } label: {
+                                    row(collection)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                     .padding(20)
@@ -57,10 +65,11 @@ public struct HadithCollectionsScreen: View {
         let read = viewModel.readCount(forSlug: collection.slug)
         let completed = viewModel.isCompleted(slug: collection.slug, totalEntries: collection.entryCount)
         let fraction = collection.entryCount > 0 ? Double(read) / Double(collection.entryCount) : 0
+        let underReview = collection.entryCount == 0
         return HStack(spacing: 14) {
             ZStack {
                 RingProgress(value: fraction, lineWidth: 5, tokens: tokens)
-                Image(systemName: completed ? "checkmark" : "book.closed.fill")
+                Image(systemName: underReview ? "hourglass" : (completed ? "checkmark" : "book.closed.fill"))
                     .font(.subheadline)
                     .foregroundStyle(Color(hexToken: completed ? tokens.accent : tokens.primary))
             }
@@ -71,16 +80,25 @@ public struct HadithCollectionsScreen: View {
                 Text(collection.name)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
-                Text("hadith.progress_read \(read) \(collection.entryCount)")
-                    .font(.caption)
-                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                if underReview {
+                    Text("hadith.under_review")
+                        .font(.caption)
+                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                } else {
+                    Text("hadith.progress_read \(read) \(collection.entryCount)")
+                        .font(.caption)
+                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                }
             }
             Spacer(minLength: 8)
-            Image(systemName: "chevron.forward")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary).opacity(0.7))
+            if !underReview {
+                Image(systemName: "chevron.forward")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary).opacity(0.7))
+            }
         }
         .brandCard(tokens)
+        .opacity(underReview ? 0.62 : 1)
         .accessibilityElement(children: .combine)
     }
 }

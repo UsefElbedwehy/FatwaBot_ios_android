@@ -7,4 +7,5 @@
     <string name="hadith_empty">No hadith collections available right now. Please try again later.</string>
     <string name="hadith_completed">Completed</string>
     <string name="hadith_read_count">%1$d/%2$d read</string>
+    <string name="hadith_under_review">Under scholarly review — available soon</string>
 </resources>
