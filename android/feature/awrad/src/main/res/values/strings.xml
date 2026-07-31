@@ -18,4 +18,9 @@
     <string name="awrad_custom_wird_default">Custom wird</string>
     <string name="awrad_save_wird">Save wird</string>
     <string name="awrad_create_custom_wird">Create custom wird</string>
+    <string name="awrad_fixed_qiyam_al_layl">قيام الليل</string>
+    <string name="awrad_fixed_daily_quran">ورد يومي من القرآن</string>
+    <string name="awrad_fixed_morning_azkar">أذكار الصباح</string>
+    <string name="awrad_fixed_evening_azkar">أذكار المساء</string>
+    <string name="awrad_fixed_badge">Always on</string>
 </resources>

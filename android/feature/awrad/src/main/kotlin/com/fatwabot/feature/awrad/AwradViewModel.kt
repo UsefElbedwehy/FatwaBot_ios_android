@@ -151,13 +151,24 @@ class AwradViewModel @Inject constructor(
         return true
     }
 
-    /** Archives without deleting historical progress — stats remain accurate. */
-    fun archiveWird(wirdId: String) {
-        val updated = _state.value.wirds.map {
-            if (it.id == wirdId) it.copy(archivedAtEpochSeconds = clock.now().epochSeconds) else it
+    /**
+     * Archives without deleting historical progress — stats remain accurate.
+     *
+     * Returns `false`, changing nothing, for one of the four fixed slots: those
+     * are on every board by definition, so archiving one is not a user choice to
+     * honour. [SeededWirdStore] would undo it on the next read anyway; refusing
+     * here means the UI never briefly shows a state that is about to be reverted.
+     */
+    fun archiveWird(wirdId: String): Boolean {
+        val index = _state.value.wirds.indexOfFirst { it.id == wirdId }
+        if (index < 0) return false
+        if (_state.value.wirds[index].isFixed) return false
+        val updated = _state.value.wirds.toMutableList().apply {
+            this[index] = this[index].copy(archivedAtEpochSeconds = clock.now().epochSeconds)
         }
         store.saveWirds(updated)
         _state.update { it.copy(wirds = updated) }
+        return true
     }
 
     private fun todayKey(): String = dateKey(clock.now().epochSeconds)

@@ -259,12 +259,30 @@ private fun WirdCard(wird: Wird, todayCount: Int, tokens: ColorTokens, onTick: (
                 }
             }
             Column(modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
-                Text(
-                    wird.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = tokens.onSurface,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        wird.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = tokens.onSurface,
+                    )
+                    // Explains, without a dialog, why this row has no way to
+                    // remove it — mirror of the iOS board's fixed badge.
+                    if (wird.isFixed) {
+                        Text(
+                            stringResource(R.string.awrad_fixed_badge),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = tokens.onSurfaceSecondary,
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .background(
+                                    tokens.onSurfaceSecondary.copy(alpha = 0.12f),
+                                    RoundedCornerShape(6.dp),
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                }
                 Text(
                     "$animatedCount/${wird.target}",
                     style = MaterialTheme.typography.labelMedium,

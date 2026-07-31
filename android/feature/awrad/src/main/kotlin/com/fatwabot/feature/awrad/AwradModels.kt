@@ -19,6 +19,17 @@ data class Wird(
     val frequency: String,
     val createdAtEpochSeconds: Long,
     val archivedAtEpochSeconds: Long? = null,
+    /**
+     * One of the four always-present slots ([FixedWirdSlot]). Persisted rather
+     * than derived so the marker survives a store round-trip on its own, and so
+     * a future slot whose id changed still reads back as fixed.
+     * Fixed wirds can be ticked and retargeted, never archived or removed.
+     *
+     * Records written before this field existed decode with `false`;
+     * [FixedWirdSlots.applied] — which every read goes through, via
+     * [SeededWirdStore] — repairs them by id.
+     */
+    val isFixed: Boolean = false,
 ) {
     val isActive: Boolean get() = archivedAtEpochSeconds == null
 }

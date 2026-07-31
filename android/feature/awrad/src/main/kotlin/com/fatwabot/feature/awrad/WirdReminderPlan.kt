@@ -68,18 +68,37 @@ object WirdReminderPlanner {
         // reminder for something the user retired is pure noise.
         // Creation order, with the id as a tie-breaker so the truncation the
         // budget forces is stable across runs rather than dependent on file order.
-        return wirds.filter { it.isActive }
+        val active = wirds.filter { it.isActive }
+        val userCreated = active.filter { !it.isFixed }
             .sortedWith(compareBy({ it.createdAtEpochSeconds }, { it.id }))
-            .take(budget)
-            .map {
-                PlannedWirdReminder(
-                    id = ID_PREFIX + it.id,
-                    wirdId = it.id,
-                    wirdName = it.name,
-                    hour = WirdReminderPreferences.clampHour(preferences.hour),
-                    minute = WirdReminderPreferences.clampMinute(preferences.minute),
-                )
-            }
+        // The four fixed slots come last in the budget queue on purpose: they are
+        // on every board, so ordering them first would evict the reminders of the
+        // wirds a user deliberately created. The total is still capped at
+        // `budget`, exactly as before — what changed is who fills the slots.
+        val fixed = active.filter { it.isFixed }
+            .sortedWith(
+                compareBy(
+                    { FixedWirdSlot.forWirdId(it.id)?.sortOrder ?: Int.MAX_VALUE },
+                    { it.id },
+                ),
+            )
+        return (userCreated + fixed).take(budget).map { wird ->
+            // A fixed slot is asked about while it is still actionable (see
+            // `FixedWirdSlot.reminderHour`) rather than piling onto the user's
+            // one configured time.
+            val slotHour = if (wird.isFixed) FixedWirdSlot.forWirdId(wird.id)?.reminderHour else null
+            PlannedWirdReminder(
+                id = ID_PREFIX + wird.id,
+                wirdId = wird.id,
+                wirdName = wird.name,
+                hour = if (slotHour != null) {
+                    WirdReminderPreferences.clampHour(slotHour)
+                } else {
+                    WirdReminderPreferences.clampHour(preferences.hour)
+                },
+                minute = if (slotHour != null) 0 else WirdReminderPreferences.clampMinute(preferences.minute),
+            )
+        }
     }
 
     /**
