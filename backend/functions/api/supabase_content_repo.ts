@@ -103,7 +103,16 @@ export class SupabaseContentRepo implements ContentRepo {
     const { data, error } = await this.db
       .schema("content").from("hadith_collections")
       .select("id,slug,name_translations,description_translations,hadith_entries(count)")
-      .eq("app_id", ctx.appId).eq("published", true).order("sort_order");
+      .eq("app_id", ctx.appId).eq("published", true)
+      // Count only what the detail endpoint will actually serve. Without this
+      // the embedded count includes unpublished rows, so the list advertised
+      // "بلوغ المرام · 1564" while opening it returned nothing — every entry
+      // seeded by 0025 is `review_status = 'pending'` until a scholar approves
+      // it. A filter on an embedded resource narrows the aggregate without
+      // dropping the parent, so a collection with nothing approved yet still
+      // appears, honestly, as 0.
+      .eq("hadith_entries.published", true)
+      .order("sort_order");
     if (error) throw error;
     return (data ?? []).map((c) => ({
       id: c.id,
