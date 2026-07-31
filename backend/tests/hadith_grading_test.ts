@@ -56,3 +56,29 @@ Deno.test("never returns text absent from the matn", () => {
   const grading = extractGrading(matn);
   assertEquals(matn.includes(grading), true);
 });
+
+Deno.test("rejects a verb inside the matn mistaken for an attribution", () => {
+  // العمدة 173: أخرجه here is Abu Sa'id's verb, and the clause ends on a closing
+  // quote it never opened — the tell that the anchor landed inside the matn.
+  const matn = "قَالَ أَبُو سَعِيدٍ: أَمَّا أَنَا؛ فَلَا أَزَالُ أُخْرِجُهُ كَمَا كُنْتُ أُخْرِجُهُ ».";
+  assertEquals(extractGrading(matn), "");
+});
+
+Deno.test("keeps a takhrij that legitimately quotes an alternate wording", () => {
+  // Same character, balanced — this one is real and must survive.
+  const matn = "«...» أَخْرَجَهُ مُسْلِمٌ، وَفِي لَفْظٍ لَهُ: «فَلْيُرِقْهُ».";
+  assertEquals(
+    extractGrading(matn),
+    "أَخْرَجَهُ مُسْلِمٌ، وَفِي لَفْظٍ لَهُ: «فَلْيُرِقْهُ».",
+  );
+});
+
+Deno.test("rejects an isnad note listing companions rather than collectors", () => {
+  const matn = "«...» رَوَاهُ: أَبُو هُرَيْرَةَ، وَعَائِشَةُ، وَأَنَسُ بْنُ مَالِكٍ ﵃.";
+  assertEquals(extractGrading(matn), "");
+});
+
+Deno.test("keeps a takhrij whose collector is followed by a colon", () => {
+  const matn = "«...» رَوَاهُ الْبَيْهَقِيُّ: عَنْ عَلِيٍّ - ﵁ - مِنْ قَوْلِهِ.";
+  assertEquals(extractGrading(matn), "رَوَاهُ الْبَيْهَقِيُّ: عَنْ عَلِيٍّ - ﵁ - مِنْ قَوْلِهِ.");
+});

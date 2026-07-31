@@ -116,3 +116,35 @@ numbering did not truncate either one.
 These are exactly the two failure modes worth distinguishing: an editorial
 numbering convention (190, 678), and the edition's own unused numbers (333,
 1449). Neither is import loss, and no re-import is warranted.
+
+
+## Gradings
+
+`hadith_entries.grading` is populated two different ways, and the distinction
+matters when reasoning about provenance:
+
+| Collection | Coverage | Origin |
+|---|---|---|
+| بلوغ المرام | 1351 / 1564 | **Extracted** from the matn by `scripts/extract_hadith_grading.ts` (0029). Every value is a literal substring of its own entry. |
+| العمدة | 414 / 414 | **Authored** (0030): 409 stamped `متفق عليه` — the collection's defining criterion, which appears nowhere in its text — and 5 left as the text states. |
+| النووية / القدسية | 0 | Not attempted. |
+
+The 213 uncovered بلوغ المرام entries are continuation entries (`وفي رواية…`,
+`وله شاهد…`) that hang off the preceding hadith and carry no ruling of their own.
+
+**Five العمدة entries are deliberately not stamped**, because each contradicts
+the blanket rule: 187 (أبو داود), 198 and 397 (مسلم only), 340 (الجماعة),
+398 (البخاري only). Stamping those would convert a harmless redundancy into a
+factual error.
+
+### Two extractor guards, both derived from real misfires
+
+Each fires on exactly one entry in 1,978, with no false rejections:
+
+- **Unbalanced closing quote** → the anchor landed inside the matn's quotation.
+  العمدة 173 ends `...فَلَا أَزَالُ أُخْرِجُهُ كَمَا كُنْتُ أُخْرِجُهُ »` — أخرجه there is Abu
+  Sa'id's verb. A takhrij that legitimately quotes an alternate wording keeps its
+  quotes balanced, so 76 valid بلوغ gradings containing «…» are unaffected.
+- **Colon immediately after رواه** → companions, not collectors. العمدة 191 reads
+  `رَوَاهُ: أَبُو هُرَيْرَةَ، وَعَائِشَةُ، وَأَنَسُ بْنُ مَالِكٍ`. A real takhrij names its collector
+  first (`رَوَاهُ الْبَيْهَقِيُّ: عَنْ عَلِيٍّ…`), so the colon never comes first.

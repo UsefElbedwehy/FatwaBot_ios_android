@@ -89,6 +89,30 @@ function startsWithTakhrij(sentence: string): boolean {
  * mention a narration mid-text, and only the closing attribution is the ruling
  * on this hadith.
  */
+/**
+ * Rejects clauses that look like an attribution but are not one.
+ *
+ * Both rules were derived from real misfires over the 1,978-entry corpus, and
+ * both fire on exactly one entry each with no false rejections:
+ *
+ *  - An unbalanced closing quote means the anchor landed *inside* the matn's
+ *    quotation. العمدة 173 ends "...فَلَا أَزَالُ أُخْرِجُهُ كَمَا كُنْتُ أُخْرِجُهُ »" —
+ *    أخرجه there is Abu Sa'id's verb, not a takhrij. A takhrij that legitimately
+ *    quotes an alternate wording («...») has its quotes balanced.
+ *  - A colon *immediately* after رواه introduces the companions who narrated it,
+ *    not the collectors who recorded it: العمدة 191 reads
+ *    "رَوَاهُ: أَبُو هُرَيْرَةَ، وَعَائِشَةُ، وَأَنَسُ بْنُ مَالِكٍ". A real takhrij names its
+ *    collector first ("رَوَاهُ الْبَيْهَقِيُّ: عَنْ عَلِيٍّ..."), so the colon never comes first.
+ */
+function isFalsePositive(clause: string): boolean {
+  const closing = (clause.match(/»/g) ?? []).length;
+  const opening = (clause.match(/«/g) ?? []).length;
+  if (closing > opening) return true;
+
+  const { normalized } = normalizeWithMap(clause);
+  return /^(رواه|رواها|رواهما)\s*:/.test(normalized.replace(/^[«»\s]+/, ""));
+}
+
 export function extractGrading(matn: string): string {
   const text = matn.split(/\s+/).join(" ").trim();
   const { normalized, map } = normalizeWithMap(text);
@@ -106,7 +130,8 @@ export function extractGrading(matn: string): string {
     if (!startsWithTakhrij(sentence)) break;
     kept.push(sentence);
   }
-  return kept.join(" ").trim();
+  const clause = kept.join(" ").trim();
+  return isFalsePositive(clause) ? "" : clause;
 }
 
 // MARK: - CLI
