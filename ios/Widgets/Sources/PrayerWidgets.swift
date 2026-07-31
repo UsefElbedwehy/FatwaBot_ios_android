@@ -8,6 +8,32 @@ import WidgetKit
 // widget in this extension (see GamificationWidgets.swift).
 let brandPrimary = Color(red: 0x7A / 255, green: 0x2A / 255, blue: 0x2A / 255)
 let brandSurface = Color(red: 0xFA / 255, green: 0xF3 / 255, blue: 0xEC / 255)
+/// Text colours to go with `brandSurface`.
+///
+/// These have to exist, and have to be applied explicitly, because
+/// `brandSurface` is a *fixed* cream literal — it does not darken in dark mode.
+/// SwiftUI's `.primary` / `.secondary` do adapt, so in dark mode they resolve to
+/// near-white and the text vanishes against the cream card. Mirrors the same
+/// guard on Android (`WidgetTheme.kt`).
+let brandInk = Color(red: 0x2A / 255, green: 0x21 / 255, blue: 0x18 / 255)
+let brandMuted = Color(red: 0x6B / 255, green: 0x5E / 255, blue: 0x52 / 255)
+
+extension View {
+    /// The cream card every home-screen widget sits on, plus the ink default
+    /// that must travel with it.
+    ///
+    /// Applying the foreground style here rather than per-`Text` means a new
+    /// label added later inherits a readable colour by default instead of
+    /// silently reintroducing the white-on-cream bug.
+    ///
+    /// Deliberately NOT used by the `.accessory*` families: those render on the
+    /// Lock Screen with a clear background and are tinted by the system, so
+    /// forcing ink there would make them invisible instead.
+    func brandWidgetContainer() -> some View {
+        foregroundStyle(brandInk)
+            .containerBackground(brandSurface, for: .widget)
+    }
+}
 
 // MARK: - Next Prayer
 
@@ -15,7 +41,7 @@ struct NextPrayerWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "NextPrayerWidget", provider: PrayerTimelineProvider()) { entry in
             NextPrayerView(entry: entry)
-                .containerBackground(brandSurface, for: .widget)
+                .brandWidgetContainer()
                 .widgetURL(DeepLink.prayer.url)
         }
         .configurationDisplayName(Text("widget.next_prayer.name"))
@@ -32,7 +58,7 @@ struct NextPrayerView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("home.next_prayer")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(brandMuted)
                 Text(PrayerWidgetSnapshot.title(for: next.prayer))
                     .font(.title2.weight(.bold))
                     .foregroundStyle(brandPrimary)
@@ -42,7 +68,7 @@ struct NextPrayerView: View {
                 Spacer()
                 Text(next.time, style: .time)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(brandMuted)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         } else {
@@ -57,7 +83,7 @@ struct PrayerTimelineWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "PrayerTimelineWidget", provider: PrayerTimelineProvider()) { entry in
             PrayerTimelineView(entry: entry)
-                .containerBackground(brandSurface, for: .widget)
+                .brandWidgetContainer()
                 .widgetURL(DeepLink.prayer.url)
         }
         .configurationDisplayName(Text("widget.timeline.name"))
@@ -86,7 +112,7 @@ struct PrayerTimelineView: View {
                         .foregroundStyle(brandPrimary)
                     Spacer()
                     Text("\(snapshot.hijriMonthName) \(snapshot.hijriDay)")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(brandMuted)
                 }
                 if family == .systemLarge {
                     // Full-day vertical list, the coming prayer highlighted.
@@ -96,16 +122,16 @@ struct PrayerTimelineView: View {
                             HStack {
                                 Image(systemName: isNext ? "chevron.right.circle.fill" : "circle")
                                     .font(.caption2)
-                                    .foregroundStyle(isNext ? brandPrimary : .secondary.opacity(0.5))
+                                    .foregroundStyle(isNext ? brandPrimary : brandMuted.opacity(0.5))
                                 Text(PrayerWidgetSnapshot.title(for: item.prayer))
                                     .font(.body)
                                     .fontWeight(isNext ? .bold : .regular)
-                                    .foregroundStyle(isNext ? brandPrimary : .primary)
+                                    .foregroundStyle(isNext ? brandPrimary : brandInk)
                                 Spacer()
                                 Text(item.time, style: .time)
                                     .font(.body.monospacedDigit())
                                     .fontWeight(isNext ? .bold : .regular)
-                                    .foregroundStyle(isNext ? brandPrimary : .secondary)
+                                    .foregroundStyle(isNext ? brandPrimary : brandMuted)
                             }
                             .padding(.vertical, 7)
                             .padding(.horizontal, 10)
@@ -126,11 +152,11 @@ struct PrayerTimelineView: View {
                             VStack(spacing: 3) {
                                 Text(PrayerWidgetSnapshot.title(for: item.prayer))
                                     .font(.caption2)
-                                    .foregroundStyle(isNext ? brandPrimary : .secondary)
+                                    .foregroundStyle(isNext ? brandPrimary : brandMuted)
                                 Text(item.time, style: .time)
                                     .font(.caption2.monospacedDigit())
                                     .fontWeight(isNext ? .bold : .regular)
-                                    .foregroundStyle(isNext ? brandPrimary : .secondary)
+                                    .foregroundStyle(isNext ? brandPrimary : brandMuted)
                             }
                             .frame(maxWidth: .infinity)
                         }
@@ -237,7 +263,7 @@ struct HijriDateWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HijriDateWidget", provider: PrayerTimelineProvider()) { entry in
             HijriDateView(entry: entry)
-                .containerBackground(brandSurface, for: .widget)
+                .brandWidgetContainer()
                 .widgetURL(DeepLink.prayer.url)
         }
         .configurationDisplayName(Text("widget.hijri.name"))
@@ -258,7 +284,7 @@ struct HijriDateView: View {
                 Text(snapshot.hijriMonthName)
                     .font(.headline)
                     .foregroundStyle(brandPrimary)
-                Text(verbatim: "\(snapshot.hijriYear) هـ").font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: "\(snapshot.hijriYear) هـ").font(.caption).foregroundStyle(brandMuted)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -273,7 +299,7 @@ struct WidgetPlaceholder: View {
             Image(systemName: "moon.stars")
                 .font(.title)
                 .foregroundStyle(brandPrimary)
-            Text("widget.open_app").font(.caption2).foregroundStyle(.secondary)
+            Text("widget.open_app").font(.caption2).foregroundStyle(brandMuted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

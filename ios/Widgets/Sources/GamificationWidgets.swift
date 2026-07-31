@@ -8,7 +8,7 @@ struct StreakWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "StreakWidget", provider: GamificationTimelineProvider()) { entry in
             StreakView(entry: entry)
-                .containerBackground(brandSurface, for: .widget)
+                .brandWidgetContainer()
                 .widgetURL(DeepLink.journey.url)
         }
         .configurationDisplayName(Text("widget.streak.name"))
@@ -25,7 +25,7 @@ struct StreakView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(streak.name)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(brandMuted)
                     .lineLimit(1)
                 Text("\(streak.currentLength)")
                     .font(.system(size: 40, weight: .bold))
@@ -34,11 +34,11 @@ struct StreakView: View {
                 if streak.graceRemaining > 0 {
                     Text("widget.streak.grace \(streak.graceRemaining)")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(brandMuted)
                 } else {
                     Text("widget.streak.longest \(streak.longestLength)")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(brandMuted)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -54,7 +54,7 @@ struct DailyChallengeWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DailyChallengeWidget", provider: GamificationTimelineProvider()) { entry in
             DailyChallengeView(entry: entry)
-                .containerBackground(brandSurface, for: .widget)
+                .brandWidgetContainer()
                 .widgetURL(DeepLink.journey.url)
         }
         .configurationDisplayName(Text("widget.daily_challenge.name"))
@@ -83,7 +83,7 @@ struct DailyChallengeView: View {
                     .tint(brandPrimary)
                 Text("\(challenge.progress)/\(challenge.target)")
                     .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(brandMuted)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         } else {
@@ -98,7 +98,7 @@ struct GamificationWidgetPlaceholder: View {
             Image(systemName: "flame")
                 .font(.title)
                 .foregroundStyle(brandPrimary)
-            Text("widget.open_app").font(.caption2).foregroundStyle(.secondary)
+            Text("widget.open_app").font(.caption2).foregroundStyle(brandMuted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

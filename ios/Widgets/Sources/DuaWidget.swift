@@ -165,7 +165,7 @@ struct RandomDuaWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "RandomDuaWidget", provider: DuaTimelineProvider()) { entry in
             DuaWidgetView(entry: entry)
-                .containerBackground(brandSurface, for: .widget)
+                .brandWidgetContainer()
                 .widgetURL(DeepLink.dua.url)
         }
         .configurationDisplayName(Text("widget.dua.name"))
@@ -191,7 +191,7 @@ struct DuaWidgetView: View {
             }
             Text(entry.dua.arabic)
                 .font(family == .systemLarge ? .title3.weight(.semibold) : .callout.weight(.medium))
-                .foregroundStyle(.primary)
+                .foregroundStyle(brandInk)
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .minimumScaleFactor(0.6)
@@ -199,7 +199,7 @@ struct DuaWidgetView: View {
             if family == .systemLarge {
                 Text(entry.dua.translation)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(brandMuted)
                     .lineLimit(3)
                     .minimumScaleFactor(0.7)
             }
