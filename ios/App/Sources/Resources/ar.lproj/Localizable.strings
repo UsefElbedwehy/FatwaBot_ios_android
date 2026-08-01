@@ -266,3 +266,14 @@
 "hadith.under_review" = "قيد المراجعة العلمية — ستتوفر قريباً";
 
 "hadith.collection_empty" = "لا توجد أحاديث بعد — هذه المجموعة قيد المراجعة.";
+
+"settings.sync_section" = "مزامنة المحتوى";
+"settings.sync.never" = "لم تتم المزامنة بعد";
+"settings.sync.never_detail" = "يُعرض المحتوى المضمّن حتى تكتمل أول مزامنة.";
+"settings.sync.in_progress" = "جارٍ المزامنة…";
+"settings.sync.in_progress_detail" = "يتم البحث عن محتوى جديد.";
+"settings.sync.up_to_date" = "محدّث";
+"settings.sync.checked_at %@" = "تم التحقق %@ — لا جديد.";
+"settings.sync.updated_at %lld %@" = "تم تحديث %lld عنصراً في %@.";
+"settings.sync.failed" = "تعذّرت مزامنة بعض المحتوى";
+"settings.sync.failed_detail %lld %@" = "أخفق %lld عنصراً في %@. لا يزال التطبيق يستخدم النسخة المحفوظة.";

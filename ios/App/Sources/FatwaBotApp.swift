@@ -9,6 +9,7 @@ import UserNotifications
 @main
 struct FatwaBotApp: App {
     @State private var theme = ThemeStore()
+    @State private var syncStatus = ContentSyncStatus()
     @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
 
@@ -27,6 +28,7 @@ struct FatwaBotApp: App {
         WindowGroup {
             AppRootView()
                 .environment(theme)
+                .environment(syncStatus)
                 .tint(Color(hexToken: theme.current(for: .light).primary))
                 .preferredColorScheme((AppearanceMode(rawValue: appearanceRaw) ?? .system).colorScheme)
                 .task {
@@ -54,7 +56,9 @@ struct FatwaBotApp: App {
     /// Pulls published content on launch and on every foreground. Failures are
     /// silent by design — the bundled seed keeps the app fully usable offline.
     private func syncContent() async {
-        await Container.shared.contentService().syncAll(locale: ContentLocale.current)
+        syncStatus.beginSync()
+        let summary = await Container.shared.contentService().syncAll(locale: ContentLocale.current)
+        syncStatus.finish(summary)
     }
 
     private func flushAnalytics() async {

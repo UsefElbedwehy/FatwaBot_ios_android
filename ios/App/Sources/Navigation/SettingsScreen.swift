@@ -63,6 +63,7 @@ struct SettingsScreen: View {
                 FeaturesGuideSection(tokens: tokens)
 
                 DiagnosticsSection(tokens: tokens)
+                ContentSyncSection(tokens: tokens)
 
                 // Hidden entirely while the dashboard has supplied no channel —
                 // an empty "Contact" header helps nobody.
@@ -429,6 +430,79 @@ private struct DiagnosticsSection: View {
                 }
             }
             .brandCard(tokens)
+        }
+    }
+}
+
+private struct ContentSyncSection: View {
+    let tokens: ColorTokens
+    @Environment(ContentSyncStatus.self) private var status
+
+    private static let time: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        return f
+    }()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            BrandSectionHeader("settings.sync_section", systemImage: "arrow.triangle.2.circlepath", tokens: tokens)
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: icon)
+                    .foregroundStyle(Color(hexToken: iconToken))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(Color(hexToken: tokens.onSurface))
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                }
+                Spacer(minLength: 0)
+            }
+            .brandCard(tokens)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var icon: String {
+        switch status.state {
+        case .never: "clock"
+        case .syncing: "arrow.triangle.2.circlepath"
+        case .succeeded: "checkmark.circle.fill"
+        case .failed: "exclamationmark.triangle.fill"
+        }
+    }
+
+    // A failure is amber, not red: the app still works from its cached copy, and
+    // colouring it as an error would overstate what the user is looking at.
+    private var iconToken: String {
+        if case .failed = status.state { return tokens.accent }
+        return tokens.primary
+    }
+
+    private var title: LocalizedStringKey {
+        switch status.state {
+        case .never: "settings.sync.never"
+        case .syncing: "settings.sync.in_progress"
+        case .succeeded: "settings.sync.up_to_date"
+        case .failed: "settings.sync.failed"
+        }
+    }
+
+    private var detail: LocalizedStringKey {
+        switch status.state {
+        case .never:
+            "settings.sync.never_detail"
+        case .syncing:
+            "settings.sync.in_progress_detail"
+        case let .succeeded(at, updated):
+            updated.isEmpty
+                ? "settings.sync.checked_at \(Self.time.string(from: at))"
+                : "settings.sync.updated_at \(updated.count) \(Self.time.string(from: at))"
+        case let .failed(at, keys):
+            "settings.sync.failed_detail \(keys.count) \(Self.time.string(from: at))"
         }
     }
 }

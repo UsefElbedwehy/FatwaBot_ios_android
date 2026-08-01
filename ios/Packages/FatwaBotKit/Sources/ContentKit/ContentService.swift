@@ -95,6 +95,33 @@ public actor ContentService {
         return outcome
     }
 
+    /// True when the error is the delta protocol's *success* case in disguise.
+    ///
+    /// The API answers an up-to-date request with `{"up_to_date": true}`, a
+    /// different shape from every content model, so decoding it as the payload
+    /// throws `keyNotFound("version")`. While failures were swallowed this was
+    /// invisible; the moment they were reported, every collection that was
+    /// already current started claiming it had failed.
+    ///
+    /// Narrow on purpose — it keys on `version` specifically, the one field
+    /// every content payload has and the up-to-date envelope lacks, so a
+    /// genuinely malformed response (a wrong type, a missing entry field) still
+    /// reports as a failure.
+    ///
+    /// Handles both shapes the error can arrive in: `APIClient` wraps decoding
+    /// failures as `APIError.decoding(String)`, while a caller decoding directly
+    /// throws `DecodingError`. Matching only the wrapped form made this pass in
+    /// production and fail under test, which is the wrong way round.
+    private func isUpToDateEnvelope(_ error: Error) -> Bool {
+        if case let .keyNotFound(key, _)? = error as? DecodingError {
+            return key.stringValue == "version"
+        }
+        if case let .decoding(message)? = error as? APIError {
+            return message.contains("keyNotFound") && message.contains("version")
+        }
+        return false
+    }
+
     /// Runs one fetch, converting a thrown error into an observable outcome.
     private func refresh<T>(
         key: String,
@@ -108,6 +135,7 @@ public actor ContentService {
             apply(fresh)
             return record(key, .updated)
         } catch {
+            if isUpToDateEnvelope(error) { return record(key, .unchanged) }
             return record(key, .failed(String(describing: error)))
         }
     }

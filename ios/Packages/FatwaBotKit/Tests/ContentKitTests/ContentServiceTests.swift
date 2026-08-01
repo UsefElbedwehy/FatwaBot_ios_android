@@ -150,4 +150,29 @@ final class ContentServiceTests: XCTestCase {
         XCTAssertTrue(summary.hasFailures, "unreachable endpoints must be reported")
         XCTAssertTrue(summary.failed.contains("duas"))
     }
+
+    func testUpToDateEnvelopeIsUnchangedNotFailed() async {
+        // The API answers an already-current request with {"up_to_date": true},
+        // which cannot decode as the payload. That must read as success — the
+        // Settings row otherwise reports every healthy collection as failed.
+        let client = StubClient()
+        client.responses["v1/content/azkar"] = Data("{\"up_to_date\": true}".utf8)
+        let service = ContentService(store: tempStore(), client: client)
+
+        let outcome = await service.refreshAzkar(locale: "ar")
+        XCTAssertEqual(outcome, .unchanged)
+        let failures = await service.lastFailures
+        XCTAssertNil(failures["azkar.ar"])
+    }
+
+    func testAGenuinelyMalformedPayloadStillFails() async {
+        // The up-to-date check must stay narrow enough to let real corruption
+        // through — otherwise it trades one silent failure for another.
+        let client = StubClient()
+        client.responses["v1/content/azkar"] = Data("{\"version\": \"not-a-number\"}".utf8)
+        let service = ContentService(store: tempStore(), client: client)
+
+        let outcome = await service.refreshAzkar(locale: "ar")
+        XCTAssertTrue(outcome.isFailure)
+    }
 }

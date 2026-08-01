@@ -27,16 +27,21 @@ public extension ContentService {
 
     /// What a full sync did, so a caller can tell a healthy no-op from a
     /// silently broken one.
-    struct SyncSummary: Equatable, Sendable {
-        var updated: [String] = []
-        var failed: [String] = []
+    public struct SyncSummary: Equatable, Sendable {
+        public internal(set) var updated: [String] = []
+        public internal(set) var failed: [String] = []
 
-        var didUpdate: Bool { !updated.isEmpty }
-        var hasFailures: Bool { !failed.isEmpty }
+        public var didUpdate: Bool { !updated.isEmpty }
+        public var hasFailures: Bool { !failed.isEmpty }
+
+        public init(updated: [String] = [], failed: [String] = []) {
+            self.updated = updated
+            self.failed = failed
+        }
     }
 
     @discardableResult
-    func syncAll(locale: String) async -> SyncSummary {
+    public func syncAll(locale: String) async -> SyncSummary {
         var summary = SyncSummary()
         func note(_ key: String, _ outcome: RefreshOutcome) {
             switch outcome {

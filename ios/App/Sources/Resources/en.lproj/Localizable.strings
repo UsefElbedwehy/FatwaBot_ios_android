@@ -266,3 +266,14 @@
 "hadith.under_review" = "Under scholarly review — available soon";
 
 "hadith.collection_empty" = "Nothing to read here yet — this collection is still under review.";
+
+"settings.sync_section" = "Content sync";
+"settings.sync.never" = "Not synced yet";
+"settings.sync.never_detail" = "Showing bundled content until the first sync completes.";
+"settings.sync.in_progress" = "Syncing…";
+"settings.sync.in_progress_detail" = "Checking for new content.";
+"settings.sync.up_to_date" = "Up to date";
+"settings.sync.checked_at %@" = "Checked %@ — nothing new.";
+"settings.sync.updated_at %lld %@" = "Updated %lld item(s) at %@.";
+"settings.sync.failed" = "Some content did not sync";
+"settings.sync.failed_detail %lld %@" = "%lld item(s) failed at %@. The app is still using its saved copy.";
