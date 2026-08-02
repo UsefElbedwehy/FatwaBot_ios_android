@@ -202,3 +202,33 @@ group by c.slug;
 
 Merging is by `||`, so importing English never drops a translation in another
 language.
+
+
+## الأربعين الإيمانية — what it actually is
+
+**Not** ابن شمس الدين's compilation. His forty is a modern work: the hadith in it
+are public domain, but his *selection* is copyrighted, and no permission was
+obtained.
+
+The shipped collection is the **first forty hadith of كتاب الإيمان in صحيح
+البخاري**, in Bukhari's own order, verbatim from the Sultaniyya edition on
+turath.io (book 1681) — the same source pipeline as بلوغ المرام. The Arabic
+description says so.
+
+"First forty in the source's own order" is deliberately mechanical. Kitab
+al-Iman holds 51 hadith (numbers 8–58); *choosing* forty of them would be an
+editorial judgement about creed, which belongs to a scholar and not to a
+migration.
+
+Two things kept verbatim on purpose:
+
+- **Isnad.** Entries open with `حدثنا فلان عن فلان` and stay that way. Trimming
+  the chain to fit a phone screen would be editing hadith text.
+- **Grading** is `أخرجه البخاري` on every entry — a statement of where the text
+  comes from, not a verdict added on top of it.
+
+An earlier attempt to assemble this from the 2,060 hadith already in the
+database was abandoned: only about six genuine creed hadith exist across them,
+because بلوغ and العمدة are books of aḥkām, not ʿaqīdah. Reaching forty would
+have meant padding with funeral and dhikr rulings that merely contain
+لا إله إلا الله.
