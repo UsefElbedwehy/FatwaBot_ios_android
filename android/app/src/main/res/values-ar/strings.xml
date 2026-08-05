@@ -99,4 +99,8 @@
     <string name="settings_contact_whatsapp">واتساب</string>
     <string name="settings_contact_instagram">إنستغرام</string>
     <string name="settings_contact_x">إكس</string>
+    <string name="language_system">لغة النظام</string>
+    <string name="language_arabic">العربية</string>
+    <string name="language_english">English</string>
+    <string name="language_selected">المختارة</string>
 </resources>

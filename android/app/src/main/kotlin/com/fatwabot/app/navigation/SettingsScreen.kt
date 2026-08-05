@@ -30,6 +30,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.Check
+import androidx.core.os.LocaleListCompat
+import androidx.appcompat.app.AppCompatDelegate
 import com.fatwabot.app.theme.ThemeMode
 import com.fatwabot.app.theme.ThemeModeController
 import androidx.compose.material.icons.filled.Add
@@ -261,44 +265,65 @@ private fun AppearanceSection() {
  * versions there is no per-app language screen, so it falls back to App info. */
 @Composable
 private fun LanguageSection() {
-    val context = LocalContext.current
+    // In-app switching (owner request, 2026-08). iOS keeps the native route —
+    // Apple offers a per-app Language screen and no supported in-app equivalent —
+    // so the two platforms differ here on purpose.
+    //
+    // AppCompatDelegate rather than the platform LocaleManager: the framework API
+    // only exists on API 33+, and minSdk is 26. AppCompat persists the choice
+    // itself and replays it on launch, so nothing here needs its own storage.
+    val current = AppCompatDelegate.getApplicationLocales()
+    val selected = if (current.isEmpty) "" else current[0]?.language.orEmpty()
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         BrandSectionHeader(stringResource(R.string.language_section), icon = Icons.Filled.Language)
         BrandCard {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        val uri = Uri.fromParts("package", context.packageName, null)
-                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            Intent(Settings.ACTION_APP_LOCALE_SETTINGS, uri)
+            Column {
+                LanguageOption(R.string.language_system, "", selected)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                LanguageOption(R.string.language_arabic, "ar", selected)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                LanguageOption(R.string.language_english, "en", selected)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageOption(labelRes: Int, tag: String, selected: String) {
+    val isSelected = tag == selected
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // Empty tag == follow the system. Applying the *same* locale again
+                // would still recreate the activity, so selecting the current one
+                // is a no-op rather than a visible flicker.
+                if (!isSelected) {
+                    AppCompatDelegate.setApplicationLocales(
+                        if (tag.isEmpty()) {
+                            LocaleListCompat.getEmptyLocaleList()
                         } else {
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri)
-                        }
-                        context.startActivity(intent)
-                    },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.language_title),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        stringResource(R.string.language_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            LocaleListCompat.forLanguageTags(tag)
+                        },
                     )
                 }
-                Icon(
-                    Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
             }
+            .padding(vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(labelRes),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        if (isSelected) {
+            Icon(
+                Icons.Filled.Check,
+                contentDescription = stringResource(R.string.language_selected),
+                tint = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }

@@ -100,4 +100,8 @@
     <string name="settings_contact_whatsapp">WhatsApp</string>
     <string name="settings_contact_instagram">Instagram</string>
     <string name="settings_contact_x">X</string>
+    <string name="language_system">System default</string>
+    <string name="language_arabic">العربية</string>
+    <string name="language_english">English</string>
+    <string name="language_selected">Selected</string>
 </resources>

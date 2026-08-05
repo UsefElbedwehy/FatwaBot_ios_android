@@ -62,6 +62,11 @@ dependencies {
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
     implementation(libs.androidx.core.ktx)
+    // Per-app language selection: AppCompatDelegate.setApplicationLocales is
+    // the only route that works below API 33, where the platform LocaleManager
+    // does not exist. minSdk is 26, so the framework API alone would leave most
+    // of the supported range with no way to switch language in-app.
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
