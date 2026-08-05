@@ -347,25 +347,6 @@ extension Container {
                 // joining a regional board costs no geocode, no network call,
                 // and no second permission prompt.
                 region: ClosureRegionResolver { [provider = self.locationProvider()] in
-                    #if DEBUG
-                    // Simulators have no location fix, so the city/country boards
-                    // are otherwise unreachable: the join sheet correctly refuses
-                    // and the local ranking path never runs. Launch arguments
-                    // become UserDefaults keys, so this needs no UI and cannot
-                    // survive into a release build.
-                    //
-                    //   xcrun simctl launch <device> com.fatwabot.app \
-                    //     -debugRegionCity Cairo -debugRegionCountry EG
-                    let defaults = UserDefaults.standard
-                    let city = defaults.string(forKey: "debugRegionCity")
-                    let country = defaults.string(forKey: "debugRegionCountry")
-                    if city != nil || country != nil {
-                        return LeaderboardRegion(
-                            city: city,
-                            countryCode: country?.uppercased()
-                        )
-                    }
-                    #endif
                     guard let cached = provider.cached() else { return .unknown }
                     return LeaderboardRegion(
                         city: cached.name,
