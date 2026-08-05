@@ -25,7 +25,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         val body = intent.getStringExtra(PrayerNotificationScheduler.EXTRA_BODY).orEmpty()
 
         val notification = NotificationCompat.Builder(context, PrayerNotificationScheduler.CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.fatwabot.core.designsystem.R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)

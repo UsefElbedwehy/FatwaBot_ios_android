@@ -384,7 +384,12 @@ private struct FatwaBottomBar: View {
             Image(systemName: icon)
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(Color(hexToken: tokens.onPrimary).opacity(active ? 1 : 0.78))
-                .frame(width: 54, height: 54)
+                .frame(width: 60, height: 60)
+                // Without this SwiftUI hit-tests the *rendered glyph*, not the
+                // frame — so `ellipsis` was three small dots' worth of target
+                // while the grid icon beside it was a solid block. That is why
+                // one felt broken and the other did not.
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tab.titleKey)

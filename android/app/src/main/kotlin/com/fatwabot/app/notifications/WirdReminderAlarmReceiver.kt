@@ -56,7 +56,7 @@ class WirdReminderAlarmReceiver : BroadcastReceiver() {
 
         val notificationId = id.hashCode()
         val builder = NotificationCompat.Builder(context, WirdReminderScheduler.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(com.fatwabot.core.designsystem.R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.notif_wird_title, wirdName))
             .setContentText(context.getString(R.string.notif_wird_body))
             .setAutoCancel(true)

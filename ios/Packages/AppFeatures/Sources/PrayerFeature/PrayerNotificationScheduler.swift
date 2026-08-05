@@ -56,7 +56,15 @@ public final class PrayerNotificationScheduler: PrayerNotificationScheduling, @u
             let content = UNMutableNotificationContent()
             content.title = stringProvider(item.titleKey)
             content.body = stringProvider(item.bodyKey)
-            content.sound = item.kind == .adhan ? .default : .default
+            // The adhan is the call itself and should carry more weight than the
+            // nudge that precedes it. `Sound.adhan` resolves to a bundled audio
+            // file when one is present and falls back to the system default, so
+            // this is correct today and improves the moment audio is added.
+            //
+            // Previously this read `item.kind == .adhan ? .default : .default` —
+            // a ternary whose branches were identical, so the intent was written
+            // down but never actually took effect.
+            content.sound = item.kind == .adhan ? NotificationSound.adhan : .default
             content.categoryIdentifier = Self.categoryPrefix + item.kind.rawValue
             // Without this the tap handler has no route and the tap does nothing.
             // Every prayer kind (adhan, pre-adhan, iqama, last-third) lands on

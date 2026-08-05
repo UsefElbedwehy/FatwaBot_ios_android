@@ -30,7 +30,7 @@ class ContentReminderAlarmReceiver : BroadcastReceiver() {
         val host = intent.getStringExtra(ContentReminderScheduler.EXTRA_DEEP_LINK)
 
         val builder = NotificationCompat.Builder(context, ContentReminderScheduler.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(com.fatwabot.core.designsystem.R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             // Scripture runs past one line; without this the user only ever sees

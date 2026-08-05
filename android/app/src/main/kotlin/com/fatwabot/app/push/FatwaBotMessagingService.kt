@@ -43,7 +43,7 @@ class FatwaBotMessagingService : FirebaseMessagingService() {
         val notification = message.notification ?: return
         ensureChannel()
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(com.fatwabot.core.designsystem.R.drawable.ic_notification)
             .setContentTitle(notification.title)
             .setContentText(notification.body)
             .setAutoCancel(true)

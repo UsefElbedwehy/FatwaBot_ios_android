@@ -203,7 +203,7 @@ public struct QiblaScreen: View {
 
     private var staticFallback: some View {
         VStack(spacing: 18) {
-            ArchIconBadge(systemImage: "safari", tokens: tokens)
+            BrandLogoBadge(tokens: tokens)
             Text("qibla.static_bearing \(Int(bearing))")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Color(hexToken: tokens.onSurface))

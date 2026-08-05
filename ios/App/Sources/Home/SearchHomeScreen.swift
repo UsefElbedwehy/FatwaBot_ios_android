@@ -36,7 +36,7 @@ struct SearchHomeScreen: View {
                 Image("LaunchLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 94, height: 132)
+                    .frame(width: 124, height: 174)
                     .accessibilityHidden(true)
 
                 Text(verbatim: "FATWA")
@@ -59,7 +59,7 @@ struct SearchHomeScreen: View {
                     .padding(.top, 30)
 
                 HStack(spacing: 8) {
-                    RosetteMark(size: 15, color: Color(hexToken: tokens.accent))
+                    RosetteMark(size: 15, color: Color(hexToken: tokens.primary))
                     Text("home.tagline")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(Color(hexToken: tokens.primary))
@@ -153,13 +153,6 @@ struct SearchHomeScreen: View {
     private var searchField: some View {
         Button { showComingSoon = true } label: {
             HStack(spacing: 0) {
-                ZStack {
-                    Color(hexToken: tokens.primary)
-                    Image(systemName: "magnifyingglass")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(Color(hexToken: tokens.onPrimary))
-                }
-                .frame(width: 60)
                 HStack {
                     Text("home.search_placeholder")
                         .font(.subheadline)
@@ -167,11 +160,19 @@ struct SearchHomeScreen: View {
                     Spacer()
                 }
                 .padding(.horizontal, 18)
+                ZStack {
+                    Color(hexToken: tokens.primary)
+                    Image(systemName: "magnifyingglass")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(Color(hexToken: tokens.onPrimary))
+                }
+                .frame(width: 60)
             }
             .frame(height: 54)
             .background(neumorphicSurface(cornerRadius: 18))
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            // Mockup keeps the maroon magnifier cap on the left in both languages.
+            // Pinned LTR so the maroon cap stays on the right in Arabic too —
+            // it is a fixed part of the control, not a leading/trailing affordance.
             .environment(\.layoutDirection, .leftToRight)
         }
         .buttonStyle(.plain)
@@ -264,7 +265,7 @@ struct ComingSoonSheet: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            ArchIconBadge(systemImage: "sparkles", tokens: tokens)
+            BrandLogoBadge(tokens: tokens)
             Text("home.coming_soon.title")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(Color(hexToken: tokens.onSurface))

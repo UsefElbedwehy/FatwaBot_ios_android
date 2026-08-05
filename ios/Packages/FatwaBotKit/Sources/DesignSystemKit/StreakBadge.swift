@@ -13,9 +13,14 @@ import SwiftUI
 /// arch the rest of the app already draws. Dropping the real vector in under
 /// that name is the whole swap — no call site changes.
 public struct FatwaMark: View {
-    /// Drop a vector (PDF/SVG) asset under this name in the app's asset catalog
-    /// and every streak badge, widget and launcher picks it up automatically.
-    public static let assetName = "BrandMark"
+    /// The asset carrying the real artwork. Named for the launch screen because
+    /// that is where it was first added, and kept rather than renamed so the
+    /// launch screen and every in-app use stay the same single file.
+    ///
+    /// This was `"BrandMark"` — a name nothing in the project ever used — so the
+    /// asset lookup always missed and every caller silently rendered the drawn
+    /// fallback instead of the logo.
+    public static let assetName = "LaunchLogo"
 
     private let color: Color
 
