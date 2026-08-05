@@ -3,6 +3,8 @@ package com.fatwabot.feature.prayer
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.NotificationChannel
+import android.net.Uri
+import android.media.AudioAttributes
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -32,6 +34,22 @@ class PrayerNotificationScheduler(
             CHANNEL_ID,
             stringProvider("notif.channel.prayer"),
             NotificationManager.IMPORTANCE_HIGH,
+        )
+        // The adhan is the call to prayer; it should not sound like every other
+        // notification. USAGE_ALARM rather than NOTIFICATION so it plays at alarm
+        // volume and is not muted by a "silence notifications" profile — a prayer
+        // reminder that a Do-Not-Disturb rule swallows has failed at its one job.
+        //
+        // A channel's sound is fixed at creation: Android ignores changes to an
+        // existing channel, so a build that shipped without this keeps the default
+        // until the app is reinstalled or the channel id changes. That is why the
+        // id carries a version suffix.
+        channel.setSound(
+            Uri.parse("android.resource://${context.packageName}/${R.raw.adhan}"),
+            AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .build(),
         )
         manager.createNotificationChannel(channel)
     }
@@ -86,7 +104,9 @@ class PrayerNotificationScheduler(
     }
 
     companion object {
-        const val CHANNEL_ID = "prayer_reminders"
+        // Suffixed because a channel's sound is immutable once created: without a
+        // new id, every existing install would keep the default tone forever.
+        const val CHANNEL_ID = "prayer_reminders_v2"
         const val EXTRA_ID = "id"
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
