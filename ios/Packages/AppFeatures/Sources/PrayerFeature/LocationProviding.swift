@@ -62,6 +62,42 @@ public final class SystemLocationProvider: NSObject, LocationProviding, @uncheck
     private static let cacheKey = "prayer.location.cache"
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<LocationState, Never>?
+    private var timeoutTask: Task<Void, Never>?
+
+    /// How long to wait for CoreLocation before giving up.
+    ///
+    /// Neither `requestLocation()` nor the authorization callback is guaranteed
+    /// to fire: with no fix available — a simulator with no location set, a
+    /// device indoors, permission granted but hardware unable — the delegate is
+    /// simply never called and `withCheckedContinuation` waits forever. That
+    /// stranded onboarding on a spinner with no way forward but "Not now".
+    ///
+    /// 12s is past a normal cold GPS acquire, so this fires on genuine failure
+    /// rather than on a slow success.
+    private static let resolveTimeout: Duration = .seconds(12)
+
+    /// Resumes exactly once. Every path — delegate callback or timeout — goes
+    /// through here, because resuming a continuation twice is a crash, not a
+    /// warning.
+    private func finish(_ state: LocationState) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        guard let pending = continuation else { return }
+        continuation = nil
+        pending.resume(returning: state)
+    }
+
+    /// Arms the timeout for a continuation that has just been stored.
+    private func armTimeout() {
+        timeoutTask?.cancel()
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.resolveTimeout)
+            guard !Task.isCancelled, let self else { return }
+            // A previously cached fix beats nothing; otherwise `.unknown` lets
+            // the caller offer the manual city picker, which already exists.
+            self.finish(self.cached().map { .resolved($0) } ?? .unknown)
+        }
+    }
     /// True only while `resolve()` is waiting on a `.notDetermined` → answered
     /// transition — guards `locationManagerDidChangeAuthorization` so it only
     /// acts during that specific window (that delegate method fires for other
@@ -105,11 +141,13 @@ public final class SystemLocationProvider: NSObject, LocationProviding, @uncheck
             return await withCheckedContinuation { continuation in
                 self.continuation = continuation
                 self.awaitingAuthorization = true
+                self.armTimeout()
                 manager.requestWhenInUseAuthorization()
             }
         default:
             return await withCheckedContinuation { continuation in
                 self.continuation = continuation
+                self.armTimeout()
                 manager.requestLocation()
             }
         }
@@ -156,15 +194,13 @@ extension SystemLocationProvider: CLLocationManagerDelegate {
                 isManual: false
             )
             self.persist(location)
-            self.continuation?.resume(returning: .resolved(location))
-            self.continuation = nil
+            self.finish(.resolved(location))
         }
     }
 
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         let state: LocationState = cached().map { .resolved($0) } ?? .denied
-        continuation?.resume(returning: state)
-        continuation = nil
+        finish(state)
     }
 
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -178,15 +214,13 @@ extension SystemLocationProvider: CLLocationManagerDelegate {
         case .denied, .restricted:
             awaitingAuthorization = false
             let state: LocationState = cached().map { .resolved($0) } ?? .denied
-            continuation?.resume(returning: state)
-            continuation = nil
+            finish(state)
         case .notDetermined:
             break // still waiting on the OS dialog
         @unknown default:
             awaitingAuthorization = false
             let state: LocationState = cached().map { .resolved($0) } ?? .denied
-            continuation?.resume(returning: state)
-            continuation = nil
+            finish(state)
         }
     }
 }
