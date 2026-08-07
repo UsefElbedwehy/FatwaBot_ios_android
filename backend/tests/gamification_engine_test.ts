@@ -103,11 +103,14 @@ Deno.test("computeStreak: a second miss more than gracePeriodDays after the firs
     // 07-08 missing — 6 days after the first grace use, outside the 5-day window, so a fresh token is available
   ];
   const result = computeStreak(events, def, "2026-07-08");
-  // Both misses were forgiven: the streak was never reset, so it's still running as of 07-08.
+  // The 07-02 miss was forgiven, so the streak was never reset.
   assertEquals(result.currentLength, 6);
   assertEquals(result.longestLength, 6);
-  // The most recent grace use (07-08) is still within its own window, so no token is free right now.
-  assertEquals(result.graceRemaining, 0);
+  // 07-08 is *today*, and an unfinished day is no longer treated as a miss, so
+  // it costs nothing. This assertion previously expected 0: the engine spent a
+  // grace token on a day the user still had hours left to complete. Changed
+  // deliberately — that behaviour was the bug, not the contract.
+  assertEquals(result.graceRemaining, 1);
 });
 
 Deno.test("computeStreak: no qualifying events at all yields a zero streak with full grace", () => {
