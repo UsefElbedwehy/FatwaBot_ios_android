@@ -129,6 +129,12 @@ export function computeStreak(
   for (let cursor = earliest; cursor <= todayLocalDate; cursor = addDaysISO(cursor, 1)) {
     if (qualifying.has(cursor)) {
       running += 1;
+    } else if (cursor === todayLocalDate) {
+      // Today is still in progress. Treating an unfinished day as a missed one
+      // told a user with a live 5-day streak that it was 0 before they had any
+      // chance to worship — and burned a grace token doing it. The streak only
+      // breaks once the day has actually ended.
+      break;
     } else {
       graceUses = graceUses.filter((used) => daysBetweenISO(used, cursor) <= def.gracePeriodDays);
       if (graceUses.length < def.graceAllowance) {

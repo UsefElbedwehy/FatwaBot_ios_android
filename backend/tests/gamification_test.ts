@@ -1,4 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
+import { computeStreak } from "../functions/api/gamification_engine.ts";
 import { route } from "../functions/api/router.ts";
 import { InMemoryConfigRepo } from "./in_memory_repo.ts";
 import { InMemoryIdentityRepo } from "./in_memory_identity_repo.ts";
@@ -217,4 +218,47 @@ Deno.test("gamification profile assembles streaks/missions/badges from published
 Deno.test("gamification profile requires auth", async () => {
   const res = await route(new Request(`${BASE}/v1/gamification/profile`), deps());
   assertEquals(res.status, 401);
+});
+
+Deno.test("a streak survives today until the day actually ends", () => {
+  // Three consecutive days of activity, none yet today. Before this fix the
+  // loop counted today as a miss and reported 0 — a live streak shown as lost.
+  const def = {
+    eventTypes: ["azkar_completed"],
+    dayBoundaryType: "fixed_local_time" as const,
+    requiredDailyCount: 1,
+    graceAllowance: 1,
+    gracePeriodDays: 7,
+    dayBoundaryLocalTime: "04:00",
+  };
+  const events = ["2026-08-02", "2026-08-03", "2026-08-04"].map((d) => ({
+    eventType: "azkar_completed",
+    occurredAt: new Date(`${d}T10:00:00Z`),
+    timezone: "UTC",
+  }));
+
+  const result = computeStreak(events, def, "2026-08-05");
+  assertEquals(result.currentLength, 3, "yesterday's streak must survive an unfinished today");
+  assertEquals(result.graceRemaining, 1, "an unfinished today must not burn a grace day");
+});
+
+Deno.test("a streak still breaks once a day has fully passed", () => {
+  // Same activity, but two days later — 2026-08-05 is now a completed miss.
+  const def = {
+    eventTypes: ["azkar_completed"],
+    dayBoundaryType: "fixed_local_time" as const,
+    requiredDailyCount: 1,
+    graceAllowance: 0,
+    gracePeriodDays: 7,
+    dayBoundaryLocalTime: "04:00",
+  };
+  const events = ["2026-08-02", "2026-08-03", "2026-08-04"].map((d) => ({
+    eventType: "azkar_completed",
+    occurredAt: new Date(`${d}T10:00:00Z`),
+    timezone: "UTC",
+  }));
+
+  const result = computeStreak(events, def, "2026-08-06");
+  assertEquals(result.currentLength, 0, "a fully elapsed missed day must break it");
+  assertEquals(result.longestLength, 3);
 });
