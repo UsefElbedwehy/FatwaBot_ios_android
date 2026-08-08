@@ -29,4 +29,9 @@
     <string name="widget_tasbih">العداد</string>
     <string name="widget_tasbih_hint">اضغط للعد</string>
     <string name="widget_tasbih_reset">تصفير</string>
+    <string name="widget_occasion">رمضان والعيد</string>
+    <string name="widget_occasion_ramadan">رمضان</string>
+    <string name="widget_occasion_eid_al_fitr">عيد الفطر</string>
+    <string name="widget_occasion_eid_al_adha">عيد الأضحى</string>
+    <string name="widget_occasion_days">يومًا</string>
 </resources>

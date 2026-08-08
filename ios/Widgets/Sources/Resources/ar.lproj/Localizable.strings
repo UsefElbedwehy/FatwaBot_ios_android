@@ -43,3 +43,10 @@
 "widget.tasbih.desc" = "عدّاد الأذكار. اضغط على الويدجت لزيادة العد.";
 "widget.tasbih.hint" = "اضغط للعد";
 "widget.tasbih.reset" = "تصفير";
+
+"occasion.ramadan" = "رمضان";
+"occasion.eid_al_fitr" = "عيد الفطر";
+"occasion.eid_al_adha" = "عيد الأضحى";
+"occasion.days" = "يومًا";
+"widget.occasion.name" = "رمضان والعيد";
+"widget.occasion.desc" = "الأيام المتبقية لرمضان وعيدَي الفطر والأضحى.";

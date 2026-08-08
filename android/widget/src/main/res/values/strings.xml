@@ -30,4 +30,9 @@
     <string name="widget_tasbih">Counter</string>
     <string name="widget_tasbih_hint">Tap to count</string>
     <string name="widget_tasbih_reset">Reset</string>
+    <string name="widget_occasion">Ramadan &amp; Eid</string>
+    <string name="widget_occasion_ramadan">Ramadan</string>
+    <string name="widget_occasion_eid_al_fitr">Eid al-Fitr</string>
+    <string name="widget_occasion_eid_al_adha">Eid al-Adha</string>
+    <string name="widget_occasion_days">days</string>
 </resources>

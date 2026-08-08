@@ -43,3 +43,10 @@
 "widget.tasbih.desc" = "Dhikr counter. Tap the widget to count.";
 "widget.tasbih.hint" = "Tap to count";
 "widget.tasbih.reset" = "Reset";
+
+"occasion.ramadan" = "Ramadan";
+"occasion.eid_al_fitr" = "Eid al-Fitr";
+"occasion.eid_al_adha" = "Eid al-Adha";
+"occasion.days" = "days";
+"widget.occasion.name" = "Ramadan & Eid";
+"widget.occasion.desc" = "Days remaining until Ramadan and the two Eids.";

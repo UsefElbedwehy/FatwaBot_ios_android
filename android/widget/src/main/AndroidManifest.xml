@@ -98,6 +98,18 @@
         </receiver>
 
         <receiver
+            android:name="com.fatwabot.widget.OccasionWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_occasion">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_small_info" />
+        </receiver>
+
+        <receiver
             android:name="com.fatwabot.widget.RandomDuaWidgetReceiver"
             android:exported="false"
             android:label="@string/widget_dua">
