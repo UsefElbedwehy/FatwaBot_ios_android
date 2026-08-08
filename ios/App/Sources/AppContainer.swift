@@ -228,6 +228,15 @@ extension Container {
         }
     }
 
+    /// Where the متابعة العبادات widget deposits taps for the app to upload.
+    var worshipInbox: Factory<WorshipInbox?> {
+        self {
+            FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: "group.com.fatwabot.app")
+                .map { WorshipInbox(appGroupContainer: $0) }
+        }
+    }
+
     var gamificationWidgetStore: Factory<GamificationWidgetSnapshotStore?> {
         self {
             FileManager.default

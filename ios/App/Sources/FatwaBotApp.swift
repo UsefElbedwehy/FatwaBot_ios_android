@@ -33,6 +33,7 @@ struct FatwaBotApp: App {
                 .preferredColorScheme((AppearanceMode(rawValue: appearanceRaw) ?? .system).colorScheme)
                 .task {
                     await flushAnalytics()
+                    await drainWorshipInbox()
                     await syncContent()
                 }
                 .onChange(of: scenePhase) { _, phase in
@@ -48,9 +49,23 @@ struct FatwaBotApp: App {
                     // its one launch-time sync.
                     if phase == .active {
                         Task { await syncContent() }
+                        // Taps made on the home screen while the app was away.
+                        // Foreground is the first moment we can upload them, and
+                        // the streak stays wrong until we do.
+                        Task { await drainWorshipInbox() }
                     }
                 }
         }
+    }
+
+    /// Uploads worship logged from the متابعة العبادات widget.
+    ///
+    /// Silent on failure like every other queue flush: entries stay in the
+    /// inbox — or, once adopted, in the event queue — and are retried on the
+    /// next foreground. Nothing is dropped by a failed attempt.
+    private func drainWorshipInbox() async {
+        guard let inbox = Container.shared.worshipInbox() else { return }
+        await Container.shared.gamificationEventRecorder().drain(inbox)
     }
 
     /// Pulls published content on launch and on every foreground. Failures are
