@@ -120,6 +120,27 @@ targets:
         DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: ../LiveActivity/Support/FatwaBotLiveActivity.entitlements
+  # UI tests drive the app through the accessibility layer rather than by
+  # injecting synthetic taps at the window server. That distinction is the whole
+  # reason this target exists: simctl-style tap injection has repeatedly failed
+  # to reach this app's windows, which left every screen verified only by
+  # "it compiled".
+  FatwaBotUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [../UITests/Sources]
+    dependencies:
+      - target: FatwaBot
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app.uitests
+        SWIFT_VERSION: "5.10"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: FatwaBot
+
 schemes:
   FatwaBot:
     build:
@@ -129,6 +150,8 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - FatwaBotUITests
     profile:
       config: Release
     analyze:

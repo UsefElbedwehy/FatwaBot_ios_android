@@ -137,11 +137,11 @@ struct RootTabView: View {
                         wirds: Container.shared.wirdStore().loadWirds(),
                         // Supplied so a wird anchored to Fajr follows the actual
                         // prayer rather than falling back to a clock time.
-                        prayerTime: { [prayerViewModel] offset, prayer in
-                            MainActor.assumeIsolated {
-                                prayerViewModel.prayerTime(dayOffset: offset, prayer: prayer)
-                            }
-                        }
+                        // Resolved here, on the main actor, rather than inside
+                        // the closure. `MainActor.assumeIsolated` traps when the
+                        // closure is invoked from the planner's async context —
+                        // it crashed the app the moment the switch was tapped.
+                        prayerTime: WirdAnchorTimes.lookup(from: prayerViewModel)
                     )
                 }
                 await Container.shared.configService().refresh(locales: ["ar", "en"])

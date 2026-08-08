@@ -435,12 +435,16 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
                             }
                         }
                         slot.anchorPrayer?.let { prayer ->
+                            // The slot name is the title here, not only on the
+                            // time picker: anchoring hides that picker, and with
+                            // it the only thing saying which wird the switch
+                            // belongs to.
                             ToggleRow(
+                                slotName.name(slot),
                                 stringResource(
                                     R.string.settings_notif_wird_follow_prayer,
                                     stringResource(anchorPrayerNameRes(prayer)),
                                 ),
-                                "",
                                 anchored,
                             ) { on ->
                                 updateWird(

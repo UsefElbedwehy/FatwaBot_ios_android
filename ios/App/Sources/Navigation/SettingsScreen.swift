@@ -325,11 +325,11 @@ private struct NotificationsSection: View {
                     await Container.shared.wirdReminderScheduler().reschedule(
                         preferences: newValue,
                         wirds: Container.shared.wirdStore().loadWirds(),
-                        prayerTime: { [prayerViewModel] offset, prayer in
-                            MainActor.assumeIsolated {
-                                prayerViewModel.prayerTime(dayOffset: offset, prayer: prayer)
-                            }
-                        }
+                        // Resolved here, on the main actor, rather than inside
+                        // the closure. `MainActor.assumeIsolated` traps when the
+                        // closure is invoked from the planner's async context —
+                        // it crashed the app the moment the switch was tapped.
+                        prayerTime: WirdAnchorTimes.lookup(from: prayerViewModel)
                     )
                 }
             }
@@ -358,12 +358,21 @@ private struct NotificationsSection: View {
                         : wirdPrefs.clearingPrayerAnchor(forWirdId: slot.wirdId)
                 }
             )) {
-                Text(String(
-                    format: NSLocalizedString("settings.notif.wird.follow_prayer", comment: ""),
-                    NSLocalizedString("prayer.\(prayer)", comment: "")
-                ))
-                .font(.caption)
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                // The slot name is on this row, not only on the time picker.
+                // Anchoring hides that picker, and with it went the only thing
+                // saying which wird the switch belonged to — a bare "Follow Fajr
+                // time" floating under the previous slot's row.
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(NSLocalizedString(slot.nameKey, comment: ""))
+                        .font(.subheadline)
+                        .foregroundStyle(Color(hexToken: tokens.onSurface))
+                    Text(String(
+                        format: NSLocalizedString("settings.notif.wird.follow_prayer", comment: ""),
+                        NSLocalizedString("prayer.\(prayer)", comment: "")
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                }
             }
             .tint(Color(hexToken: tokens.primary))
         }
