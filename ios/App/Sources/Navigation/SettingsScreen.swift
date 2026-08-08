@@ -286,7 +286,16 @@ private struct NotificationsSection: View {
                 // day, answerable straight from the notification.
                 toggleRow("settings.notif.wird.title", "settings.notif.wird.subtitle", isOn: $wirdPrefs.enabled)
                 if wirdPrefs.enabled {
-                    timeRow("settings.notif.wird.time")
+                    // The four fixed slots each get their own time (client
+                    // request). They are on every board and their natural
+                    // moments are hours apart — asking about أذكار الصباح at the
+                    // same time as قيام الليل is asking about a window that
+                    // closed. User-created wirds keep the shared time below.
+                    ForEach(FixedWirdSlot.allCases, id: \.rawValue) { slot in
+                        slotTimeRow(slot)
+                    }
+                    Divider().opacity(0.3)
+                    timeRow("settings.notif.wird.time_other")
                 }
             }
             .brandCard(tokens)
@@ -317,6 +326,37 @@ private struct NotificationsSection: View {
         }
     }
 
+    /// Time-of-day picker for one fixed wird slot.
+    ///
+    /// Shows the slot's built-in hour until the user picks something, so the
+    /// control never reads as unset — and picking a time writes an override that
+    /// then wins over the built-in default forever.
+    private func slotTimeRow(_ slot: FixedWirdSlot) -> some View {
+        let binding = Binding<Date>(
+            get: {
+                let time = wirdPrefs.time(
+                    forWirdId: slot.wirdId, slotDefaultHour: slot.reminderHour
+                )
+                return Calendar.current.date(
+                    from: DateComponents(hour: time.hour, minute: time.minute)
+                ) ?? Date()
+            },
+            set: { newValue in
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                wirdPrefs = wirdPrefs.settingTime(
+                    WirdReminderTime(hour: parts.hour ?? 0, minute: parts.minute ?? 0),
+                    forWirdId: slot.wirdId
+                )
+            }
+        )
+        return DatePicker(selection: binding, displayedComponents: .hourAndMinute) {
+            Text(NSLocalizedString(slot.nameKey, comment: ""))
+                .font(.subheadline)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+        }
+        .tint(Color(hexToken: tokens.primary))
+    }
+
     /// Time-of-day picker for the wird reminder. Bound through a `Date` because
     /// that is what `DatePicker` speaks, while the preference persists as plain
     /// hour/minute — a stored `Date` would carry a calendar day with it and drift.
@@ -329,10 +369,15 @@ private struct NotificationsSection: View {
             },
             set: { newValue in
                 let parts = Calendar.current.dateComponents([.hour, .minute], from: newValue)
-                wirdPrefs = WirdReminderPreferences(
-                    enabled: wirdPrefs.enabled,
-                    hour: parts.hour ?? WirdReminderPreferences.defaultHour,
-                    minute: parts.minute ?? WirdReminderPreferences.defaultMinute
+                // Mutated rather than re-constructed. The memberwise initialiser
+                // defaults `timesByWird` to empty, so building a fresh value here
+                // silently erased every per-wird time the user had set the moment
+                // they nudged the global one.
+                wirdPrefs.hour = WirdReminderPreferences.clampHour(
+                    parts.hour ?? WirdReminderPreferences.defaultHour
+                )
+                wirdPrefs.minute = WirdReminderPreferences.clampMinute(
+                    parts.minute ?? WirdReminderPreferences.defaultMinute
                 )
             }
         )

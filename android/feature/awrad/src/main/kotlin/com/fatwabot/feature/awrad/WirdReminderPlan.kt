@@ -14,6 +14,17 @@ data class PlannedWirdReminder(
     val minute: Int,
 )
 
+/** A wall-clock time of day for one wird's reminder. Mirror of iOS `WirdReminderTime`. */
+data class WirdReminderTime(val hour: Int, val minute: Int) {
+    companion object {
+        /** Clamping factory — out-of-range input is corrected, never rejected. */
+        fun of(hour: Int, minute: Int): WirdReminderTime = WirdReminderTime(
+            WirdReminderPreferences.clampHour(hour),
+            WirdReminderPreferences.clampMinute(minute),
+        )
+    }
+}
+
 /**
  * User-facing preferences for the daily wird reminder.
  * Mirror of iOS `WirdReminderPreferences`.
@@ -25,7 +36,38 @@ data class WirdReminderPreferences(
      * the user can still act on a "no". */
     val hour: Int = DEFAULT_HOUR,
     val minute: Int = DEFAULT_MINUTE,
+    /**
+     * Per-wird overrides, keyed by wird id.
+     *
+     * Client request: "يفضل اختيار لكل ورد وقت محدد". Before this there was one
+     * time for everything the user created, and the four fixed slots used
+     * hardcoded hours nobody could change. A missing entry means "no override",
+     * so an untouched install behaves exactly as it did — and a stored blob
+     * written before this field existed still deserializes.
+     */
+    val timesByWird: Map<String, WirdReminderTime> = emptyMap(),
 ) {
+    /**
+     * The time a wird's reminder should fire.
+     *
+     * Resolution order, each step for a reason:
+     *  1. the user's own override — an explicit choice always wins;
+     *  2. the slot's built-in hour, so أذكار الصباح is still asked about in the
+     *     morning rather than at the generic evening time;
+     *  3. the global time, which is what a user-created wird has always used.
+     */
+    fun timeFor(wirdId: String, slotDefaultHour: Int?): WirdReminderTime =
+        timesByWird[wirdId]
+            ?: slotDefaultHour?.let { WirdReminderTime.of(it, 0) }
+            // Clamped, not raw: these values come straight from persisted user
+            // input, and the previous code clamped at every use site. An
+            // existing planner test caught the omission.
+            ?: WirdReminderTime.of(hour, minute)
+
+    /** Copy with one wird's time set. */
+    fun withTime(wirdId: String, time: WirdReminderTime): WirdReminderPreferences =
+        copy(timesByWird = timesByWird + (wirdId to time))
+
     companion object {
         const val DEFAULT_HOUR = 20
         const val DEFAULT_MINUTE = 0
@@ -91,12 +133,8 @@ object WirdReminderPlanner {
                 id = ID_PREFIX + wird.id,
                 wirdId = wird.id,
                 wirdName = wird.name,
-                hour = if (slotHour != null) {
-                    WirdReminderPreferences.clampHour(slotHour)
-                } else {
-                    WirdReminderPreferences.clampHour(preferences.hour)
-                },
-                minute = if (slotHour != null) 0 else WirdReminderPreferences.clampMinute(preferences.minute),
+                hour = preferences.timeFor(wird.id, slotHour).hour,
+                minute = preferences.timeFor(wird.id, slotHour).minute,
             )
         }
     }

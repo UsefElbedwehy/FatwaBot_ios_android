@@ -103,4 +103,5 @@
     <string name="language_arabic">العربية</string>
     <string name="language_english">English</string>
     <string name="language_selected">المختارة</string>
+    <string name="settings_notif_wird_time_other">بقية الأوراد</string>
 </resources>

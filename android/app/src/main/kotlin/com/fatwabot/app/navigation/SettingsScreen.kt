@@ -83,6 +83,9 @@ import com.fatwabot.app.R
 import com.fatwabot.app.account.AccountViewModel
 import com.fatwabot.app.notifications.ContentReminderViewModel
 import com.fatwabot.app.notifications.WirdReminderViewModel
+import com.fatwabot.feature.awrad.FixedWirdSlot
+import com.fatwabot.feature.awrad.WirdReminderTime
+import com.fatwabot.feature.awrad.fixedWirdNameResolver
 import com.fatwabot.core.content.ContentReminderPreferences
 import com.fatwabot.feature.awrad.WirdReminderPreferences
 import com.fatwabot.core.designsystem.BrandCard
@@ -413,8 +416,22 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
                     updateWird(wirdPrefs.copy(enabled = it))
                 }
                 if (wirdPrefs.enabled) {
+                    // The four fixed slots each get their own time (client
+                    // request). They are on every board and their natural moments
+                    // are hours apart — asking about أذكار الصباح at the same time
+                    // as قيام الليل is asking about a window that closed.
+                    val slotName = fixedWirdNameResolver(LocalContext.current)
+                    FixedWirdSlot.entries.forEach { slot ->
+                        val time = wirdPrefs.timeFor(slot.wirdId, slot.reminderHour)
+                        TimeRow(slotName.name(slot), time.hour, time.minute) { hour, minute ->
+                            updateWird(
+                                wirdPrefs.withTime(slot.wirdId, WirdReminderTime.of(hour, minute)),
+                            )
+                        }
+                    }
+                    // User-created wirds keep the shared time.
                     TimeRow(
-                        stringResource(R.string.settings_notif_wird_time),
+                        stringResource(R.string.settings_notif_wird_time_other),
                         wirdPrefs.hour,
                         wirdPrefs.minute,
                     ) { hour, minute ->

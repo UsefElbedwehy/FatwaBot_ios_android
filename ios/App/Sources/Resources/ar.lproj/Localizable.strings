@@ -284,3 +284,5 @@
 "azkar.start_session" = "ابدأ الورد";
 "azkar.copy" = "نسخ";
 "azkar.repeat_a11y %lld" = "تُقال %lld مرات";
+
+"settings.notif.wird.time_other" = "بقية الأوراد";

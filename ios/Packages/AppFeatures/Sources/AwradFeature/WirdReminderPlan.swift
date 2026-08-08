@@ -22,6 +22,17 @@ public struct PlannedWirdReminder: Equatable, Sendable, Identifiable {
 
 /// User-facing preferences for the daily wird reminder.
 /// Mirror of Android `WirdReminderPreferences`.
+/// A wall-clock time of day for one wird's reminder.
+public struct WirdReminderTime: Equatable, Sendable, Codable {
+    public var hour: Int
+    public var minute: Int
+
+    public init(hour: Int, minute: Int) {
+        self.hour = WirdReminderPreferences.clampHour(hour)
+        self.minute = WirdReminderPreferences.clampMinute(minute)
+    }
+}
+
 public struct WirdReminderPreferences: Equatable, Sendable, Codable {
     public var enabled: Bool
     /// Local wall-clock hour the reminder fires at. Owner decision: 20:00 — late
@@ -30,17 +41,54 @@ public struct WirdReminderPreferences: Equatable, Sendable, Codable {
     public var hour: Int
     public var minute: Int
 
+    /// Per-wird overrides, keyed by wird id.
+    ///
+    /// Client request: "يفضل اختيار لكل ورد وقت محدد — قيام الليل وقت، أذكار
+    /// الصباح وقت". Before this there was a single time for everything the user
+    /// created, and the four fixed slots used hardcoded hours nobody could
+    /// change. A missing entry means "no override", so an untouched install
+    /// behaves exactly as it did.
+    public var timesByWird: [String: WirdReminderTime]
+
     public static let defaultHour = 20
     public static let defaultMinute = 0
 
-    public init(enabled: Bool = true, hour: Int = defaultHour, minute: Int = defaultMinute) {
+    public init(
+        enabled: Bool = true,
+        hour: Int = defaultHour,
+        minute: Int = defaultMinute,
+        timesByWird: [String: WirdReminderTime] = [:]
+    ) {
         self.enabled = enabled
         self.hour = Self.clampHour(hour)
         self.minute = Self.clampMinute(minute)
+        self.timesByWird = timesByWird
     }
 
-    static func clampHour(_ value: Int) -> Int { max(0, min(23, value)) }
-    static func clampMinute(_ value: Int) -> Int { max(0, min(59, value)) }
+    /// The time a wird's reminder should fire.
+    ///
+    /// Resolution order, and each step exists for a reason:
+    ///  1. the user's own override for this wird — an explicit choice always wins;
+    ///  2. the slot's built-in hour, so أذكار الصباح is still asked about in the
+    ///     morning rather than at the generic evening time;
+    ///  3. the global time, which is what a user-created wird has always used.
+    public func time(forWirdId id: String, slotDefaultHour: Int?) -> WirdReminderTime {
+        if let override = timesByWird[id] { return override }
+        if let slotDefaultHour { return WirdReminderTime(hour: slotDefaultHour, minute: 0) }
+        return WirdReminderTime(hour: hour, minute: minute)
+    }
+
+    /// Copy with one wird's time set. Setting is always explicit — there is no
+    /// "clear" here, because a user who opened the picker and chose a time has
+    /// expressed an intent that should survive a slot-default change.
+    public func settingTime(_ time: WirdReminderTime, forWirdId id: String) -> Self {
+        var copy = self
+        copy.timesByWird[id] = time
+        return copy
+    }
+
+    public static func clampHour(_ value: Int) -> Int { max(0, min(23, value)) }
+    public static func clampMinute(_ value: Int) -> Int { max(0, min(59, value)) }
 
     /// Decoding never throws on a bad field: a corrupt blob should cost the user
     /// their chosen time, not their reminders.
@@ -49,6 +97,9 @@ public struct WirdReminderPreferences: Equatable, Sendable, Codable {
         enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
         hour = Self.clampHour(try c.decodeIfPresent(Int.self, forKey: .hour) ?? Self.defaultHour)
         minute = Self.clampMinute(try c.decodeIfPresent(Int.self, forKey: .minute) ?? Self.defaultMinute)
+        // Absent on every device that has not yet set a per-wird time, which is
+        // all of them at the moment this ships.
+        timesByWird = (try? c.decodeIfPresent([String: WirdReminderTime].self, forKey: .timesByWird)) ?? [:]
     }
 }
 
@@ -99,12 +150,13 @@ public enum WirdReminderPlanner {
             // `FixedWirdSlot.reminderHour`) rather than piling onto the user's
             // one configured time.
             let slotHour = wird.isFixed ? FixedWirdSlot(wirdId: wird.id)?.reminderHour : nil
+            let time = preferences.time(forWirdId: wird.id, slotDefaultHour: slotHour)
             return PlannedWirdReminder(
                 id: idPrefix + wird.id,
                 wirdId: wird.id,
                 wirdName: wird.name,
-                hour: slotHour ?? preferences.hour,
-                minute: slotHour == nil ? preferences.minute : 0
+                hour: time.hour,
+                minute: time.minute
             )
         }
     }
