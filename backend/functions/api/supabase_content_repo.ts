@@ -21,7 +21,7 @@ export class SupabaseContentRepo implements ContentRepo {
         .eq("app_id", ctx.appId).eq("published", true).order("sort_order"),
       this.db.schema("content").from("azkar_items")
         .select(
-          "id,category_id,sort_order,arabic_text,transliteration_translations,translation_translations,virtue_note_translations,source,repeat_count,version",
+          "id,category_id,sort_order,title_translations,arabic_text,transliteration_translations,translation_translations,virtue_note_translations,source,repeat_count,version",
         )
         .eq("app_id", ctx.appId).eq("published", true).order("sort_order"),
     ]);
@@ -44,6 +44,10 @@ export class SupabaseContentRepo implements ContentRepo {
         .map((i) => ({
           id: i.id,
           sortOrder: i.sort_order,
+          // Optional by design: an untitled entry renders as it always has.
+          // Titling 94 supplications is reviewed religious content and lands
+          // separately, so the reader has to handle both states indefinitely.
+          title: resolveOptional(i.title_translations, locale),
           arabicText: i.arabic_text,
           transliteration: resolveOptional(i.transliteration_translations, locale),
           translation: resolveOptional(i.translation_translations, locale),

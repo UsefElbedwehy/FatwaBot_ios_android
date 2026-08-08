@@ -277,3 +277,10 @@
 "settings.sync.updated_at %lld %@" = "Updated %lld item(s) at %@.";
 "settings.sync.failed" = "Some content did not sync";
 "settings.sync.failed_detail %lld %@" = "%lld item(s) failed at %@. The app is still using its saved copy.";
+
+"azkar.search_placeholder" = "Search adhkar and du'a…";
+"azkar.search_clear" = "Clear search";
+"azkar.search_empty" = "No matching results";
+"azkar.start_session" = "Start session";
+"azkar.copy" = "Copy";
+"azkar.repeat_a11y %lld" = "Said %lld times";

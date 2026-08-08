@@ -277,3 +277,10 @@
 "settings.sync.updated_at %lld %@" = "تم تحديث %lld عنصراً في %@.";
 "settings.sync.failed" = "تعذّرت مزامنة بعض المحتوى";
 "settings.sync.failed_detail %lld %@" = "أخفق %lld عنصراً في %@. لا يزال التطبيق يستخدم النسخة المحفوظة.";
+
+"azkar.search_placeholder" = "ابحث عن ذكر أو دعاء…";
+"azkar.search_clear" = "مسح البحث";
+"azkar.search_empty" = "لا نتائج مطابقة";
+"azkar.start_session" = "ابدأ الورد";
+"azkar.copy" = "نسخ";
+"azkar.repeat_a11y %lld" = "تُقال %lld مرات";

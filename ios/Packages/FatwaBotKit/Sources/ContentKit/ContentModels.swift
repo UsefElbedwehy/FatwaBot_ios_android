@@ -11,6 +11,13 @@ import Foundation
 public struct AzkarItem: Codable, Equatable, Identifiable, Sendable {
     public let id: String
     public let sortOrder: Int
+    /// Short name for the dhikr ("شكر الله على رد الروح"), when one exists.
+    ///
+    /// Optional and expected to stay that way: titling the corpus is reviewed
+    /// religious content that lands separately from this plumbing, so the reader
+    /// must render an untitled entry correctly for as long as any remain — which
+    /// on a cached payload from an older release is forever.
+    public let title: String?
     public let arabicText: String
     public let transliteration: String?
     public let translation: String?
@@ -21,6 +28,7 @@ public struct AzkarItem: Codable, Equatable, Identifiable, Sendable {
     public init(
         id: String,
         sortOrder: Int,
+        title: String? = nil,
         arabicText: String,
         transliteration: String?,
         translation: String?,
@@ -30,12 +38,35 @@ public struct AzkarItem: Codable, Equatable, Identifiable, Sendable {
     ) {
         self.id = id
         self.sortOrder = sortOrder
+        self.title = title
         self.arabicText = arabicText
         self.transliteration = transliteration
         self.translation = translation
         self.virtueNote = virtueNote
         self.source = source
         self.repeatCount = repeatCount
+    }
+
+    // Hand-written so `title` decodes as absent rather than failing. Every
+    // device holds a cached azkar payload written before this field existed;
+    // a synthesized decoder would reject the whole collection and the reader
+    // would fall back to bundled seed with no error anywhere saying why.
+    private enum CodingKeys: String, CodingKey {
+        case id, sortOrder, title, arabicText, transliteration, translation
+        case virtueNote, source, repeatCount
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        sortOrder = try c.decode(Int.self, forKey: .sortOrder)
+        title = try c.decodeIfPresent(String.self, forKey: .title)
+        arabicText = try c.decode(String.self, forKey: .arabicText)
+        transliteration = try c.decodeIfPresent(String.self, forKey: .transliteration)
+        translation = try c.decodeIfPresent(String.self, forKey: .translation)
+        virtueNote = try c.decodeIfPresent(String.self, forKey: .virtueNote)
+        source = try c.decode(String.self, forKey: .source)
+        repeatCount = try c.decode(Int.self, forKey: .repeatCount)
     }
 }
 

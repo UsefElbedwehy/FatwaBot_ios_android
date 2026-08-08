@@ -56,7 +56,7 @@ struct RemembranceScreen: View {
             // should be loading content and holding list state.
             switch segment {
             case .azkar:
-                AzkarCategoryListScreen(viewModel: azkarViewModel)
+                AzkarBrowseScreen(viewModel: azkarViewModel)
             case .dua:
                 DuaLibraryScreen(viewModel: duaViewModel)
             }
