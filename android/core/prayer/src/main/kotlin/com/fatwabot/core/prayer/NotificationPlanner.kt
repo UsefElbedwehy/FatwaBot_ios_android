@@ -134,8 +134,9 @@ object NotificationPlanner {
             if (preferences.lastThirdEnabled && index + 1 < timeline.size) {
                 val maghrib = day.times.getValue(PrayerNameUi.MAGHRIB).epochSeconds
                 val fajrNext = timeline[index + 1].times.getValue(PrayerNameUi.FAJR).epochSeconds
-                if (fajrNext > maghrib) {
-                    val start = maghrib + ((fajrNext - maghrib) * 2L / 3L)
+                val night = NightTimes.between(maghrib, fajrNext)
+                if (night != null) {
+                    val start = night.lastThirdEpochSeconds
                     if (start > nowSeconds) {
                         planned += PlannedNotification(
                             id = "lastthird-$key", prayer = null,

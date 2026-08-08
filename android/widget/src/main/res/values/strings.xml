@@ -21,4 +21,7 @@
     <string name="widget_countdown_format">in %s</string>
     <string name="widget_hadith">Daily Hadith</string>
     <string name="widget_hadith_title">Hadith</string>
+    <string name="widget_prayer_midnight">Midnight</string>
+    <string name="widget_prayer_last_third">Last third</string>
+    <string name="widget_day_sheet">Full day</string>
 </resources>
