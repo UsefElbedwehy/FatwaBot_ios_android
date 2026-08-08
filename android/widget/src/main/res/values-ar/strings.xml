@@ -26,4 +26,7 @@
     <string name="widget_worship_tracker">متابعة العبادات</string>
     <string name="widget_deed_azkar_morning">أذكار الصباح</string>
     <string name="widget_deed_azkar_evening">أذكار المساء</string>
+    <string name="widget_tasbih">العداد</string>
+    <string name="widget_tasbih_hint">اضغط للعد</string>
+    <string name="widget_tasbih_reset">تصفير</string>
 </resources>

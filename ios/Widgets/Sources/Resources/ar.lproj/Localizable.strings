@@ -38,3 +38,8 @@
 "deed.not_done" = "لم يتم";
 "widget.worship_tracker.name" = "متابعة العبادات";
 "widget.worship_tracker.desc" = "سجّل صلواتك وأذكارك بنقرة واحدة من الشاشة الرئيسية.";
+
+"widget.tasbih.name" = "العداد";
+"widget.tasbih.desc" = "عدّاد الأذكار. اضغط على الويدجت لزيادة العد.";
+"widget.tasbih.hint" = "اضغط للعد";
+"widget.tasbih.reset" = "تصفير";

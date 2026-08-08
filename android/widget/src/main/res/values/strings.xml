@@ -27,4 +27,7 @@
     <string name="widget_worship_tracker">Worship tracker</string>
     <string name="widget_deed_azkar_morning">Morning adhkar</string>
     <string name="widget_deed_azkar_evening">Evening adhkar</string>
+    <string name="widget_tasbih">Counter</string>
+    <string name="widget_tasbih_hint">Tap to count</string>
+    <string name="widget_tasbih_reset">Reset</string>
 </resources>

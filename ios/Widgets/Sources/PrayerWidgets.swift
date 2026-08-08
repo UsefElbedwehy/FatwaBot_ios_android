@@ -316,6 +316,7 @@ struct FatwaBotWidgets: WidgetBundle {
         StreakWidget()
         DailyChallengeWidget()
         WorshipTrackerWidget()
+        TasbihWidget()
         HadithWidget()
         NextPrayerAccessoryWidget()
         DuaAccessoryWidget()

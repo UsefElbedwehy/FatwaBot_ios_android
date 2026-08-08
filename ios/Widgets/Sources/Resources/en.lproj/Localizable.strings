@@ -38,3 +38,8 @@
 "deed.not_done" = "Not done";
 "widget.worship_tracker.name" = "Worship tracker";
 "widget.worship_tracker.desc" = "Log your prayers and adhkar with one tap from the home screen.";
+
+"widget.tasbih.name" = "Counter";
+"widget.tasbih.desc" = "Dhikr counter. Tap the widget to count.";
+"widget.tasbih.hint" = "Tap to count";
+"widget.tasbih.reset" = "Reset";
