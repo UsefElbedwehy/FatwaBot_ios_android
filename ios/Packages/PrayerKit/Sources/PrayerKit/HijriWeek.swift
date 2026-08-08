@@ -2,12 +2,20 @@ import Foundation
 
 /// The Hijri week strip shown in the الصلاة والتقويم widget.
 ///
-/// ## Why the week is built in the Hijri calendar rather than the Gregorian one
-/// Taking a Gregorian week and converting each day would be simpler and wrong at
-/// the seam: Hijri months change on a different boundary, so a Gregorian week
-/// spanning a month change produces `29 30 1 2` with the header still naming the
-/// old month. Building the week from the Hijri calendar keeps the strip and its
-/// header describing the same month.
+/// ## The strip can span a Hijri month boundary, and the header names only today's
+/// Hijri months change on a different boundary from Gregorian weeks, so a week
+/// containing a rollover genuinely reads `29 30 1 2`. The header is derived from
+/// **today's** Hijri date, which means for part of such a week the header names a
+/// month that some of the trailing columns are no longer in.
+///
+/// That is deliberate rather than unhandled: the header answers "what is the date
+/// today", which is what a reader glancing at the widget wants, and every other
+/// Hijri date in the app agrees with it. Naming both months would need twice the
+/// width this row has. Verified on device — the seam renders as `30 1` under the
+/// outgoing month's name.
+///
+/// If that is ever considered wrong, the fix is a per-column month, not a
+/// different week anchor.
 public struct HijriWeek: Equatable, Sendable {
     public struct Day: Equatable, Sendable, Identifiable {
         /// Hijri day-of-month.

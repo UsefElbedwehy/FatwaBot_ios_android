@@ -128,15 +128,29 @@ struct WorshipTrackerView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(brandMuted)
             }
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3),
-                spacing: 6
-            ) {
-                ForEach(deeds, id: \.rawValue) { deed in
-                    DeedTile(deed: deed, isDone: entry.completed.contains(deed.rawValue))
+            // Rows of three that each claim an equal share of the height, rather
+            // than a LazyVGrid pinned to the top by a trailing Spacer. On
+            // `systemLarge` that layout left the bottom 60% of the tile empty
+            // cream, which reads as broken rather than spacious — the tiles are
+            // the content, so they should fill the space they are given.
+            //
+            // The last row is padded with invisible slots so three tiles and two
+            // tiles are the same width; without it the final row stretches its
+            // tiles to double width and the grid stops looking like a grid.
+            let rows = deeds.chunked(into: 3)
+            VStack(spacing: 6) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    HStack(spacing: 6) {
+                        ForEach(row, id: \.rawValue) { deed in
+                            DeedTile(deed: deed, isDone: entry.completed.contains(deed.rawValue))
+                        }
+                        ForEach(0..<(3 - row.count), id: \.self) { _ in
+                            Color.clear.frame(maxWidth: .infinity)
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
                 }
             }
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -158,8 +172,8 @@ private struct DeedTile: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 4)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(brandPrimary.opacity(isDone ? 0.16 : 0.06))
@@ -168,5 +182,12 @@ private struct DeedTile: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(LocalizedStringKey(deed.titleKey)))
         .accessibilityValue(Text(isDone ? "deed.done" : "deed.not_done"))
+    }
+}
+
+private extension Array {
+    /// Fixed-size chunks, last one short. Not in the standard library.
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map { Array(self[$0..<Swift.min($0 + size, count)]) }
     }
 }

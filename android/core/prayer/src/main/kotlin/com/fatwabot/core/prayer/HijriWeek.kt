@@ -11,10 +11,17 @@ import java.util.Locale
  * The Hijri week strip shown in the الصلاة والتقويم widget. Mirror of iOS
  * `HijriWeek`.
  *
- * ## Why the header comes from the Hijri calendar
- * A Gregorian week spanning a Hijri month change produces `29 30 1 2`, and a
- * header derived from anything but the Hijri date of *today* would name the
- * wrong month for half the strip.
+ * ## The strip can span a Hijri month boundary, and the header names only today's
+ * Hijri months change on a different boundary from Gregorian weeks, so a week
+ * containing a rollover genuinely reads `29 30 1 2`. The header comes from
+ * **today's** Hijri date, so for part of such a week it names a month that some
+ * trailing columns are no longer in.
+ *
+ * Deliberate rather than unhandled: the header answers "what is the date today",
+ * which is what a reader glancing at the widget wants, and it agrees with every
+ * other Hijri date in the app. Naming both months needs twice the width this row
+ * has. If it is ever considered wrong, the fix is a per-column month, not a
+ * different week anchor.
  */
 data class HijriWeek(
     val monthName: String,

@@ -52,4 +52,30 @@ class HijriWeekTest {
             base.days.first { it.isToday }.number != shifted.days.first { it.isToday }.number,
         )
     }
+
+    @Test
+    fun `a week spanning a month rollover keeps today's month in the header`() {
+        // Documented behaviour, so asserted rather than left to a comment. On a
+        // rollover week the header must name the month *today* is in, computed
+        // independently here — not read back from the value under test.
+        var day = LocalDate.of(2026, 1, 1)
+        var checked = 0
+        repeat(370) {
+            val week = HijriWeek.containing(day)
+            val numbers = week.days.map { it.number }
+            if (numbers.zipWithNext().any { (a, b) -> b < a }) {
+                val expected = java.time.format.DateTimeFormatter
+                    .ofPattern("MMMM", java.util.Locale("ar"))
+                    .withChronology(java.time.chrono.HijrahChronology.INSTANCE)
+                    .format(java.time.chrono.HijrahDate.from(day))
+                assertEquals(expected, week.monthName)
+                // And the strip genuinely does carry both months' days.
+                assertTrue(numbers.contains(1))
+                checked++
+            }
+            day = day.plusDays(1)
+        }
+        // Rollovers happen ~monthly; if none were found the test proved nothing.
+        assertTrue("expected to encounter rollover weeks", checked > 10)
+    }
 }

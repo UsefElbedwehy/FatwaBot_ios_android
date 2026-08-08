@@ -102,14 +102,23 @@ private fun WorshipTrackerContent(context: Context, completed: Set<String>) {
         }
         Spacer(GlanceModifier.height(8.dp))
 
-        // Glance has no grid primitive; rows of three.
+        // Glance has no grid primitive; rows of three, each claiming an equal
+        // share of the height. Without `defaultWeight` the rows stack at the top
+        // and leave the bottom of a large tile empty, which reads as broken
+        // rather than spacious (the same fix as iOS).
+        //
+        // Short final rows are padded with empty weighted slots so two tiles are
+        // the same width as three; otherwise the last row stretches and the grid
+        // stops looking like a grid.
         deeds.chunked(3).forEach { row ->
-            Row(modifier = GlanceModifier.fillMaxWidth()) {
+            Row(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
                 row.forEach { deed ->
                     DeedTile(context, deed, completed.contains(deed.key))
                 }
+                repeat(3 - row.size) {
+                    Spacer(GlanceModifier.defaultWeight())
+                }
             }
-            Spacer(GlanceModifier.height(6.dp))
         }
     }
 }
