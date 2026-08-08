@@ -50,3 +50,7 @@
 "occasion.days" = "days";
 "widget.occasion.name" = "Ramadan & Eid";
 "widget.occasion.desc" = "Days remaining until Ramadan and the two Eids.";
+
+"widget.prayer_calendar.name" = "Prayer & calendar";
+"widget.prayer_calendar.desc" = "The next prayer alongside the Hijri calendar.";
+"widget.open_app" = "Open the app";

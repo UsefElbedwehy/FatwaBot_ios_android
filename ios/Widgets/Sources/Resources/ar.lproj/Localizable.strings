@@ -50,3 +50,7 @@
 "occasion.days" = "يومًا";
 "widget.occasion.name" = "رمضان والعيد";
 "widget.occasion.desc" = "الأيام المتبقية لرمضان وعيدَي الفطر والأضحى.";
+
+"widget.prayer_calendar.name" = "الصلاة والتقويم";
+"widget.prayer_calendar.desc" = "الصلاة القادمة مع التقويم الهجري.";
+"widget.open_app" = "افتح التطبيق";

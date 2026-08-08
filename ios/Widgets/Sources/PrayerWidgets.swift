@@ -318,6 +318,7 @@ struct FatwaBotWidgets: WidgetBundle {
         WorshipTrackerWidget()
         TasbihWidget()
         OccasionWidget()
+        PrayerCalendarWidget()
         HadithWidget()
         NextPrayerAccessoryWidget()
         DuaAccessoryWidget()

@@ -35,4 +35,5 @@
     <string name="widget_occasion_eid_al_fitr">Eid al-Fitr</string>
     <string name="widget_occasion_eid_al_adha">Eid al-Adha</string>
     <string name="widget_occasion_days">days</string>
+    <string name="widget_prayer_calendar">Prayer &amp; calendar</string>
 </resources>

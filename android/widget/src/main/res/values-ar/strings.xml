@@ -34,4 +34,5 @@
     <string name="widget_occasion_eid_al_fitr">عيد الفطر</string>
     <string name="widget_occasion_eid_al_adha">عيد الأضحى</string>
     <string name="widget_occasion_days">يومًا</string>
+    <string name="widget_prayer_calendar">الصلاة والتقويم</string>
 </resources>
