@@ -29,7 +29,7 @@ import com.fatwabot.core.content.AzkarCategory
 import com.fatwabot.core.content.Dua
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
-import com.fatwabot.feature.azkar.AzkarCategoryListScreen
+import com.fatwabot.feature.azkar.AzkarBrowseScreen
 import com.fatwabot.feature.azkar.AzkarSessionScreen
 import com.fatwabot.feature.dua.DuaLibraryScreen
 import com.fatwabot.feature.dua.DuaReadingScreen
@@ -144,7 +144,7 @@ fun RemembranceScreen(initial: RemembranceSegment, onExit: () -> Unit) {
                     RemembranceSegment.AZKAR -> {
                         val category = selectedCategory
                         if (category == null) {
-                            AzkarCategoryListScreen(onCategorySelected = { selectedCategory = it })
+                            AzkarBrowseScreen(onStartSession = { selectedCategory = it })
                         } else {
                             AzkarSessionScreen(category = category)
                         }

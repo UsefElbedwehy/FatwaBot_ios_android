@@ -11,6 +11,16 @@ data class AzkarItem(
     val id: String,
     val sortOrder: Int,
     val arabicText: String,
+    /**
+     * Short name for the dhikr ("شكر الله على رد الروح"), when one exists.
+     *
+     * Nullable and defaulted, and expected to stay that way: titling the corpus
+     * is reviewed religious content that lands separately from this plumbing, so
+     * the reader must render an untitled entry correctly indefinitely. The
+     * default also means a cached payload written before this field existed
+     * still deserializes instead of taking the whole collection down.
+     */
+    val title: String? = null,
     val transliteration: String? = null,
     val translation: String? = null,
     val virtueNote: String? = null,
