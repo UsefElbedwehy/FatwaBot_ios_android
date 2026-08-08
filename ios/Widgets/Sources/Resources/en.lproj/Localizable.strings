@@ -31,3 +31,10 @@
 "prayer.last_third" = "Last third";
 "widget.day_sheet.name" = "Full day";
 "widget.day_sheet.desc" = "The day's full timetable with sunrise, midnight and the last third of the night.";
+
+"deed.azkar_morning" = "Morning adhkar";
+"deed.azkar_evening" = "Evening adhkar";
+"deed.done" = "Done";
+"deed.not_done" = "Not done";
+"widget.worship_tracker.name" = "Worship tracker";
+"widget.worship_tracker.desc" = "Log your prayers and adhkar with one tap from the home screen.";

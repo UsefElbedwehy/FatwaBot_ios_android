@@ -31,3 +31,10 @@
 "prayer.last_third" = "الثلث الأخير";
 "widget.day_sheet.name" = "اليوم كاملاً";
 "widget.day_sheet.desc" = "مواقيت اليوم كاملة مع الشروق ومنتصف الليل والثلث الأخير.";
+
+"deed.azkar_morning" = "أذكار الصباح";
+"deed.azkar_evening" = "أذكار المساء";
+"deed.done" = "تم";
+"deed.not_done" = "لم يتم";
+"widget.worship_tracker.name" = "متابعة العبادات";
+"widget.worship_tracker.desc" = "سجّل صلواتك وأذكارك بنقرة واحدة من الشاشة الرئيسية.";
