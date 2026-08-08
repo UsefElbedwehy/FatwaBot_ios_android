@@ -26,3 +26,8 @@
 "widget.hadith.desc" = "A short hadith, refreshed through the day.";
 "widget.hadith.title" = "Hadith";
 "streak.badge.accessibility %lld" = "Streak: %lld days";
+
+"prayer.midnight" = "Midnight";
+"prayer.last_third" = "Last third";
+"widget.day_sheet.name" = "Full day";
+"widget.day_sheet.desc" = "The day's full timetable with sunrise, midnight and the last third of the night.";

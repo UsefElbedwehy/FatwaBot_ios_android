@@ -44,6 +44,97 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertGreaterThan(try XCTUnwrap(next).time, first.time)
     }
 
+    // MARK: - Day sheets
+
+    func testDaySheetKeepsSunriseThatUpcomingDrops() throws {
+        let days = try timeline(days: 3)
+        let generatedAt = try XCTUnwrap(days.first).time(.fajr).addingTimeInterval(-3600)
+        let snapshot = PrayerWidgetSnapshot.build(
+            timeline: days, location: "الرياض",
+            hijri: HijriDate(from: generatedAt, offsetDays: 0), generatedAt: generatedAt
+        )
+        let sheet = try XCTUnwrap(snapshot.sheet(for: generatedAt))
+        // The whole point of the second pass: sunrise is absent from `upcoming`
+        // (asserted above) and present here.
+        XCTAssertTrue(sheet.times.contains { $0.prayer == "sunrise" })
+        XCTAssertEqual(sheet.times.count, PrayerName.allCases.count)
+        XCTAssertEqual(sheet.times, sheet.times.sorted { $0.time < $1.time })
+    }
+
+    func testNightMarkersMatchTheNotificationPlannersLastThird() throws {
+        let days = try timeline(days: 3)
+        let generatedAt = try XCTUnwrap(days.first).time(.fajr).addingTimeInterval(-3600)
+        let snapshot = PrayerWidgetSnapshot.build(
+            timeline: days, location: "x",
+            hijri: HijriDate(from: generatedAt, offsetDays: 0), generatedAt: generatedAt
+        )
+        let sheet = try XCTUnwrap(snapshot.sheet(for: generatedAt))
+        let maghrib = try XCTUnwrap(days.first).time(.maghrib)
+        let nextFajr = days[1].time(.fajr)
+        let night = nextFajr.timeIntervalSince(maghrib)
+
+        // Independently recomputed here rather than read back from NightTimes,
+        // so this fails if the shared definition is ever changed underneath it.
+        XCTAssertEqual(
+            try XCTUnwrap(sheet.lastThird).timeIntervalSince(maghrib), night * 2 / 3, accuracy: 1
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(sheet.midnight).timeIntervalSince(maghrib), night / 2, accuracy: 1
+        )
+        // Midnight comes before the last third, always.
+        XCTAssertLessThan(try XCTUnwrap(sheet.midnight), try XCTUnwrap(sheet.lastThird))
+    }
+
+    func testFinalDayHasNoNightMarkersRatherThanWrongOnes() throws {
+        let days = try timeline(days: 2)
+        let generatedAt = try XCTUnwrap(days.first).time(.fajr).addingTimeInterval(-3600)
+        let snapshot = PrayerWidgetSnapshot.build(
+            timeline: days, location: "x",
+            hijri: HijriDate(from: generatedAt, offsetDays: 0), generatedAt: generatedAt
+        )
+        // The last day has no successor to take Fajr from. Absent beats invented.
+        let last = try XCTUnwrap(snapshot.days.last)
+        XCTAssertNil(last.midnight)
+        XCTAssertNil(last.lastThird)
+    }
+
+    func testSheetKeepsThePreviousDayThroughTheSmallHours() throws {
+        let days = try timeline(days: 3)
+        let generatedAt = try XCTUnwrap(days.first).time(.fajr).addingTimeInterval(-3600)
+        let snapshot = PrayerWidgetSnapshot.build(
+            timeline: days, location: "x",
+            hijri: HijriDate(from: generatedAt, offsetDays: 0), generatedAt: generatedAt
+        )
+        let firstSheet = try XCTUnwrap(snapshot.days.first)
+        let lastThird = try XCTUnwrap(firstSheet.lastThird)
+        // Standing *in* the last third — past clock midnight, before the next
+        // Fajr. The sheet must still be the one whose night this is, or the
+        // widget blanks the row the reader is awake for.
+        let resolved = try XCTUnwrap(snapshot.sheet(for: lastThird.addingTimeInterval(60)))
+        XCTAssertEqual(resolved.fajr, firstSheet.fajr)
+    }
+
+    func testDecodesSnapshotWrittenBeforeDaySheetsExisted() throws {
+        // A v1 payload: no `days` key at all. The widget extension reads this
+        // whenever the new build runs before the app has rewritten the snapshot.
+        let json = """
+        {"locationName":"الرياض","hijriMonthName":"صفر","hijriDay":25,"hijriYear":1448,
+         "upcoming":[{"prayer":"fajr","time":"2026-08-08T02:36:00Z"}],
+         "generatedAt":"2026-08-08T00:00:00Z"}
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let snapshot = try decoder.decode(
+            PrayerWidgetSnapshot.self, from: Data(json.utf8)
+        )
+        // Decoding must succeed — the countdown widgets keep working...
+        XCTAssertEqual(snapshot.upcoming.count, 1)
+        XCTAssertEqual(snapshot.locationName, "الرياض")
+        // ...and only the day sheet is unavailable.
+        XCTAssertTrue(snapshot.days.isEmpty)
+        XCTAssertNil(snapshot.sheet(for: Date()))
+    }
+
     func testStoreRoundTrip() throws {
         let dir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent(UUID().uuidString)

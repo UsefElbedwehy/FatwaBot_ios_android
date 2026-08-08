@@ -196,9 +196,8 @@ public enum NotificationPlanner {
             if preferences.lastThirdEnabled, index + 1 < timeline.count {
                 let maghrib = day.time(.maghrib)
                 let fajrNext = timeline[index + 1].time(.fajr)
-                if fajrNext > maghrib {
-                    let nightLength = fajrNext.timeIntervalSince(maghrib)
-                    let start = maghrib.addingTimeInterval(nightLength * 2.0 / 3.0)
+                if let night = NightTimes.between(maghrib: maghrib, nextFajr: fajrNext) {
+                    let start = night.lastThird
                     if start > now {
                         planned.append(PlannedNotification(
                             id: "lastthird-\(key)",

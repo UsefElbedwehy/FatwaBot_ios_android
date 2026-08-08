@@ -310,6 +310,7 @@ struct FatwaBotWidgets: WidgetBundle {
     var body: some Widget {
         NextPrayerWidget()
         PrayerTimelineWidget()
+        PrayerDaySheetWidget()
         RandomDuaWidget()
         HijriDateWidget()
         StreakWidget()
