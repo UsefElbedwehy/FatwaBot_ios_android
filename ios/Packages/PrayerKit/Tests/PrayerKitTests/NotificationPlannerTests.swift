@@ -17,7 +17,7 @@ final class NotificationPlannerTests: XCTestCase {
         let now = Date(timeIntervalSince1970: 0) // long before, everything future
         let prefs = PrayerNotificationPreferences(adhanEnabled: true, preAdhanEnabled: false)
         let plan = NotificationPlanner.plan(timeline: days, preferences: prefs, now: now)
-        XCTAssertTrue(plan.allSatisfy { $0.kind == .adhan })
+        XCTAssertTrue(plan.allSatisfy { $0.kind == PlannedNotification.Kind.adhan })
         XCTAssertEqual(Set(plan.compactMap(\.prayer)), Set(PrayerName.allCases.filter(\.isPrayer)))
     }
 
@@ -49,7 +49,7 @@ final class NotificationPlannerTests: XCTestCase {
             adhanEnabled: false, preAdhanEnabled: false, iqamaEnabled: true
         )
         let plan = NotificationPlanner.plan(timeline: days, preferences: prefs, now: now)
-        XCTAssertTrue(plan.allSatisfy { $0.kind == .iqama })
+        XCTAssertTrue(plan.allSatisfy { $0.kind == PlannedNotification.Kind.iqama })
 
         // The gap is per prayer now: Fajr waits longer than the rest, matching
         // mosque practice. A single shared offset would put Fajr at 10 too.

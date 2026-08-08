@@ -62,7 +62,13 @@ class PrayerNotificationScheduler(
     ) {
         // Cancel the previous window before scheduling the new one (stable ids).
         cancelAll()
-        val plan = NotificationPlanner.plan(timeline, preferences, now)
+        // A larger budget than iOS on purpose. The 48 ceiling exists because
+        // iOS allows only 64 *pending* notifications; AlarmManager has no such
+        // cap, so mirroring the limit here imported an iOS constraint onto
+        // Android for no reason and shortened the horizon that survives when the
+        // user does not open the app. Still bounded — exact alarms are a
+        // resource, and some OEM builds throttle apps that register thousands.
+        val plan = NotificationPlanner.plan(timeline, preferences, now, budget = ANDROID_BUDGET)
         plan.forEach { item ->
             val pending = pendingIntent(item)
             alarmManager.setExactAndAllowWhileIdle(
@@ -104,6 +110,9 @@ class PrayerNotificationScheduler(
     }
 
     companion object {
+        /** See the budget comment in [schedule]. */
+        private const val ANDROID_BUDGET = 160
+
         // Suffixed because a channel's sound is immutable once created: without a
         // new id, every existing install would keep the default tone forever.
         const val CHANNEL_ID = "prayer_reminders_v2"

@@ -71,8 +71,25 @@ public final class PrayerNotificationScheduler: PrayerNotificationScheduling, @u
             // the Prayer screen.
             content.userInfo = [DeepLink.notificationUserInfoKey: DeepLink.prayer.rawValue]
 
+            // Time-sensitive, and not decoration: without this the adhan is an
+            // `.active` notification, which iOS is free to withhold for
+            // Scheduled Summary and to silence under any Focus. That is exactly
+            // the reported symptom — the call to prayer arriving minutes late,
+            // or on some days not arriving at all. A prayer time is the textbook
+            // case Apple documents this level for.
+            //
+            // Requires the com.apple.developer.usernotifications.time-sensitive
+            // entitlement; without it the level is ignored rather than rejected,
+            // so the entitlement and this line have to travel together.
+            if #available(iOS 15.0, *) {
+                content.interruptionLevel = .timeSensitive
+            }
+
+            // Seconds included. Truncating to the minute made every notification
+            // fire up to 59 seconds *before* the true prayer time — small, but
+            // wrong in the one direction that matters for Fajr and Maghrib.
             let components = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute], from: item.fireDate
+                [.year, .month, .day, .hour, .minute, .second], from: item.fireDate
             )
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             let request = UNNotificationRequest(identifier: item.id, content: content, trigger: trigger)

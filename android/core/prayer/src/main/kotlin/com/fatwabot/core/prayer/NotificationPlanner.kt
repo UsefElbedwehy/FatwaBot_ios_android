@@ -79,6 +79,12 @@ data class PrayerNotificationPreferences(
  * NotificationPlanner. No Android APIs, no clock reads; fully unit-testable.
  */
 object NotificationPlanner {
+    /**
+     * Matches the iOS ceiling by default so both platforms behave identically
+     * under test. It is a *pending-notification* limit on iOS; AlarmManager has
+     * no equivalent cap, so the Android scheduler is free to pass a larger
+     * budget and does — see PrayerNotificationScheduler.
+     */
     const val DEFAULT_BUDGET = 48
 
     fun plan(
@@ -148,6 +154,47 @@ object NotificationPlanner {
             }
         }
 
-        return planned.sortedBy { it.fireEpochSeconds }.take(budget)
+        return allocate(planned, budget)
+    }
+
+    /** Ranking used when the schedule does not fit. Lower comes first. */
+    private fun rank(kind: PlannedNotification.Kind): Int = when (kind) {
+        PlannedNotification.Kind.ADHAN -> 0
+        PlannedNotification.Kind.PRE_ADHAN -> 1
+        PlannedNotification.Kind.IQAMA -> 2
+        PlannedNotification.Kind.LAST_THIRD -> 3
+    }
+
+    /**
+     * Fits the plan into [budget] by **priority across the whole horizon**, not
+     * by chronology.
+     *
+     * ## The bug this replaces
+     * The previous implementation sorted by fire time and took the first
+     * [budget] items. With every option enabled a single day emits up to 16
+     * notifications (5 adhan + 5 pre-adhan + 5 iqama + 1 last third), so 48
+     * slots bought **three days of everything and then total silence** — no
+     * adhan at all on day four. A user who did not open the app over a weekend
+     * simply stopped being called to prayer, with nothing saying why. Measured:
+     * the old code covered exactly 3 days of adhan over a 10-day timeline.
+     *
+     * The adhan is the only reminder a user cannot substitute for themselves;
+     * everything else is a convenience layered on knowing the time. So adhan is
+     * allocated first across the full horizon and the softer reminders fill
+     * whatever is left near term. The schedule degrades at its edges instead of
+     * falling off a cliff.
+     */
+    internal fun allocate(
+        planned: List<PlannedNotification>,
+        budget: Int,
+    ): List<PlannedNotification> {
+        if (budget <= 0) return emptyList()
+        if (planned.size <= budget) return planned.sortedBy { it.fireEpochSeconds }
+        // Chronological within each kind, so what survives is the *soonest* of
+        // that kind rather than an arbitrary subset.
+        return planned
+            .sortedWith(compareBy({ rank(it.kind) }, { it.fireEpochSeconds }))
+            .take(budget)
+            .sortedBy { it.fireEpochSeconds }
     }
 }

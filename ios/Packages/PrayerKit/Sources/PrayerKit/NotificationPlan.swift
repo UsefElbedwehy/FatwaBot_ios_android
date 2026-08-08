@@ -210,7 +210,52 @@ public enum NotificationPlanner {
             }
         }
 
-        return Array(planned.sorted { $0.fireDate < $1.fireDate }.prefix(budget))
+        return allocate(planned, budget: budget)
+    }
+
+    /// Ranking used when the schedule does not fit in `budget`. Lower comes first.
+    ///
+    /// The adhan is the only one a user cannot substitute for themselves — miss
+    /// it and they miss the prayer. Everything else is a convenience layered on
+    /// top of knowing the time.
+    private static func rank(_ kind: PlannedNotification.Kind) -> Int {
+        switch kind {
+        case .adhan: 0
+        case .preAdhan: 1
+        case .iqama: 2
+        case .lastThird: 3
+        }
+    }
+
+    /// Fits the plan into `budget` by **priority across the whole horizon**, not
+    /// by chronology.
+    ///
+    /// ## The bug this replaces
+    /// The previous implementation sorted by fire date and took the first
+    /// `budget` items. With every option enabled a single day emits up to 16
+    /// notifications (5 adhan + 5 pre-adhan + 5 iqama + 1 last third), so 48
+    /// slots bought **three days of everything and then total silence** — no
+    /// adhan at all on day four. A user who did not open the app over a weekend
+    /// simply stopped being called to prayer, with nothing indicating why.
+    ///
+    /// Allocating by priority instead means the same 48 slots cover roughly nine
+    /// days of adhan, with the softer reminders filling whatever is left near
+    /// term. The schedule degrades at the edges rather than falling off a cliff.
+    static func allocate(
+        _ planned: [PlannedNotification], budget: Int
+    ) -> [PlannedNotification] {
+        guard budget > 0 else { return [] }
+        guard planned.count > budget else {
+            return planned.sorted { $0.fireDate < $1.fireDate }
+        }
+        // Chronological within each kind, so what survives is the *soonest* of
+        // that kind rather than an arbitrary subset.
+        let ordered = planned.sorted {
+            rank($0.kind) != rank($1.kind)
+                ? rank($0.kind) < rank($1.kind)
+                : $0.fireDate < $1.fireDate
+        }
+        return ordered.prefix(budget).sorted { $0.fireDate < $1.fireDate }
     }
 
     private static func dayKey(_ components: DateComponents) -> String {
