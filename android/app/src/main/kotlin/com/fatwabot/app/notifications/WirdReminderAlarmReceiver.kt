@@ -43,10 +43,17 @@ class WirdReminderAlarmReceiver : BroadcastReceiver() {
         // Re-arm BEFORE the permission check: a user who has notifications off
         // today may grant them tomorrow, and a chain that stops the first time it
         // can't post never restarts.
-        EntryPointAccessors
-            .fromApplication(context.applicationContext, WirdSchedulerEntryPoint::class.java)
-            .wirdReminderScheduler()
-            .arm(PlannedWirdReminder(id, wirdId, wirdName, hour, minute))
+        //
+        // Only for daily reminders. A prayer-anchored one is a dated one-shot —
+        // re-arming it at the same wall clock would silently turn it into a
+        // fixed-time reminder from its second firing onward, which is exactly the
+        // behaviour the user turned off. Those are replanned on next foreground.
+        if (intent.getBooleanExtra(WirdReminderScheduler.EXTRA_REPEATS, true)) {
+            EntryPointAccessors
+                .fromApplication(context.applicationContext, WirdSchedulerEntryPoint::class.java)
+                .wirdReminderScheduler()
+                .arm(PlannedWirdReminder(id, wirdId, wirdName, hour, minute))
+        }
 
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED

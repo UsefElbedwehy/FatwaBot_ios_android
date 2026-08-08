@@ -12,7 +12,28 @@ data class PlannedWirdReminder(
     val wirdName: String,
     val hour: Int,
     val minute: Int,
-)
+    /**
+     * How this reminder repeats.
+     *
+     * AlarmManager has no exact repeating alarm, so "daily" is a one-shot that
+     * re-arms itself after firing. A prayer-anchored reminder must NOT do that:
+     * the prayer moves, so re-arming at the same clock time would silently turn
+     * it back into a fixed-time reminder after its first firing. Those are
+     * replanned on the next app foreground instead.
+     */
+    val trigger: Trigger = Trigger.DailyAt,
+) {
+    sealed interface Trigger {
+        /** Re-arms itself at [hour]:[minute] every day. */
+        data object DailyAt : Trigger
+
+        /** Fires once at this instant and is not re-armed by the receiver. */
+        data class OneShot(val epochMillis: Long) : Trigger
+    }
+}
+
+/** A wird's reminder anchored to a prayer rather than the clock. */
+data class WirdPrayerAnchor(val prayer: String, val offsetMinutes: Int)
 
 /** A wall-clock time of day for one wird's reminder. Mirror of iOS `WirdReminderTime`. */
 data class WirdReminderTime(val hour: Int, val minute: Int) {
@@ -46,7 +67,23 @@ data class WirdReminderPreferences(
      * written before this field existed still deserializes.
      */
     val timesByWird: Map<String, WirdReminderTime> = emptyMap(),
+    /**
+     * Per-wird prayer anchoring. Present means "ignore the clock time for this
+     * wird and follow the prayer instead".
+     *
+     * Kept beside [timesByWird] rather than replacing it so a user who switches
+     * to Fajr and back gets their old clock time returned rather than reset.
+     */
+    val prayerAnchorsByWird: Map<String, WirdPrayerAnchor> = emptyMap(),
 ) {
+    fun prayerAnchor(wirdId: String): WirdPrayerAnchor? = prayerAnchorsByWird[wirdId]
+
+    fun withPrayerAnchor(wirdId: String, anchor: WirdPrayerAnchor): WirdReminderPreferences =
+        copy(prayerAnchorsByWird = prayerAnchorsByWird + (wirdId to anchor))
+
+    fun withoutPrayerAnchor(wirdId: String): WirdReminderPreferences =
+        copy(prayerAnchorsByWird = prayerAnchorsByWird - wirdId)
+
     /**
      * The time a wird's reminder should fire.
      *
@@ -100,10 +137,31 @@ object WirdReminderPlanner {
      */
     const val NOTIFICATION_RESERVE = 5
 
+    /**
+     * Days of dated reminders emitted for a prayer-anchored wird.
+     *
+     * Deliberately short: the app replans on every foreground, and mirroring the
+     * iOS horizon keeps the two platforms' behaviour identical under test.
+     */
+    const val PRAYER_ANCHOR_HORIZON_DAYS = 3
+
+    /**
+     * One day's prayer time in epoch millis, supplied by the app layer.
+     *
+     * A lambda rather than a timeline type so this module keeps no dependency on
+     * core:prayer — the planner stays pure and the app decides where the times
+     * come from.
+     */
+    fun interface PrayerTimeLookup {
+        fun timeMillis(dayOffset: Int, prayer: String): Long?
+    }
+
     fun plan(
         wirds: List<Wird>,
         preferences: WirdReminderPreferences,
         budget: Int = NOTIFICATION_RESERVE,
+        nowMillis: Long = System.currentTimeMillis(),
+        prayerTime: PrayerTimeLookup? = null,
     ): List<PlannedWirdReminder> {
         if (!preferences.enabled || budget <= 0) return emptyList()
         // Archived wirds are excluded here as well as in the responder: a
@@ -124,19 +182,51 @@ object WirdReminderPlanner {
                     { it.id },
                 ),
             )
-        return (userCreated + fixed).take(budget).map { wird ->
-            // A fixed slot is asked about while it is still actionable (see
-            // `FixedWirdSlot.reminderHour`) rather than piling onto the user's
-            // one configured time.
+        // The budget counts *reminders*, not wirds: an anchored wird emits one
+        // per day of horizon while a clock one emits a single self-re-arming
+        // alarm, so counting wirds would silently overshoot the reserve.
+        val result = mutableListOf<PlannedWirdReminder>()
+        for (wird in userCreated + fixed) {
+            if (result.size >= budget) break
+            val anchor = preferences.prayerAnchor(wird.id)
+
+            if (anchor != null && prayerTime != null) {
+                for (offset in 0 until PRAYER_ANCHOR_HORIZON_DAYS) {
+                    if (result.size >= budget) break
+                    val base = prayerTime.timeMillis(offset, anchor.prayer) ?: continue
+                    val fire = base + anchor.offsetMinutes * 60_000L
+                    // Today's prayer has usually passed by the time the app is
+                    // opened; arming it would fire immediately.
+                    if (fire <= nowMillis) continue
+                    val local = java.time.Instant.ofEpochMilli(fire)
+                        .atZone(java.time.ZoneId.systemDefault())
+                    result += PlannedWirdReminder(
+                        id = "$ID_PREFIX${wird.id}-d$offset",
+                        wirdId = wird.id,
+                        wirdName = wird.name,
+                        hour = local.hour,
+                        minute = local.minute,
+                        trigger = PlannedWirdReminder.Trigger.OneShot(fire),
+                    )
+                }
+                continue
+            }
+
+            // Anchored but with no prayer times available (no location yet, or a
+            // caller that does not supply them): fall back to the clock time
+            // rather than emitting nothing. A reminder at a slightly wrong hour
+            // beats a wird that silently stops asking.
             val slotHour = if (wird.isFixed) FixedWirdSlot.forWirdId(wird.id)?.reminderHour else null
-            PlannedWirdReminder(
+            val time = preferences.timeFor(wird.id, slotHour)
+            result += PlannedWirdReminder(
                 id = ID_PREFIX + wird.id,
                 wirdId = wird.id,
                 wirdName = wird.name,
-                hour = preferences.timeFor(wird.id, slotHour).hour,
-                minute = preferences.timeFor(wird.id, slotHour).minute,
+                hour = time.hour,
+                minute = time.minute,
             )
         }
+        return result
     }
 
     /**

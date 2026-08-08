@@ -49,10 +49,14 @@ class WirdReminderScheduler(
         wirds: List<Wird>,
         nowMillis: Long = System.currentTimeMillis(),
         zone: ZoneId = ZoneId.systemDefault(),
+        prayerTime: WirdReminderPlanner.PrayerTimeLookup? = null,
     ) {
         cancelAll()
 
-        val plan = WirdReminderPlanner.plan(wirds = wirds, preferences = preferences)
+        val plan = WirdReminderPlanner.plan(
+            wirds = wirds, preferences = preferences,
+            nowMillis = nowMillis, prayerTime = prayerTime,
+        )
         plan.forEach { arm(it, nowMillis, zone) }
 
         // Persist ids so a later cancelAll() can target them across process
@@ -69,9 +73,17 @@ class WirdReminderScheduler(
      */
     @SuppressLint("ScheduleExactAlarm")
     fun arm(item: PlannedWirdReminder, nowMillis: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()) {
+        // A one-shot fires at its exact instant; a daily one is re-derived from
+        // the wall clock so it survives the alarm being armed on a different day
+        // than it fires.
+        val fireAt = when (val trigger = item.trigger) {
+            is PlannedWirdReminder.Trigger.OneShot -> trigger.epochMillis
+            PlannedWirdReminder.Trigger.DailyAt ->
+                nextFireMillis(item.hour, item.minute, nowMillis, zone)
+        }
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            nextFireMillis(item.hour, item.minute, nowMillis, zone),
+            fireAt,
             pendingIntent(item),
         )
     }
@@ -97,6 +109,11 @@ class WirdReminderScheduler(
             putExtra(EXTRA_WIRD_NAME, item.wirdName)
             putExtra(EXTRA_HOUR, item.hour)
             putExtra(EXTRA_MINUTE, item.minute)
+            // Whether the receiver should re-arm after firing. A prayer-anchored
+            // reminder must not: the prayer moves, so re-arming at the same wall
+            // clock would quietly convert it into a fixed-time reminder after its
+            // first firing. Those are replanned on the next app foreground.
+            putExtra(EXTRA_REPEATS, item.trigger == PlannedWirdReminder.Trigger.DailyAt)
         }
         return PendingIntent.getBroadcast(
             context, item.id.hashCode(), intent,
@@ -111,6 +128,7 @@ class WirdReminderScheduler(
         const val EXTRA_WIRD_NAME = "wird_name"
         const val EXTRA_HOUR = "hour"
         const val EXTRA_MINUTE = "minute"
+        const val EXTRA_REPEATS = "repeats"
         private const val PREFS = "wird_reminders"
         private const val KEY_IDS = "scheduled_ids"
 

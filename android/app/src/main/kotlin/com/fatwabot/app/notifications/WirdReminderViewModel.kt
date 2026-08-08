@@ -1,5 +1,11 @@
 package com.fatwabot.app.notifications
 
+import com.fatwabot.core.prayer.PrayerEngine
+import com.fatwabot.core.prayer.PrayerNameUi
+import com.fatwabot.core.prayer.PrayerSettings
+import com.fatwabot.feature.awrad.WirdReminderPlanner
+import com.fatwabot.feature.prayer.LocationProviding
+import java.time.LocalDate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fatwabot.feature.awrad.WirdReminderPreferences
@@ -18,7 +24,31 @@ class WirdReminderViewModel @Inject constructor(
     private val store: WirdReminderPreferenceStore,
     private val wirdStore: WirdStoring,
     private val scheduler: WirdReminderScheduler,
+    private val locationProvider: LocationProviding,
 ) : ViewModel() {
+
+    /**
+     * Prayer times for the anchored wirds, from the *cached* location only.
+     *
+     * `cached()` rather than `resolve()` on purpose: rescheduling runs on every
+     * launch and on every settings change, and resolving would mean a location
+     * request each time — a permission prompt in the worst case. With no cached
+     * location the planner falls back to clock times, which is the designed
+     * behaviour rather than a failure.
+     */
+    private val prayerTimes = WirdReminderPlanner.PrayerTimeLookup { dayOffset, prayer ->
+        val location = locationProvider.cached() ?: return@PrayerTimeLookup null
+        val name = PrayerNameUi.entries.firstOrNull { it.key == prayer }
+            ?: return@PrayerTimeLookup null
+        val day = LocalDate.now().plusDays(dayOffset.toLong())
+        runCatching {
+            PrayerEngine().timeline(
+                location.latitude, location.longitude,
+                day.year, day.monthValue, day.dayOfMonth, 1,
+                PrayerSettings(),
+            ).firstOrNull()?.times?.get(name)?.epochSeconds?.times(1000L)
+        }.getOrNull()
+    }
 
     fun current(): WirdReminderPreferences = store.load()
 
@@ -39,7 +69,11 @@ class WirdReminderViewModel @Inject constructor(
     private fun reschedule(preferences: WirdReminderPreferences) {
         viewModelScope.launch(Dispatchers.IO) {
             scheduler.ensureChannel()
-            scheduler.reschedule(preferences = preferences, wirds = wirdStore.loadWirds())
+            scheduler.reschedule(
+                preferences = preferences,
+                wirds = wirdStore.loadWirds(),
+                prayerTime = prayerTimes,
+            )
         }
     }
 }

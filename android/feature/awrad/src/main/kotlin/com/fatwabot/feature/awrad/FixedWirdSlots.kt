@@ -48,6 +48,26 @@ enum class FixedWirdSlot(
     /** Board / reminder order. */
     val sortOrder: Int get() = ordinal
 
+    /**
+     * The prayer this slot can be anchored to, when offering the "follow the
+     * prayer instead of the clock" option. Mirror of iOS `anchorPrayer`.
+     *
+     * Only the two azkar slots have one: their windows are defined by a prayer
+     * and move by over an hour across the year, so a fixed time chosen in summer
+     * lands at the wrong end of the window in winter. قيام الليل follows the last
+     * third of the night rather than a prayer, and the Qur'an wird has no
+     * natural anchor at all.
+     */
+    val anchorPrayer: String?
+        get() = when (this) {
+            MORNING_AZKAR -> "fajr"
+            EVENING_AZKAR -> "asr"
+            QIYAM_AL_LAYL, DAILY_QURAN -> null
+        }
+
+    /** Default minutes after the anchor prayer. */
+    val defaultAnchorOffsetMinutes: Int get() = 30
+
     companion object {
         fun forWirdId(wirdId: String): FixedWirdSlot? = entries.firstOrNull { it.wirdId == wirdId }
     }

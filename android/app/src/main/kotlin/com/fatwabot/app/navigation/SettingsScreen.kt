@@ -84,6 +84,7 @@ import com.fatwabot.app.account.AccountViewModel
 import com.fatwabot.app.notifications.ContentReminderViewModel
 import com.fatwabot.app.notifications.WirdReminderViewModel
 import com.fatwabot.feature.awrad.FixedWirdSlot
+import com.fatwabot.feature.awrad.WirdPrayerAnchor
 import com.fatwabot.feature.awrad.WirdReminderTime
 import com.fatwabot.feature.awrad.fixedWirdNameResolver
 import com.fatwabot.core.content.ContentReminderPreferences
@@ -422,11 +423,37 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
                     // as قيام الليل is asking about a window that closed.
                     val slotName = fixedWirdNameResolver(LocalContext.current)
                     FixedWirdSlot.entries.forEach { slot ->
-                        val time = wirdPrefs.timeFor(slot.wirdId, slot.reminderHour)
-                        TimeRow(slotName.name(slot), time.hour, time.minute) { hour, minute ->
-                            updateWird(
-                                wirdPrefs.withTime(slot.wirdId, WirdReminderTime.of(hour, minute)),
-                            )
+                        val anchored = wirdPrefs.prayerAnchor(slot.wirdId) != null
+                        // An anchored slot follows its prayer, so its clock
+                        // picker is hidden rather than shown-but-ignored.
+                        if (!anchored) {
+                            val time = wirdPrefs.timeFor(slot.wirdId, slot.reminderHour)
+                            TimeRow(slotName.name(slot), time.hour, time.minute) { hour, minute ->
+                                updateWird(
+                                    wirdPrefs.withTime(slot.wirdId, WirdReminderTime.of(hour, minute)),
+                                )
+                            }
+                        }
+                        slot.anchorPrayer?.let { prayer ->
+                            ToggleRow(
+                                stringResource(
+                                    R.string.settings_notif_wird_follow_prayer,
+                                    stringResource(anchorPrayerNameRes(prayer)),
+                                ),
+                                "",
+                                anchored,
+                            ) { on ->
+                                updateWird(
+                                    if (on) {
+                                        wirdPrefs.withPrayerAnchor(
+                                            slot.wirdId,
+                                            WirdPrayerAnchor(prayer, slot.defaultAnchorOffsetMinutes),
+                                        )
+                                    } else {
+                                        wirdPrefs.withoutPrayerAnchor(slot.wirdId)
+                                    },
+                                )
+                            }
                         }
                     }
                     // User-created wirds keep the shared time.
@@ -744,4 +771,17 @@ private fun SignInButton(textRes: Int, enabled: Boolean, onClick: () -> Unit) {
     ) {
         Text(stringResource(textRes), fontWeight = FontWeight.SemiBold)
     }
+}
+
+/**
+ * Display name for an anchor prayer.
+ *
+ * Only the two prayers a wird slot can anchor to. A full PrayerNameUi mapping
+ * would pull the prayer feature's enum into Settings for two cases, and the
+ * fallback keeps a future third anchor from crashing here.
+ */
+private fun anchorPrayerNameRes(prayer: String): Int = when (prayer) {
+    "fajr" -> com.fatwabot.feature.prayer.R.string.prayer_fajr
+    "asr" -> com.fatwabot.feature.prayer.R.string.prayer_asr
+    else -> com.fatwabot.feature.prayer.R.string.prayer_fajr
 }

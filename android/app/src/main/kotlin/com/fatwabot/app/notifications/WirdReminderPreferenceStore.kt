@@ -2,6 +2,7 @@ package com.fatwabot.app.notifications
 
 import android.content.Context
 import com.fatwabot.feature.awrad.WirdReminderPreferences
+import com.fatwabot.feature.awrad.WirdPrayerAnchor
 import com.fatwabot.feature.awrad.WirdReminderTime
 
 /**
@@ -21,6 +22,7 @@ class WirdReminderPreferenceStore(private val context: Context) {
             hour = WirdReminderPreferences.clampHour(prefs.getInt(KEY_HOUR, defaults.hour)),
             minute = WirdReminderPreferences.clampMinute(prefs.getInt(KEY_MINUTE, defaults.minute)),
             timesByWird = decodeWirdTimes(prefs.getString(KEY_TIMES, null)),
+            prayerAnchorsByWird = decodeWirdAnchors(prefs.getString(KEY_ANCHORS, null)),
         )
     }
 
@@ -30,6 +32,7 @@ class WirdReminderPreferenceStore(private val context: Context) {
             .putInt(KEY_HOUR, WirdReminderPreferences.clampHour(preferences.hour))
             .putInt(KEY_MINUTE, WirdReminderPreferences.clampMinute(preferences.minute))
             .putString(KEY_TIMES, encodeWirdTimes(preferences.timesByWird))
+            .putString(KEY_ANCHORS, encodeWirdAnchors(preferences.prayerAnchorsByWird))
             .apply()
     }
 
@@ -39,6 +42,7 @@ class WirdReminderPreferenceStore(private val context: Context) {
         const val KEY_HOUR = "hour"
         const val KEY_MINUTE = "minute"
         const val KEY_TIMES = "times_by_wird"
+        const val KEY_ANCHORS = "anchors_by_wird"
     }
 }
 
@@ -75,4 +79,27 @@ internal fun encodeWirdTimes(times: Map<String, WirdReminderTime>): String =
     // rewrite the same data in a different order every time.
     times.toSortedMap().entries.joinToString(";") { (id, time) ->
         "%s=%02d:%02d".format(id, time.hour, time.minute)
+    }
+
+/**
+ * Prayer anchors as `wirdId=prayer:offset` joined by ';'. Same shape and same
+ * failure policy as [decodeWirdTimes] — an unreadable entry costs that one
+ * override, never the whole schedule.
+ */
+internal fun decodeWirdAnchors(raw: String?): Map<String, WirdPrayerAnchor> {
+    if (raw.isNullOrBlank()) return emptyMap()
+    return raw.split(';').mapNotNull { entry ->
+        val parts = entry.split('=', limit = 2).takeIf { it.size == 2 } ?: return@mapNotNull null
+        val (id, value) = parts
+        if (id.isBlank()) return@mapNotNull null
+        val valueParts = value.split(':', limit = 2).takeIf { it.size == 2 } ?: return@mapNotNull null
+        val prayer = valueParts[0].takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        val offset = valueParts[1].toIntOrNull() ?: return@mapNotNull null
+        id to WirdPrayerAnchor(prayer, offset)
+    }.toMap()
+}
+
+internal fun encodeWirdAnchors(anchors: Map<String, WirdPrayerAnchor>): String =
+    anchors.toSortedMap().entries.joinToString(";") { (id, anchor) ->
+        "$id=${anchor.prayer}:${anchor.offsetMinutes}"
     }

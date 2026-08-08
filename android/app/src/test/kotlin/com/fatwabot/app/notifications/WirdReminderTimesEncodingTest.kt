@@ -1,5 +1,6 @@
 package com.fatwabot.app.notifications
 
+import com.fatwabot.feature.awrad.WirdPrayerAnchor
 import com.fatwabot.feature.awrad.WirdReminderTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -45,5 +46,28 @@ class WirdReminderTimesEncodingTest {
     @Test
     fun `out of range stored values are clamped on read`() {
         assertEquals(WirdReminderTime(23, 59), decodeWirdTimes("a=99:99")["a"])
+    }
+
+    @Test
+    fun `anchors round trip`() {
+        val anchors = mapOf(
+            "fixed-morning-azkar" to WirdPrayerAnchor("fajr", 30),
+            "fixed-evening-azkar" to WirdPrayerAnchor("asr", -10),
+        )
+        assertEquals(anchors, decodeWirdAnchors(encodeWirdAnchors(anchors)))
+    }
+
+    @Test
+    fun `a corrupt anchor costs only itself`() {
+        val raw = "fixed-morning-azkar=fajr:30;junk;=asr:0;x=:5;y=asr:zz"
+        val decoded = decodeWirdAnchors(raw)
+        assertEquals(WirdPrayerAnchor("fajr", 30), decoded["fixed-morning-azkar"])
+        assertEquals(1, decoded.size)
+    }
+
+    @Test
+    fun `blank anchors decode to none`() {
+        assertTrue(decodeWirdAnchors(null).isEmpty())
+        assertTrue(decodeWirdAnchors("").isEmpty())
     }
 }
