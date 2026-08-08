@@ -81,6 +81,23 @@ public final class PrayerViewModel {
         }
     }
 
+    /// Prayer time on a given day, for callers that schedule around prayers —
+    /// currently the prayer-anchored wird reminders.
+    ///
+    /// Returns nil with no location, which is a real state on first launch: the
+    /// wird planner treats that as "fall back to the clock time" rather than
+    /// emitting nothing.
+    public func prayerTime(dayOffset: Int, prayer: String) -> Date? {
+        guard let location, let name = PrayerName(rawValue: prayer) else { return nil }
+        guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now()) else { return nil }
+        let start = calendar.dateComponents([.year, .month, .day], from: day)
+        guard let timeline = try? engine.timeline(
+            latitude: location.latitude, longitude: location.longitude,
+            startDate: start, days: 1, settings: settings, calendar: calendar
+        ) else { return nil }
+        return timeline.first?.times[name]
+    }
+
     /// Rebuilds the rolling notification window (docs/features/prayer.md triggers).
     public func rescheduleNotifications() async {
         guard let scheduler, let location else { return }

@@ -91,6 +91,26 @@ public enum FixedWirdSlot: String, CaseIterable, Sendable {
         }
     }
 
+    /// The prayer this slot can be anchored to, when offering the
+    /// "follow the prayer instead of the clock" option.
+    ///
+    /// Only the two azkar slots have one. أذكار الصباح and أذكار المساء are tied
+    /// to a prayer by definition, and their windows move by over an hour across
+    /// the year — a fixed time chosen in summer lands at the wrong end of the
+    /// window in winter. قيام الليل is anchored to the last third of the night
+    /// rather than a prayer, and the Qur'an wird has no natural anchor at all.
+    public var anchorPrayer: String? {
+        switch self {
+        case .morningAzkar: "fajr"
+        case .eveningAzkar: "asr"
+        case .qiyamAlLayl, .dailyQuran: nil
+        }
+    }
+
+    /// Default minutes after the anchor prayer. Enough that the prayer itself is
+    /// done before the app asks about the adhkar that follow it.
+    public var defaultAnchorOffsetMinutes: Int { 30 }
+
     /// Board / reminder order.
     public var sortOrder: Int { Self.allCases.firstIndex(of: self) ?? 0 }
 

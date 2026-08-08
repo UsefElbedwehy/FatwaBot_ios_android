@@ -292,7 +292,12 @@ private struct NotificationsSection: View {
                     // same time as قيام الليل is asking about a window that
                     // closed. User-created wirds keep the shared time below.
                     ForEach(FixedWirdSlot.allCases, id: \.rawValue) { slot in
-                        slotTimeRow(slot)
+                        // An anchored slot follows its prayer, so its clock
+                        // picker is hidden rather than shown-but-ignored.
+                        if wirdPrefs.prayerAnchor(forWirdId: slot.wirdId) == nil {
+                            slotTimeRow(slot)
+                        }
+                        slotAnchorRow(slot)
                     }
                     Divider().opacity(0.3)
                     timeRow("settings.notif.wird.time_other")
@@ -319,7 +324,12 @@ private struct NotificationsSection: View {
                 Task {
                     await Container.shared.wirdReminderScheduler().reschedule(
                         preferences: newValue,
-                        wirds: Container.shared.wirdStore().loadWirds()
+                        wirds: Container.shared.wirdStore().loadWirds(),
+                        prayerTime: { [prayerViewModel] offset, prayer in
+                            MainActor.assumeIsolated {
+                                prayerViewModel.prayerTime(dayOffset: offset, prayer: prayer)
+                            }
+                        }
                     )
                 }
             }
@@ -331,6 +341,34 @@ private struct NotificationsSection: View {
     /// Shows the slot's built-in hour until the user picks something, so the
     /// control never reads as unset — and picking a time writes an override that
     /// then wins over the built-in default forever.
+    /// "Follow the prayer" switch for the slots that have a natural anchor.
+    @ViewBuilder
+    private func slotAnchorRow(_ slot: FixedWirdSlot) -> some View {
+        if let prayer = slot.anchorPrayer {
+            let isAnchored = wirdPrefs.prayerAnchor(forWirdId: slot.wirdId) != nil
+            Toggle(isOn: Binding(
+                get: { isAnchored },
+                set: { on in
+                    wirdPrefs = on
+                        ? wirdPrefs.settingPrayerAnchor(
+                            prayer: prayer,
+                            offsetMinutes: slot.defaultAnchorOffsetMinutes,
+                            forWirdId: slot.wirdId
+                        )
+                        : wirdPrefs.clearingPrayerAnchor(forWirdId: slot.wirdId)
+                }
+            )) {
+                Text(String(
+                    format: NSLocalizedString("settings.notif.wird.follow_prayer", comment: ""),
+                    NSLocalizedString("prayer.\(prayer)", comment: "")
+                ))
+                .font(.caption)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            }
+            .tint(Color(hexToken: tokens.primary))
+        }
+    }
+
     private func slotTimeRow(_ slot: FixedWirdSlot) -> some View {
         let binding = Binding<Date>(
             get: {

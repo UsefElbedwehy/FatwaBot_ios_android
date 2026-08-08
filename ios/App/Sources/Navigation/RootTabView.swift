@@ -134,7 +134,14 @@ struct RootTabView: View {
                     // ids and the triggers repeat daily at a fixed time.
                     await Container.shared.wirdReminderScheduler().reschedule(
                         preferences: Container.shared.wirdReminderPreferenceStore().load(),
-                        wirds: Container.shared.wirdStore().loadWirds()
+                        wirds: Container.shared.wirdStore().loadWirds(),
+                        // Supplied so a wird anchored to Fajr follows the actual
+                        // prayer rather than falling back to a clock time.
+                        prayerTime: { [prayerViewModel] offset, prayer in
+                            MainActor.assumeIsolated {
+                                prayerViewModel.prayerTime(dayOffset: offset, prayer: prayer)
+                            }
+                        }
                     )
                 }
                 await Container.shared.configService().refresh(locales: ["ar", "en"])

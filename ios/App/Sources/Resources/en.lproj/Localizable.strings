@@ -286,3 +286,5 @@
 "azkar.repeat_a11y %lld" = "Said %lld times";
 
 "settings.notif.wird.time_other" = "Your other wirds";
+
+"settings.notif.wird.follow_prayer" = "Follow %@ time";

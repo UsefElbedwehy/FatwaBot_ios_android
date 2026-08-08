@@ -3,21 +3,68 @@ import Foundation
 /// One scheduled "did you do it today?" reminder — one per active wird.
 /// Mirror of Android `PlannedWirdReminder`.
 public struct PlannedWirdReminder: Equatable, Sendable, Identifiable {
+    /// How the platform should fire this reminder.
+    ///
+    /// Two shapes because they cost different amounts. A fixed time of day is a
+    /// *repeating* daily trigger — one pending slot, forever. A prayer-anchored
+    /// one moves every day, so it has to be a dated one-shot per day and costs a
+    /// slot per day of horizon. That difference is why the budget below counts
+    /// emitted reminders rather than wirds.
+    public enum Trigger: Equatable, Sendable {
+        case dailyAt(hour: Int, minute: Int)
+        case oneShot(Date)
+    }
+
     public let id: String
     public let wirdId: String
     /// Interpolated into the notification title, so the user knows *which* wird
     /// they are answering for without opening the app.
     public let wirdName: String
-    public let hour: Int
-    public let minute: Int
+    public let trigger: Trigger
 
-    public init(id: String, wirdId: String, wirdName: String, hour: Int, minute: Int) {
+    /// Wall-clock hour for a daily reminder. Kept for the callers and tests that
+    /// predate prayer anchoring; a one-shot reports the hour it lands on.
+    public var hour: Int {
+        switch trigger {
+        case let .dailyAt(hour, _): hour
+        case let .oneShot(date): Calendar.current.component(.hour, from: date)
+        }
+    }
+
+    public var minute: Int {
+        switch trigger {
+        case let .dailyAt(_, minute): minute
+        case let .oneShot(date): Calendar.current.component(.minute, from: date)
+        }
+    }
+
+    public init(id: String, wirdId: String, wirdName: String, trigger: Trigger) {
         self.id = id
         self.wirdId = wirdId
         self.wirdName = wirdName
-        self.hour = hour
-        self.minute = minute
+        self.trigger = trigger
     }
+
+    public init(id: String, wirdId: String, wirdName: String, hour: Int, minute: Int) {
+        self.init(
+            id: id, wirdId: wirdId, wirdName: wirdName,
+            trigger: .dailyAt(hour: hour, minute: minute)
+        )
+    }
+}
+
+/// When a wird's reminder fires.
+///
+/// Client request: "اعمل خيار وقت الفجر لأذكار الصباح". A fixed clock time is a
+/// poor fit for أذكار الصباح specifically — Fajr moves by over an hour across
+/// the year, so 05:30 chosen in summer lands *before* Fajr in winter and the
+/// reminder starts arriving at the wrong end of the window it is asking about.
+public enum WirdReminderSchedule: Equatable, Sendable, Codable {
+    /// Same time every day.
+    case clock(hour: Int, minute: Int)
+    /// Anchored to a prayer, plus an offset in minutes. Negative offsets are
+    /// allowed so a wird can be asked about *before* its prayer.
+    case afterPrayer(prayer: String, offsetMinutes: Int)
 }
 
 /// User-facing preferences for the daily wird reminder.
@@ -50,6 +97,13 @@ public struct WirdReminderPreferences: Equatable, Sendable, Codable {
     /// behaves exactly as it did.
     public var timesByWird: [String: WirdReminderTime]
 
+    /// Per-wird prayer anchoring. Present means "ignore the clock time for this
+    /// wird and follow the prayer instead".
+    ///
+    /// Kept beside `timesByWird` rather than replacing it so a user who switches
+    /// to Fajr and back gets their old clock time returned rather than reset.
+    public var prayerAnchorsByWird: [String: WirdReminderSchedule]
+
     public static let defaultHour = 20
     public static let defaultMinute = 0
 
@@ -57,12 +111,36 @@ public struct WirdReminderPreferences: Equatable, Sendable, Codable {
         enabled: Bool = true,
         hour: Int = defaultHour,
         minute: Int = defaultMinute,
-        timesByWird: [String: WirdReminderTime] = [:]
+        timesByWird: [String: WirdReminderTime] = [:],
+        prayerAnchorsByWird: [String: WirdReminderSchedule] = [:]
     ) {
         self.enabled = enabled
         self.hour = Self.clampHour(hour)
         self.minute = Self.clampMinute(minute)
         self.timesByWird = timesByWird
+        self.prayerAnchorsByWird = prayerAnchorsByWird
+    }
+
+    /// The prayer this wird is anchored to, if any.
+    public func prayerAnchor(forWirdId id: String) -> (prayer: String, offsetMinutes: Int)? {
+        guard case let .afterPrayer(prayer, offset) = prayerAnchorsByWird[id] else { return nil }
+        return (prayer, offset)
+    }
+
+    /// Copy with a wird anchored to a prayer.
+    public func settingPrayerAnchor(
+        prayer: String, offsetMinutes: Int, forWirdId id: String
+    ) -> Self {
+        var copy = self
+        copy.prayerAnchorsByWird[id] = .afterPrayer(prayer: prayer, offsetMinutes: offsetMinutes)
+        return copy
+    }
+
+    /// Copy with a wird's prayer anchor removed, returning it to its clock time.
+    public func clearingPrayerAnchor(forWirdId id: String) -> Self {
+        var copy = self
+        copy.prayerAnchorsByWird[id] = nil
+        return copy
     }
 
     /// The time a wird's reminder should fire.
@@ -100,6 +178,9 @@ public struct WirdReminderPreferences: Equatable, Sendable, Codable {
         // Absent on every device that has not yet set a per-wird time, which is
         // all of them at the moment this ships.
         timesByWird = (try? c.decodeIfPresent([String: WirdReminderTime].self, forKey: .timesByWird)) ?? [:]
+        prayerAnchorsByWird = (try? c.decodeIfPresent(
+            [String: WirdReminderSchedule].self, forKey: .prayerAnchorsByWird
+        )) ?? [:]
     }
 }
 
@@ -123,10 +204,27 @@ public enum WirdReminderPlanner {
     /// wird reminders on can never push the total over the cap mid-session.
     public static let notificationReserve = 5
 
+    /// Days of dated reminders emitted for a prayer-anchored wird.
+    ///
+    /// Deliberately short. Each day costs a pending slot, and the app reschedules
+    /// on every foreground, so a long horizon buys very little and competes with
+    /// the prayer schedule for the same 64. Three days covers a weekend away
+    /// from the app.
+    public static let prayerAnchorHorizonDays = 3
+
+    /// One day's prayer times, supplied by the app layer.
+    ///
+    /// A closure rather than a timeline type so this package keeps no dependency
+    /// on PrayerKit — the planner stays pure and the app decides where the times
+    /// come from.
+    public typealias PrayerTimeLookup = @Sendable (_ dayOffset: Int, _ prayer: String) -> Date?
+
     public static func plan(
         wirds: [Wird],
         preferences: WirdReminderPreferences,
-        budget: Int = notificationReserve
+        budget: Int = notificationReserve,
+        now: Date = Date(),
+        prayerTime: PrayerTimeLookup? = nil
     ) -> [PlannedWirdReminder] {
         guard preferences.enabled, budget > 0 else { return [] }
         // Archived wirds are excluded here as well as in the responder: a
@@ -145,20 +243,46 @@ public enum WirdReminderPlanner {
             let (left, right) = (FixedWirdSlot(wirdId: $0.id), FixedWirdSlot(wirdId: $1.id))
             return (left?.sortOrder ?? .max, $0.id) < (right?.sortOrder ?? .max, $1.id)
         }
-        return (userCreated + fixed).prefix(budget).map { wird in
-            // A fixed slot is asked about while it is still actionable (see
-            // `FixedWirdSlot.reminderHour`) rather than piling onto the user's
-            // one configured time.
+        // The budget counts *reminders*, not wirds: a prayer-anchored wird emits
+        // one per day of horizon while a clock one emits a single repeating
+        // trigger, so counting wirds would silently overshoot the reserve.
+        var result: [PlannedWirdReminder] = []
+        for wird in userCreated + fixed {
+            guard result.count < budget else { break }
+            let anchor = preferences.prayerAnchor(forWirdId: wird.id)
+
+            if let anchor, let prayerTime {
+                let dated = (0..<prayerAnchorHorizonDays).compactMap { offset -> PlannedWirdReminder? in
+                    guard let base = prayerTime(offset, anchor.prayer) else { return nil }
+                    let fire = base.addingTimeInterval(TimeInterval(anchor.offsetMinutes * 60))
+                    // Today's prayer has usually passed by the time the app is
+                    // opened; scheduling it would fire immediately or be dropped.
+                    guard fire > now else { return nil }
+                    return PlannedWirdReminder(
+                        id: "\(idPrefix)\(wird.id)-d\(offset)",
+                        wirdId: wird.id,
+                        wirdName: wird.name,
+                        trigger: .oneShot(fire)
+                    )
+                }
+                result.append(contentsOf: dated.prefix(budget - result.count))
+                continue
+            }
+
+            // Anchored but with no prayer times available (no location yet, or a
+            // caller that does not supply them): fall back to the clock time
+            // rather than emitting nothing. A reminder at a slightly wrong hour
+            // beats a wird that silently stops asking.
             let slotHour = wird.isFixed ? FixedWirdSlot(wirdId: wird.id)?.reminderHour : nil
             let time = preferences.time(forWirdId: wird.id, slotDefaultHour: slotHour)
-            return PlannedWirdReminder(
+            result.append(PlannedWirdReminder(
                 id: idPrefix + wird.id,
                 wirdId: wird.id,
                 wirdName: wird.name,
-                hour: time.hour,
-                minute: time.minute
-            )
+                trigger: .dailyAt(hour: time.hour, minute: time.minute)
+            ))
         }
+        return result
     }
 
     /// What is left of a caller's notification budget once the wird reminders

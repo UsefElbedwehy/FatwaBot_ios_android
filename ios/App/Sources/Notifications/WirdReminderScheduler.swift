@@ -12,7 +12,11 @@ import UserNotifications
 /// `ContentReminderScheduler`.
 protocol WirdReminderScheduling: Sendable {
     func registerCategory()
-    func reschedule(preferences: WirdReminderPreferences, wirds: [Wird]) async
+    func reschedule(
+        preferences: WirdReminderPreferences,
+        wirds: [Wird],
+        prayerTime: WirdReminderPlanner.PrayerTimeLookup?
+    ) async
 }
 
 final class WirdReminderScheduler: WirdReminderScheduling, @unchecked Sendable {
@@ -67,8 +71,14 @@ final class WirdReminderScheduler: WirdReminderScheduling, @unchecked Sendable {
         }
     }
 
-    func reschedule(preferences: WirdReminderPreferences, wirds: [Wird]) async {
-        let plan = WirdReminderPlanner.plan(wirds: wirds, preferences: preferences)
+    func reschedule(
+        preferences: WirdReminderPreferences,
+        wirds: [Wird],
+        prayerTime: WirdReminderPlanner.PrayerTimeLookup? = nil
+    ) async {
+        let plan = WirdReminderPlanner.plan(
+            wirds: wirds, preferences: preferences, now: Date(), prayerTime: prayerTime
+        )
 
         let pending = await center.pendingNotificationRequests()
         let ours = pending.map(\.identifier).filter { $0.hasPrefix(WirdReminderPlanner.idPrefix) }
@@ -88,13 +98,27 @@ final class WirdReminderScheduler: WirdReminderScheduling, @unchecked Sendable {
                 Self.wirdIdKey: item.wirdId,
             ]
 
-            // One *repeating* daily trigger rather than one request per day: the
-            // text never changes, and a rolling horizon would burn a pending slot
-            // per wird per day. Overflow past iOS's 64 evicts the OLDEST pending
-            // requests — the prayer notifications.
-            let trigger = UNCalendarNotificationTrigger(
-                dateMatching: DateComponents(hour: item.hour, minute: item.minute), repeats: true
-            )
+            // A fixed time of day is one *repeating* trigger — the text never
+            // changes, and a rolling horizon would burn a pending slot per wird
+            // per day. Overflow past iOS's 64 evicts the OLDEST pending requests,
+            // which are the prayer notifications.
+            //
+            // A prayer-anchored wird cannot repeat: Fajr moves daily, so it has
+            // to be a dated request per day. The planner bounds how many.
+            let trigger: UNCalendarNotificationTrigger
+            switch item.trigger {
+            case let .dailyAt(hour, minute):
+                trigger = UNCalendarNotificationTrigger(
+                    dateMatching: DateComponents(hour: hour, minute: minute), repeats: true
+                )
+            case let .oneShot(date):
+                trigger = UNCalendarNotificationTrigger(
+                    dateMatching: Calendar.current.dateComponents(
+                        [.year, .month, .day, .hour, .minute], from: date
+                    ),
+                    repeats: false
+                )
+            }
             let request = UNNotificationRequest(identifier: item.id, content: content, trigger: trigger)
             try? await center.add(request)
         }
