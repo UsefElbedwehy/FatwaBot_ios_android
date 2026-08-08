@@ -29,6 +29,12 @@ internal val MaroonProvider = ColorProvider(BrandMaroon)
 internal val InkProvider = ColorProvider(BrandInk)
 internal val MutedProvider = ColorProvider(BrandMuted)
 
+// Tile fills for the worship tracker. Tinted maroon rather than a grey/green
+// pair so a done tile reads as "brand accent, filled in" at a glance without
+// introducing a colour the design system does not already use.
+internal val DoneTileProvider = ColorProvider(BrandMaroon.copy(alpha = 0.16f))
+internal val IdleTileProvider = ColorProvider(BrandMaroon.copy(alpha = 0.06f))
+
 /** Cream card that fills the widget cell, with the platform-typical rounding. */
 internal fun GlanceModifier.brandSurface(): GlanceModifier =
     this.background(ColorProvider(BrandCream)).cornerRadius(20.dp)

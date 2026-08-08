@@ -36,6 +36,87 @@ private class FakeEventsApiClient(
 
 class GamificationEventRecorderTest {
 
+    // MARK: - Drain (mirrors iOS WorshipInboxDrainTests)
+
+    private fun tempInbox(): com.fatwabot.core.common.WorshipInbox =
+        com.fatwabot.core.common.WorshipInbox(
+            java.io.File(
+                java.nio.file.Files.createTempDirectory("inbox").toFile(),
+                "worship-inbox",
+            ),
+        )
+
+    private fun inboxEntry(prayer: String = "fajr") = com.fatwabot.core.common.WorshipInboxEntry(
+        eventType = "prayer_completed",
+        occurredAtEpochSeconds = java.time.Instant.now().epochSecond,
+        metadata = mapOf("prayer" to prayer),
+    )
+
+    @Test
+    fun drainPreservesTheIdMintedAtTheTap() = runTest {
+        var body = ""
+        val client = FakeEventsApiClient { _, json ->
+            body = json
+            """{"accepted":1,"duplicates":0}"""
+        }
+        val recorder = GamificationEventRecorder(InMemoryQueueStore(), client)
+        val inbox = tempInbox()
+        val entry = inboxEntry()
+        inbox.deposit(entry)
+
+        recorder.drain(inbox)
+
+        // Asserted against the submitted payload, not the queue: a successful
+        // flush empties the queue, so queue state proves nothing here.
+        //
+        // The id is the entire idempotency story. Re-minting it would mean a
+        // drain that runs twice counts the same prayer twice.
+        assertTrue(body.contains(entry.clientEventId))
+        assertTrue(inbox.peek().isEmpty())
+    }
+
+    @Test
+    fun aFailedUploadKeepsTheDeedRatherThanLosingIt() = runTest {
+        val store = InMemoryQueueStore()
+        val client = FakeEventsApiClient { _, _ -> throw RuntimeException("offline") }
+        val recorder = GamificationEventRecorder(store, client)
+        val inbox = tempInbox()
+        val entry = inboxEntry("asr")
+        inbox.deposit(entry)
+
+        recorder.drain(inbox)
+
+        // Adopted by the event queue, which is itself retried. What must never
+        // happen is the deed vanishing from both.
+        assertEquals(listOf(entry.clientEventId), store.load().map { it.clientEventId })
+    }
+
+    @Test
+    fun drainingTwiceDoesNotEnqueueTheSameDeedTwice() = runTest {
+        val store = InMemoryQueueStore()
+        val client = FakeEventsApiClient { _, _ -> throw RuntimeException("offline") }
+        val recorder = GamificationEventRecorder(store, client)
+        val inbox = tempInbox()
+        val entry = inboxEntry("isha")
+
+        inbox.deposit(entry)
+        recorder.drain(inbox)
+        // The crash window: adopted into the queue, still present in the inbox
+        // because clearing never completed.
+        inbox.deposit(entry)
+        recorder.drain(inbox)
+
+        assertEquals(1, store.load().size)
+    }
+
+    @Test
+    fun drainOnAnEmptyInboxDoesNotCallTheNetwork() = runTest {
+        val client = FakeEventsApiClient()
+        GamificationEventRecorder(InMemoryQueueStore(), client).drain(tempInbox())
+        // Every foreground calls this. It must be free when there is nothing to do.
+        assertEquals(0, client.postCalls)
+    }
+
     @Test
     fun recordQueuesLocallyEvenBeforeFlushCompletes() {
         val store = InMemoryQueueStore()

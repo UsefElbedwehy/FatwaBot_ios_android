@@ -1,6 +1,7 @@
 package com.fatwabot.feature.gamification
 
 import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.WorshipInbox
 import com.fatwabot.core.network.AuthenticatedApiClientProtocol
 import java.time.Instant
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +47,45 @@ class GamificationEventRecorder(
         )
         store.save(queue)
         scope.launch { flush() }
+    }
+
+    /**
+     * Takes ownership of worship logged outside the app (the متابعة العبادات
+     * widget) and clears it from the inbox. Mirror of iOS `drain`.
+     *
+     * ## Why the ids are preserved rather than re-minted
+     * [record] generates a fresh `clientEventId`. Using it here would defeat the
+     * inbox's idempotency: the id minted at the tap is what makes a re-run safe,
+     * and replacing it means a drain that runs twice submits the same prayer
+     * under two ids and counts it twice.
+     *
+     * ## Why enqueue happens before clear
+     * Crashing between the two leaves the entry in both places, and the backend
+     * dedupes on client_event_id — so the deed counts once. Clearing first and
+     * crashing loses it outright. Between a duplicate the server already
+     * collapses and a silently dropped act of worship, only one ordering is
+     * defensible.
+     */
+    suspend fun drain(inbox: WorshipInbox) {
+        val entries = inbox.peek()
+        if (entries.isEmpty()) return
+
+        val queue = store.load()
+        val known = queue.map { it.clientEventId }.toSet()
+        store.save(
+            queue + entries.filterNot { it.clientEventId in known }.map {
+                QueuedActivityEvent(
+                    clientEventId = it.clientEventId,
+                    eventType = it.eventType,
+                    occurredAtEpochSeconds = it.occurredAtEpochSeconds,
+                    timezone = it.timezone,
+                    metadata = it.metadata,
+                )
+            },
+        )
+        inbox.clear(entries)
+
+        flush()
     }
 
     /** Submits every currently-queued event in one batch (the backend ingest is

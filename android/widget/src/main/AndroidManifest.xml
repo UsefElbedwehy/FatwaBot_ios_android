@@ -74,6 +74,18 @@
         </receiver>
 
         <receiver
+            android:name="com.fatwabot.widget.WorshipTrackerWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_worship_tracker">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_large_info" />
+        </receiver>
+
+        <receiver
             android:name="com.fatwabot.widget.RandomDuaWidgetReceiver"
             android:exported="false"
             android:label="@string/widget_dua">

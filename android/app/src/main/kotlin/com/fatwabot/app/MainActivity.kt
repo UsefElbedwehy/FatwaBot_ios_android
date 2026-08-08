@@ -40,6 +40,8 @@ class MainActivity : ComponentActivity() {
     /** Concrete, only for the flush lifecycle below. */
     @Inject lateinit var backendAnalytics: BackendAnalyticsRecorder
 
+    @Inject lateinit var eventRecorder: com.fatwabot.feature.gamification.GamificationEventRecorder
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Swap the splash window background (Theme.FatwaBot.Splash) for the real
         // app theme once we're drawing Compose content.
@@ -104,6 +106,20 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         flushAnalytics()
+    }
+
+    /**
+     * Uploads worship logged from the متابعة العبادات widget while the app was
+     * away. onStart rather than onCreate: taps happen on the home screen between
+     * launches, and the streak stays wrong until they reach the server.
+     */
+    override fun onStart() {
+        super.onStart()
+        lifecycleScope.launch {
+            eventRecorder.drain(
+                com.fatwabot.core.common.WorshipInbox.default(filesDir),
+            )
+        }
     }
 
     /** Fire-and-forget: a failed or cancelled flush leaves events queued for the

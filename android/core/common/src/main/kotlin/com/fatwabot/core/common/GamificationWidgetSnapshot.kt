@@ -15,6 +15,19 @@ data class GamificationWidgetSnapshot(
     val topStreak: Streak?,
     val dailyChallenge: DailyChallenge?,
     val generatedAtEpochSeconds: Long,
+    /**
+     * Deed keys the app has already recorded for the current local day, e.g.
+     * `["fajr", "azkar_morning"]`.
+     *
+     * The tracker widget needs this to render a tile as done, and cannot derive
+     * it from [WorshipInbox] alone: the inbox holds only what has not yet been
+     * drained, so every tile would revert to undone the moment the app next
+     * opened — the exact moment the deed became durable.
+     *
+     * Defaulted and declared last so a snapshot written by a previous app
+     * version still deserializes rather than taking the streak widget down.
+     */
+    val completedToday: List<String> = emptyList(),
 ) {
     @Serializable
     data class Streak(

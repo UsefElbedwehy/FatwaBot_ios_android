@@ -23,4 +23,7 @@
     <string name="widget_prayer_midnight">منتصف الليل</string>
     <string name="widget_prayer_last_third">الثلث الأخير</string>
     <string name="widget_day_sheet">اليوم كاملاً</string>
+    <string name="widget_worship_tracker">متابعة العبادات</string>
+    <string name="widget_deed_azkar_morning">أذكار الصباح</string>
+    <string name="widget_deed_azkar_evening">أذكار المساء</string>
 </resources>
