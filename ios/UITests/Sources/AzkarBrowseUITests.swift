@@ -66,13 +66,7 @@ final class AzkarBrowseUITests: XCTestCase {
         _ = app.wait(for: .runningForeground, timeout: 10)
         completeOnboardingIfPresent(app)
 
-        // Navigate: Worship tab → الأذكار والأدعية.
-        let remembrance = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "الأذكار")
-        ).firstMatch
-        if remembrance.waitForExistence(timeout: 5) {
-            remembrance.tap()
-        }
+        openRemembrance(app)
 
         // The three things the redesign added. Asserted by presence rather than
         // by pixel position — this is a smoke test that the screen composed, not
@@ -90,10 +84,7 @@ final class AzkarBrowseUITests: XCTestCase {
         _ = app.wait(for: .runningForeground, timeout: 10)
         completeOnboardingIfPresent(app)
 
-        let remembrance = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "الأذكار")
-        ).firstMatch
-        if remembrance.waitForExistence(timeout: 5) { remembrance.tap() }
+        openRemembrance(app)
 
         let searchField = app.textFields.firstMatch
         guard searchField.waitForExistence(timeout: 5) else {
@@ -108,6 +99,23 @@ final class AzkarBrowseUITests: XCTestCase {
         // Fewer results than the unfiltered list, and not zero.
         let after = app.staticTexts.count
         XCTAssertLessThanOrEqual(after, before)
+    }
+
+    /// Worship tab → the Azkar & Du'a tile.
+    ///
+    /// The first version matched a button whose label contained "الأذكار",
+    /// which never fired: the simulator runs in English, so the tile reads
+    /// "Azkar & Du'a". Matched on "Azkar" now, which is in both spellings of the
+    /// label, with the tab itself found by its own accessibility label rather
+    /// than by tapping whatever button happens to be biggest.
+    private func openRemembrance(_ app: XCUIApplication) {
+        let worship = app.buttons["Worship"]
+        if worship.waitForExistence(timeout: 10) { worship.tap() }
+
+        let tile = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS %@", "Azkar", "الأذكار")
+        ).firstMatch
+        if tile.waitForExistence(timeout: 5) { tile.tap() }
     }
 
     /// Screenshots are the point of these tests as much as the assertions:

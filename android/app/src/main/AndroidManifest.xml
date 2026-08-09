@@ -34,6 +34,19 @@
             </intent-filter>
         </activity>
 
+        <!-- AlarmManager loses every alarm on reboot, and a schedule computed
+             against the old clock is wrong after a timezone change. Neither was
+             handled: RECEIVE_BOOT_COMPLETED was declared but nothing listened. -->
+        <receiver
+            android:name="com.fatwabot.app.notifications.ScheduleRestoreReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name="com.fatwabot.feature.prayer.PrayerAlarmReceiver"
             android:exported="false" />

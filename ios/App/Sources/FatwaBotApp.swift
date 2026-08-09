@@ -42,6 +42,20 @@ struct FatwaBotApp: App {
                     await drainWorshipInbox()
                     await syncContent()
                 }
+                // Flying somewhere else moves the clock underneath a schedule
+                // computed for the old location. Prayer times are absolute
+                // instants, so nothing about them shifts on its own — they are
+                // simply wrong on arrival until something re-plans.
+                //
+                // iOS has no reboot problem to solve (pending notifications
+                // survive), so unlike Android this is the only trigger needed.
+                .onReceive(
+                    NotificationCenter.default.publisher(
+                        for: Notification.Name.NSSystemTimeZoneDidChange
+                    )
+                ) { _ in
+                    Task { await Container.shared.prayerViewModel().rescheduleNotifications() }
+                }
                 .onChange(of: scenePhase) { _, phase in
                     // Backgrounding is the natural batch boundary: it's when a
                     // session has actually ended, and the queue is otherwise only
