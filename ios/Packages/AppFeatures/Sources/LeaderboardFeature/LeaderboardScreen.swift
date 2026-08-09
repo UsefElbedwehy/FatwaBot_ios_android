@@ -165,15 +165,14 @@ private struct EntryRow: View {
 
 private struct JoinSheet: View {
     let board: LeaderboardBoard
-    /// Prefill from the prayer-times location. The user can still overwrite it —
-    /// the app's idea of "your city" and the one someone wants to compete in are
-    /// not always the same (travel, a nearby larger city).
+    /// Derived from the prayer-times location. Not editable: the app already
+    /// knows where the user is, and asking them to type it invites typos that
+    /// silently fragment a city board — "Riyadh", "riyadh" and "الرياض" become
+    /// three leaderboards nobody is competing on. Client request, 2026-08-09.
     let suggestedRegion: LeaderboardRegion
     let onJoin: (Bool, String?) -> Void
 
     @State private var publishName = false
-    @State private var city = ""
-    @State private var didPrefill = false
     @Environment(\.dismiss) private var dismiss
 
     private var isCityScope: Bool { board.scope == "city" }
@@ -181,40 +180,50 @@ private struct JoinSheet: View {
     /// A country board has nothing to ask the user for — it is derived — so the
     /// only thing that can block it is not knowing the country at all.
     private var missingCountry: Bool { isCountryScope && suggestedRegion.countryCode == nil }
+    /// A city board is equally underivable without a city.
+    private var missingCity: Bool { isCityScope && suggestedRegion.city == nil }
+    private var missingRegion: Bool { missingCountry || missingCity }
+
+    /// "مصر" rather than "EG". The code is an implementation detail of the API;
+    /// showing it to a user is showing them our plumbing.
+    private var countryName: String? {
+        suggestedRegion.countryCode.flatMap {
+            Locale.current.localizedString(forRegionCode: $0) ?? $0
+        }
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Toggle("leaderboard.publish_name", isOn: $publishName)
-                if isCityScope {
-                    TextField("leaderboard.city_placeholder", text: $city)
+                if isCityScope, let city = suggestedRegion.city {
+                    LabeledContent("leaderboard.city", value: city)
                 }
-                if isCountryScope, let code = suggestedRegion.countryCode {
-                    LabeledContent("leaderboard.country", value: code)
+                if isCountryScope, let countryName {
+                    LabeledContent("leaderboard.country", value: countryName)
                 }
-                if missingCountry {
+                if missingRegion {
                     // Previously this sheet let the user tap Join and the server
                     // answered 400 country_required — an error they had no way
                     // to act on. Say what is wrong and what fixes it instead.
-                    Text("leaderboard.country_unavailable")
+                    Text("leaderboard.region_unavailable")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-            }
-            .onAppear {
-                guard !didPrefill else { return }
-                didPrefill = true
-                if isCityScope, let suggested = suggestedRegion.city { city = suggested }
             }
             .navigationTitle(Text("leaderboard.join_sheet_title"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("leaderboard.confirm_join") {
-                        onJoin(publishName, isCityScope ? city : nil)
+                        // nil for both scopes now: the view model derives the
+                        // city from the same location, so passing a copy from
+                        // here would just be a second source of truth.
+                        onJoin(publishName, nil)
                     }
-                    .disabled(
-                        (isCityScope && city.trimmingCharacters(in: .whitespaces).isEmpty) || missingCountry
-                    )
+                    // Blocked only when the region genuinely cannot be derived.
+                    // There is nothing for the user to fix by typing, so the
+                    // message below explains it instead of a disabled field.
+                    .disabled(missingRegion)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }

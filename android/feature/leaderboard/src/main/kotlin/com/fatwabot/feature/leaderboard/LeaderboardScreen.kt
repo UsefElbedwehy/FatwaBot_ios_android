@@ -242,9 +242,10 @@ private fun EntryRow(entry: LeaderboardEntry, isMe: Boolean, tokens: ColorTokens
 private fun JoinDialog(
     board: LeaderboardBoard,
     /**
-     * Prefill from the prayer-times location. The user can still overwrite it —
-     * the app's idea of "your city" and the one someone wants to compete in are
-     * not always the same (travel, a nearby larger city).
+     * Derived from the prayer-times location. Not editable: the app already
+     * knows where the user is, and asking them to type it invites typos that
+     * silently fragment a city board — "Riyadh", "riyadh" and "الرياض" become
+     * three leaderboards nobody is competing on. Client request, 2026-08-09.
      */
     suggestedRegion: LeaderboardRegion,
     onDismiss: () -> Unit,
@@ -253,10 +254,16 @@ private fun JoinDialog(
     var publishName by remember { mutableStateOf(false) }
     val isCityScope = board.scope == "city"
     val isCountryScope = board.scope == "country"
-    var city by remember { mutableStateOf(if (isCityScope) suggestedRegion.city.orEmpty() else "") }
-    // A country board has nothing to ask the user for — it is derived — so the
-    // only thing that can block it is not knowing the country at all.
+    // Neither scope asks the user for anything now — both are derived — so the
+    // only thing that can block a join is not knowing the region at all.
     val missingCountry = isCountryScope && suggestedRegion.countryCode == null
+    val missingCity = isCityScope && suggestedRegion.city == null
+    val missingRegion = missingCountry || missingCity
+    // "مصر" rather than "EG". The code is an implementation detail of the API.
+    val countryName = suggestedRegion.countryCode?.let {
+        java.util.Locale("", it).getDisplayCountry(java.util.Locale.getDefault())
+            .takeIf { name -> name.isNotBlank() } ?: it
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -271,17 +278,17 @@ private fun JoinDialog(
                     Text(stringResource(R.string.leaderboard_publish_name))
                     Switch(checked = publishName, onCheckedChange = { publishName = it })
                 }
-                if (isCityScope) {
-                    OutlinedTextField(value = city, onValueChange = { city = it }, placeholder = { Text(stringResource(R.string.leaderboard_city_placeholder)) })
+                if (isCityScope && suggestedRegion.city != null) {
+                    Text(stringResource(R.string.leaderboard_city, suggestedRegion.city))
                 }
-                if (isCountryScope && suggestedRegion.countryCode != null) {
-                    Text(stringResource(R.string.leaderboard_country, suggestedRegion.countryCode))
+                if (isCountryScope && countryName != null) {
+                    Text(stringResource(R.string.leaderboard_country, countryName))
                 }
-                if (missingCountry) {
+                if (missingRegion) {
                     // Previously the user could tap Join and the server answered
                     // 400 country_required — an error they had no way to act on.
                     Text(
-                        stringResource(R.string.leaderboard_country_unavailable),
+                        stringResource(R.string.leaderboard_region_unavailable),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -290,8 +297,11 @@ private fun JoinDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(publishName, if (isCityScope) city else null) },
-                enabled = (!isCityScope || city.isNotBlank()) && !missingCountry,
+                // null for both scopes: the view model derives the city from
+                // the same location, so passing a copy here would be a second
+                // source of truth.
+                onClick = { onConfirm(publishName, null) },
+                enabled = !missingRegion,
             ) { Text(stringResource(R.string.leaderboard_join)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.leaderboard_cancel)) } },

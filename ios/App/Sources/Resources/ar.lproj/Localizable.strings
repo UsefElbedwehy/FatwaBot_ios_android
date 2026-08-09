@@ -288,3 +288,6 @@
 "settings.notif.wird.time_other" = "بقية الأوراد";
 
 "settings.notif.wird.follow_prayer" = "اتبع وقت %@";
+
+"leaderboard.city" = "المدينة";
+"leaderboard.region_unavailable" = "لم نتمكن من تحديد موقعك بعد. افتح شاشة الصلاة مرة واحدة ثم عد إلى هنا.";
