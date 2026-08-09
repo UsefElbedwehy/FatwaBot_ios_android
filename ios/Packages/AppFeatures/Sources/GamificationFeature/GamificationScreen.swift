@@ -66,6 +66,7 @@ public struct GamificationScreen: View {
         .overlay {
             if viewModel.isLoading && viewModel.profile == .empty {
                 ProgressView().tint(Color(hexToken: tokens.primary))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .navigationTitle(Text("gamification.title"))

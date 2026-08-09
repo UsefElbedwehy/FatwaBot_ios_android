@@ -194,7 +194,30 @@ public struct SeededWirdStore: WirdStoring {
         self.calendar = calendar
     }
 
+    /// The four fixed slots, and only those.
+    ///
+    /// Client decision (2026-08-09): أثرك is the four everyone has — قيام الليل،
+    /// ورد القرآن، أذكار الصباح، أذكار المساء — not a list a user curates. The
+    /// board previously mixed them with user-created wirds and distinguished
+    /// them with an "أساسي" badge; the badge is gone because with only four
+    /// there is nothing left to distinguish.
+    ///
+    /// Filtered here rather than in the board, because the board is not the only
+    /// consumer: the reminder planner reads the same store, and filtering only
+    /// the UI would have kept firing "did you complete it?" for wirds the user
+    /// could no longer see.
+    ///
+    /// Existing user wirds are **not deleted from disk** — they are simply not
+    /// returned. Nothing is lost if this decision is revisited, and deleting
+    /// someone's history to satisfy a display change would be the wrong trade.
     public func loadWirds() -> [Wird] {
+        allWirds().filter(\.isFixed)
+    }
+
+    /// Everything on disk, fixed and user-created. Kept so the seeding logic
+    /// below still sees the full board — seeding against a filtered list would
+    /// re-add the four slots on every read.
+    private func allWirds() -> [Wird] {
         let existing = base.loadWirds()
         let seeded = FixedWirdSlots.applied(to: existing, name: name, now: now())
         guard seeded != existing else { return existing }
@@ -206,8 +229,18 @@ public struct SeededWirdStore: WirdStoring {
 
     /// Also enforced on write, so a caller that drops a fixed slot from the list
     /// (or archives one) cannot persist that.
+    ///
+    /// ## Why this merges instead of replacing
+    /// `loadWirds()` now returns only the four fixed slots, and callers do
+    /// load → modify → save. A plain replace would therefore write back a
+    /// four-item list and **erase every user-created wird from disk** — turning
+    /// "hidden" into "destroyed" the first time someone tapped a counter, with
+    /// no warning and no way back. Anything on disk the caller never saw is
+    /// carried through untouched.
     public func saveWirds(_ wirds: [Wird]) {
-        base.saveWirds(FixedWirdSlots.applied(to: wirds, name: name, now: now()))
+        let incoming = Set(wirds.map(\.id))
+        let unseen = base.loadWirds().filter { !incoming.contains($0.id) }
+        base.saveWirds(FixedWirdSlots.applied(to: wirds + unseen, name: name, now: now()))
     }
 
     public func loadProgress() -> [WirdDailyProgress] { base.loadProgress() }

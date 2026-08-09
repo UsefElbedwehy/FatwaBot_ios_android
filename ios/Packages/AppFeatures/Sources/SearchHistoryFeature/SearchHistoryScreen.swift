@@ -77,6 +77,7 @@ public struct SearchHistoryScreen: View {
         .overlay {
             if viewModel.isLoading && viewModel.entries.isEmpty {
                 ProgressView().tint(Color(hexToken: tokens.primary))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .navigationTitle(Text("search_history.title"))

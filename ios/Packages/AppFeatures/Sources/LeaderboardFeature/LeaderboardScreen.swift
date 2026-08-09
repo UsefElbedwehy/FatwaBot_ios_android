@@ -59,6 +59,7 @@ public struct LeaderboardScreen: View {
         .overlay {
             if viewModel.isLoading && viewModel.boards.isEmpty {
                 ProgressView().tint(Color(hexToken: tokens.primary))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .navigationTitle(Text("leaderboard.title"))

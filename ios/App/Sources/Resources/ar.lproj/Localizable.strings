@@ -120,20 +120,7 @@
 "awrad.mark_day_complete" = "أتممت وردي اليوم";
 "awrad.empty_title" = "لا توجد أوراد بعد";
 "awrad.empty_subtitle" = "أضف وردك الأول لتبدأ رحلتك اليومية";
-"awrad.add_first_wird" = "إضافة ورد";
-"awrad.stats_title" = "إحصائياتي";
-"awrad.stats.total_dhikr" = "مجموع الأذكار";
-"awrad.stats.completed_days" = "أيام مكتملة";
-"awrad.stats.quran_pages" = "صفحات القرآن";
-"awrad.stats.salawat" = "الصلاة على النبي";
-"awrad.templates_section" = "اختر من القوالب";
-"awrad.create_custom" = "إنشاء ورد مخصص";
-"awrad.custom_name_placeholder" = "اسم الورد";
-"awrad.custom_target_placeholder" = "الهدف اليومي";
-"awrad.save_custom" = "حفظ الورد";
-"awrad.create_title" = "ورد جديد";
 "awrad.edit_target" = "تعديل الهدف";
-"awrad.fixed_badge" = "أساسي";
 "awrad.fixed.qiyam_al_layl" = "قيام الليل";
 "awrad.fixed.daily_quran" = "ورد يومي من القرآن";
 "awrad.fixed.morning_azkar" = "أذكار الصباح";
@@ -243,7 +230,7 @@
 
 "worship.remembrance" = "الأذكار والأدعية";
 
-"tasbeeh.notice" = "هذا نص تنبيه مؤقت. يمكن تعديله من لوحة التحكم دون تحديث التطبيق.";
+"tasbeeh.notice" = "This is notice and can be changed later when updated...";
 
 "settings.notif.iqama.notice" = "تختلف مدة الإقامة بين الصلوات من مسجد لآخر. هذه قيم افتراضية شائعة، ويمكنك تعديل أي منها لتوافق مسجدك.";
 

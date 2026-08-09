@@ -77,8 +77,6 @@ fun AwradBoardScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
-    var showCreateSheet by remember { mutableStateOf(false) }
-    var showStats by remember { mutableStateOf(false) }
 
     LaunchedEffect(locale) { viewModel.loadTemplates(locale) }
 
@@ -107,16 +105,10 @@ fun AwradBoardScreen(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { showStats = true }) {
-                    Icon(Icons.Filled.BarChart, contentDescription = stringResource(R.string.awrad_my_stats), tint = tokens.primary)
-                }
-                IconButton(onClick = { showCreateSheet = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.awrad_add_wird), tint = tokens.primary)
-                }
             }
 
             if (state.wirds.isEmpty()) {
-                EmptyBoard(tokens = tokens, onAddWird = { showCreateSheet = true })
+                EmptyBoard(tokens = tokens)
             } else {
                 StatsGrid(stats = state.stats, tokens = tokens)
 
@@ -141,15 +133,6 @@ fun AwradBoardScreen(
         }
     }
 
-    if (showCreateSheet) {
-        AwradCreateDialog(
-            viewModel = viewModel,
-            onDismiss = { showCreateSheet = false },
-        )
-    }
-    if (showStats) {
-        AwradStatsDialog(stats = state.stats, onDismiss = { showStats = false })
-    }
 }
 
 /** Four premium stat tiles — total dhikr, completed days, quran pages, salawat. */
@@ -200,7 +183,7 @@ private fun StatTile(
 }
 
 @Composable
-private fun EmptyBoard(tokens: ColorTokens, onAddWird: () -> Unit) {
+private fun EmptyBoard(tokens: ColorTokens) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -224,7 +207,6 @@ private fun EmptyBoard(tokens: ColorTokens, onAddWird: () -> Unit) {
             color = tokens.onSurfaceSecondary,
             textAlign = TextAlign.Center,
         )
-        Button(onClick = onAddWird) { Text(stringResource(R.string.awrad_add_wird)) }
     }
 }
 
@@ -268,20 +250,6 @@ private fun WirdCard(wird: Wird, todayCount: Int, tokens: ColorTokens, onTick: (
                     )
                     // Explains, without a dialog, why this row has no way to
                     // remove it — mirror of the iOS board's fixed badge.
-                    if (wird.isFixed) {
-                        Text(
-                            stringResource(R.string.awrad_fixed_badge),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = tokens.onSurfaceSecondary,
-                            modifier = Modifier
-                                .padding(start = 8.dp)
-                                .background(
-                                    tokens.onSurfaceSecondary.copy(alpha = 0.12f),
-                                    RoundedCornerShape(6.dp),
-                                )
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                        )
-                    }
                 }
                 Text(
                     "$animatedCount/${wird.target}",
@@ -332,22 +300,6 @@ private fun MarkDayCompleteCard(done: Boolean, tokens: ColorTokens, onComplete: 
     }
 }
 
-@Composable
-private fun AwradStatsDialog(stats: WirdStats, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.awrad_done)) } },
-        title = { Text(stringResource(R.string.awrad_my_stats)) },
-        text = {
-            Column {
-                statRow(stringResource(R.string.awrad_stat_total_dhikr), stats.totalDhikrCount)
-                statRow(stringResource(R.string.awrad_stat_completed_days), stats.completedDaysCount)
-                statRow(stringResource(R.string.awrad_stat_quran_pages), stats.quranPagesCount)
-                statRow(stringResource(R.string.awrad_stat_salawat), stats.salawatCount)
-            }
-        },
-    )
-}
 
 @Composable
 private fun statRow(label: String, value: Int) {
@@ -360,66 +312,3 @@ private fun statRow(label: String, value: Int) {
     }
 }
 
-@Composable
-private fun AwradCreateDialog(viewModel: AwradViewModel, onDismiss: () -> Unit) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    var showCustomForm by remember { mutableStateOf(false) }
-    var customName by remember { mutableStateOf("") }
-    val customWirdDefault = stringResource(R.string.awrad_custom_wird_default)
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.awrad_new_wird)) },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.awrad_cancel)) } },
-        text = {
-            Column {
-                Text(stringResource(R.string.awrad_choose_template), style = MaterialTheme.typography.labelLarge)
-                state.templates.forEach { template ->
-                    Surface(
-                        onClick = {
-                            viewModel.createWird(template)
-                            onDismiss()
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    ) {
-                        Column(modifier = Modifier.padding(8.dp)) {
-                            Text(template.name)
-                            Text(
-                                template.description,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-                if (showCustomForm) {
-                    androidx.compose.material3.OutlinedTextField(
-                        value = customName,
-                        onValueChange = { customName = it },
-                        placeholder = { Text(stringResource(R.string.awrad_wird_name)) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    )
-                    Button(
-                        onClick = {
-                            viewModel.createCustomWird(
-                                name = customName.ifEmpty { customWirdDefault },
-                                type = "custom",
-                                target = 1,
-                                unit = "times",
-                                frequency = "daily",
-                            )
-                            onDismiss()
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    ) { Text(stringResource(R.string.awrad_save_wird)) }
-                } else {
-                    OutlinedButton(
-                        onClick = { showCustomForm = true },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    ) { Text(stringResource(R.string.awrad_create_custom_wird)) }
-                }
-            }
-        },
-    )
-}

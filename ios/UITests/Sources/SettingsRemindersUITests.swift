@@ -44,7 +44,14 @@ final class SettingsRemindersUITests: XCTestCase {
         // shared time. Labels are the app's own, so this fails if a slot stops
         // being rendered — the exact regression a unit test cannot see.
         for name in ["Night Prayer (Qiyam)", "Daily Qur'an Wird", "Morning Adhkar", "Evening Adhkar"] {
-            let row = app.staticTexts[name]
+            // Matched anywhere rather than as a standalone static text: when a
+            // slot is anchored to a prayer its clock picker is hidden and the
+            // name moves *into* the switch's accessibility label. Asserting on
+            // staticTexts alone made this pass or fail depending on what a
+            // previous test had left toggled.
+            let row = app.descendants(matching: .any).matching(
+                NSPredicate(format: "label CONTAINS %@", name)
+            ).firstMatch
             XCTAssertTrue(scrollTo(app, row), "missing reminder row for \(name)")
         }
         XCTAssertTrue(
@@ -100,7 +107,9 @@ final class SettingsRemindersUITests: XCTestCase {
         }
         // Either way the slot must still be identifiable.
         XCTAssertTrue(
-            app.staticTexts["Morning Adhkar"].exists,
+            app.descendants(matching: .any).matching(
+                NSPredicate(format: "label CONTAINS %@", "Morning Adhkar")
+            ).firstMatch.exists,
             "an anchored slot must still say which wird it is"
         )
         attach(app, name: "settings-anchored")

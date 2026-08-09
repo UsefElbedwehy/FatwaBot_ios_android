@@ -38,6 +38,7 @@ public struct HadithReadingScreen: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ProgressView().tint(Color(hexToken: tokens.primary))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .brandScreenBackground(tokens)

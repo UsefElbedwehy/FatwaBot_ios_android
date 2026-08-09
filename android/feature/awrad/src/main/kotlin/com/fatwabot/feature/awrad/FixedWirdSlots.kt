@@ -155,7 +155,28 @@ class SeededWirdStore(
     private val now: () -> Long,
 ) : WirdStoring {
 
-    override fun loadWirds(): List<Wird> {
+    /**
+     * The four fixed slots, and only those.
+     *
+     * Client decision (2026-08-09): أثرك is the four everyone has, not a list a
+     * user curates. The board previously mixed them with user-created wirds and
+     * marked them with an "أساسي" badge; the badge is gone because with only
+     * four there is nothing left to distinguish.
+     *
+     * Filtered here rather than in the board, because the board is not the only
+     * consumer — the reminder planner reads the same store, and filtering only
+     * the UI would have kept firing "did you complete it?" for wirds the user
+     * could no longer see.
+     *
+     * Existing user wirds are **not deleted from disk**, only unreturned.
+     */
+    override fun loadWirds(): List<Wird> = allWirds().filter { it.isFixed }
+
+    /**
+     * Everything on disk. Seeding must see the full board, or it would re-add
+     * the four slots on every read.
+     */
+    private fun allWirds(): List<Wird> {
         val existing = base.loadWirds()
         val seeded = FixedWirdSlots.applied(existing, name, now())
         if (seeded == existing) return existing
@@ -169,8 +190,19 @@ class SeededWirdStore(
      * Also enforced on write, so a caller that drops a fixed slot from the list
      * (or archives one) cannot persist that.
      */
+    /**
+     * Merges rather than replaces.
+     *
+     * [loadWirds] now returns only the four fixed slots, and callers do
+     * load → modify → save. A plain replace would write back a four-item list
+     * and **erase every user-created wird from disk** — turning "hidden" into
+     * "destroyed" the first time someone tapped a counter, with no warning and
+     * no way back. Anything on disk the caller never saw is carried through.
+     */
     override fun saveWirds(wirds: List<Wird>) {
-        base.saveWirds(FixedWirdSlots.applied(wirds, name, now()))
+        val incoming = wirds.map { it.id }.toSet()
+        val unseen = base.loadWirds().filterNot { it.id in incoming }
+        base.saveWirds(FixedWirdSlots.applied(wirds + unseen, name, now()))
     }
 
     override fun loadProgress(): List<WirdDailyProgress> = base.loadProgress()
