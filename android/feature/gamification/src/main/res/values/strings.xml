@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="gamification_streaks">Streaks</string>
-    <string name="gamification_missions">Missions</string>
-    <string name="gamification_badges">Badges</string>
     <string name="gamification_empty">Start your journey — complete an activity to see your progress here</string>
     <string name="gamification_longest">Longest: %1$d</string>
     <string name="gamification_grace_remaining">Grace remaining: %1$d</string>

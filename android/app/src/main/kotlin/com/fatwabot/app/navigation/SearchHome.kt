@@ -85,7 +85,7 @@ fun SearchHome() {
     ) {
         Spacer(Modifier.height(48.dp))
         Image(
-            painter = painterResource(R.drawable.fatwabot_logo),
+            painter = painterResource(com.fatwabot.core.designsystem.R.drawable.fatwabot_logo),
             contentDescription = null,
             modifier = Modifier.width(94.dp).height(132.dp),
         )

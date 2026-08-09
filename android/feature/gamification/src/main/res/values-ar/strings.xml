@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="gamification_streaks">السلاسل</string>
-    <string name="gamification_missions">المهام</string>
-    <string name="gamification_badges">الأوسمة</string>
     <string name="gamification_empty">ابدأ رحلتك — أكمل نشاطًا لرؤية تقدمك هنا</string>
     <string name="gamification_longest">الأطول: %1$d</string>
     <string name="gamification_grace_remaining">سماحية متبقية: %1$d</string>

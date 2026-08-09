@@ -73,7 +73,9 @@ fun GamificationScreen(viewModel: GamificationViewModel = hiltViewModel()) {
     LaunchedEffect(Unit) { viewModel.load() }
 
     val profile = state.profile
-    val isEmpty = profile.streaks.isEmpty() && profile.missions.isEmpty() && profile.badges.isEmpty()
+    // Streaks alone: missions and badges are no longer shown, so counting
+    // them would keep the empty state hidden behind data nobody can see.
+    val isEmpty = profile.streaks.isEmpty()
     val headline = profile.streaks.maxByOrNull { it.currentLength }
 
     Box(modifier = Modifier.fillMaxSize().brandScreenBackground(tokens)) {
@@ -94,18 +96,6 @@ fun GamificationScreen(viewModel: GamificationViewModel = hiltViewModel()) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     BrandSectionHeader(stringResource(R.string.gamification_streaks), icon = Icons.Filled.CalendarMonth)
                     profile.streaks.forEach { StreakCard(it) }
-                }
-            }
-            if (profile.missions.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader(stringResource(R.string.gamification_missions), icon = Icons.Filled.MilitaryTech)
-                    profile.missions.forEach { MissionCard(it) }
-                }
-            }
-            if (profile.badges.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader(stringResource(R.string.gamification_badges), icon = Icons.Filled.EmojiEvents)
-                    BadgeGrid(profile.badges)
                 }
             }
             if (!state.isLoading && isEmpty && state.error == null) {
@@ -201,51 +191,7 @@ private fun StreakCard(streak: GamificationStreak) {
     }
 }
 
-@Composable
-private fun MissionCard(mission: GamificationMission) {
-    val fraction = if (mission.target > 0) (mission.progress.toFloat() / mission.target).coerceIn(0f, 1f) else 0f
-    val reduceMotion = LocalReduceMotion.current
-    val animatedFraction by animateFloatAsState(
-        targetValue = fraction,
-        animationSpec = motionAnimationSpec(reduceMotion, MotionTokens.STANDARD_MS),
-        label = "missionProgress",
-    )
-    BrandCard {
-        Row(
-            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
-                RingProgress(value = animatedFraction, strokeWidth = 6.dp, modifier = Modifier.fillMaxSize())
-                Text(
-                    "${(animatedFraction * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(mission.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Text("${mission.progress}/${mission.target}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
 
-@Composable
-private fun BadgeGrid(badges: List<GamificationBadge>) {
-    // A non-scrolling grid embedded in the outer scroll: fixed height rows.
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 104.dp),
-        modifier = Modifier.fillMaxWidth().heightForRows(badges.size),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        userScrollEnabled = false,
-    ) {
-        items(badges) { badge -> BadgeTile(badge) }
-    }
-}
 
 /** Give the embedded grid a deterministic height so it lays out inside the
  * parent vertical scroll (LazyVerticalGrid can't measure itself in an
@@ -255,50 +201,3 @@ private fun Modifier.heightForRows(count: Int): Modifier {
     return this.then(Modifier.height((rows * 132).dp))
 }
 
-@Composable
-private fun BadgeTile(badge: GamificationBadge) {
-    val badgeDescription = if (badge.isEarned) {
-        stringResource(R.string.gamification_badge_earned, badge.name)
-    } else {
-        stringResource(R.string.gamification_badge_not_earned, badge.name)
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(0.85f)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(12.dp)
-            .semantics(mergeDescendants = true) {
-                contentDescription = badgeDescription
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(50))
-                .background(
-                    if (badge.isEarned) MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)
-                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (badge.isEarned) Icons.Filled.EmojiEvents else Icons.Filled.Lock,
-                contentDescription = null,
-                tint = if (badge.isEarned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            badge.name,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            color = if (badge.isEarned) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}

@@ -149,17 +149,28 @@ fun BrandSectionHeader(
 
 // MARK: Brand mark (mihrab arch glyph)
 
-/** The mihrab-arch brand mark as a small filled glyph — used where the app's
- * logo should stand in for a generic icon (e.g. the streak icon, per
- * stakeholder direction: the streak is the app logo, not a fire emoji). */
+/**
+ * The app's brand mark.
+ *
+ * Draws the real logo asset rather than the hand-traced mihrab arch. The arch
+ * was a stand-in from before the logo existed, and it kept surfacing in places
+ * a user reads as "the app's icon" — the streaks list among them — where a
+ * near-miss of the brand is worse than either the mark or nothing.
+ *
+ * Tinted with [color] so it still reads correctly on a coloured container, the
+ * same way the iOS `FatwaMark` renders its asset as a template.
+ */
 @Composable
 fun BrandMark(
     modifier: Modifier = Modifier,
     color: Color = brandTokens().primary,
 ) {
-    androidx.compose.foundation.Canvas(modifier = modifier) {
-        drawPath(mihrabArchPath(size), color = color)
-    }
+    androidx.compose.foundation.Image(
+        painter = androidx.compose.ui.res.painterResource(R.drawable.fatwabot_logo),
+        contentDescription = null,
+        modifier = modifier,
+        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(color),
+    )
 }
 
 // MARK: Ring progress

@@ -318,7 +318,7 @@ private fun HomeCircle(
         verticalArrangement = Arrangement.Center,
     ) {
         Image(
-            painter = painterResource(R.drawable.fatwabot_logo),
+            painter = painterResource(com.fatwabot.core.designsystem.R.drawable.fatwabot_logo),
             contentDescription = null,
             modifier = Modifier.width(30.dp).height(40.dp),
         )

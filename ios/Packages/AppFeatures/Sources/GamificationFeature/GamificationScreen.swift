@@ -40,22 +40,6 @@ public struct GamificationScreen: View {
                     }
                 }
 
-                if !viewModel.profile.missions.isEmpty {
-                    Section2(header: "gamification.missions_section", icon: "target", tokens: tokens) {
-                        VStack(spacing: 12) {
-                            ForEach(viewModel.profile.missions) { mission in
-                                MissionCard(mission: mission, tokens: tokens)
-                            }
-                        }
-                    }
-                }
-
-                if !viewModel.profile.badges.isEmpty {
-                    Section2(header: "gamification.badges_section", icon: "rosette", tokens: tokens) {
-                        BadgeGrid(badges: viewModel.profile.badges, tokens: tokens)
-                    }
-                }
-
                 if isEmpty {
                     BrandEmptyState(systemImage: "moon.stars.fill", messageKey: "gamification.empty_state", tokens: tokens)
                 }
@@ -166,9 +150,12 @@ private struct StreakCard: View {
         HStack(spacing: 14) {
             ZStack {
                 Circle().fill(Color(hexToken: tokens.primaryContainer))
-                MihrabArchShape()
-                    .fill(Color(hexToken: tokens.primary))
-                    .frame(width: 17, height: 20)
+                // The app's own mark, not a hand-drawn arch. `FatwaMark` uses
+                // the bundled logo asset and falls back to the drawn shape only
+                // when that asset is missing, so this is the logo wherever it
+                // ships and never a blank circle.
+                FatwaMark(color: Color(hexToken: tokens.primary))
+                    .frame(height: 22)
             }
             .frame(width: 44, height: 44)
             .accessibilityHidden(true)
@@ -194,86 +181,5 @@ private struct StreakCard: View {
         }
         .brandCard(tokens)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct MissionCard: View {
-    let mission: GamificationMission
-    let tokens: ColorTokens
-
-    private var progressFraction: Double {
-        mission.target > 0 ? Double(mission.progress) / Double(mission.target) : 0
-    }
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RingProgress(value: progressFraction, lineWidth: 6, tokens: tokens)
-                    .motionAnimation(.easeOut(duration: MotionTokens.standardDuration), value: progressFraction)
-                Text("\(Int(min(progressFraction, 1) * 100))%")
-                    .font(.caption2.weight(.bold).monospacedDigit())
-                    .foregroundStyle(Color(hexToken: tokens.primary))
-            }
-            .frame(width: 48, height: 48)
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(mission.name).font(.body.weight(.semibold))
-                    .foregroundStyle(Color(hexToken: tokens.onSurface))
-                Text("\(mission.progress)/\(mission.target)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-            }
-            Spacer(minLength: 0)
-        }
-        .brandCard(tokens)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct BadgeGrid: View {
-    let badges: [GamificationBadge]
-    let tokens: ColorTokens
-
-    private let columns = [GridItem(.adaptive(minimum: 100), spacing: 12)]
-
-    var body: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(badges) { badge in
-                VStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .fill(badge.isEarned
-                                  ? Color(hexToken: tokens.accent).opacity(0.18)
-                                  : Color(hexToken: tokens.primary).opacity(0.06))
-                        Image(systemName: badge.isEarned ? "rosette" : "lock.fill")
-                            .font(.title2)
-                            .foregroundStyle(badge.isEarned
-                                             ? Color(hexToken: tokens.accent)
-                                             : Color(hexToken: tokens.onSurfaceSecondary))
-                    }
-                    .frame(width: 56, height: 56)
-                    Text(badge.name)
-                        .font(.caption.weight(.medium))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .foregroundStyle(badge.isEarned
-                                         ? Color(hexToken: tokens.onSurface)
-                                         : Color(hexToken: tokens.onSurfaceSecondary))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .padding(.horizontal, 8)
-                .background(Color(hexToken: tokens.surfaceElevated), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(badge.isEarned ? Color(hexToken: tokens.accent).opacity(0.4) : Color(hexToken: tokens.outline).opacity(0.5), lineWidth: 1)
-                )
-                .opacity(badge.isEarned ? 1 : 0.7)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(badge.name))
-                .accessibilityValue(Text(badge.isEarned ? "gamification.badge_earned" : "gamification.badge_locked"))
-            }
-        }
     }
 }
