@@ -36,18 +36,38 @@ class NotificationBudgetTest {
             .filter { it.kind == PlannedNotification.Kind.ADHAN }
             .map { dayOf(it.fireEpochSeconds) }
             .toSet()
-        assertTrue("adhan must cover most of the horizon, got ${adhanDays.size}", adhanDays.size >= 8)
+        // Measured under the tiered policy: two days of every type, then the
+        // rest of the budget on adhan — six days against the three the old
+        // chronological truncation gave.
+        assertTrue("adhan must reach well past day three, got ${adhanDays.size}", adhanDays.size >= 6)
         assertTrue(plan.size <= 48)
     }
 
     @Test
-    fun `adhan is never dropped in favour of a softer reminder`() {
+    fun `soft reminders survive near term`() {
         val days = timeline(10)
-        val all = NotificationPlanner.plan(days, full, before(days), budget = 10_000)
-        val capped = NotificationPlanner.plan(days, full, before(days), budget = 48)
-        val allAdhan = all.count { it.kind == PlannedNotification.Kind.ADHAN }
-        val keptAdhan = capped.count { it.kind == PlannedNotification.Kind.ADHAN }
-        assertEquals(minOf(allAdhan, 48), keptAdhan)
+        val now = before(days)
+        val plan = NotificationPlanner.plan(days, full, now, budget = 48)
+        val cutoff = now.epochSeconds + NotificationPlanner.FULL_FIDELITY_DAYS * 86_400L
+        // Pure adhan-first allocation would buy a longer horizon but strip the
+        // pre-adhan nudge entirely — a regression noticed the next morning.
+        assertTrue(
+            plan.any {
+                it.fireEpochSeconds < cutoff && it.kind != PlannedNotification.Kind.ADHAN
+            },
+        )
+    }
+
+    @Test
+    fun `beyond the full fidelity window only the adhan survives`() {
+        val days = timeline(10)
+        val now = before(days)
+        val plan = NotificationPlanner.plan(days, full, now, budget = 48)
+        val cutoff = now.epochSeconds + NotificationPlanner.FULL_FIDELITY_DAYS * 86_400L
+        assertTrue(
+            plan.filter { it.fireEpochSeconds >= cutoff }
+                .all { it.kind == PlannedNotification.Kind.ADHAN },
+        )
     }
 
     @Test

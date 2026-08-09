@@ -177,7 +177,7 @@ object NotificationPlanner {
             }
         }
 
-        return allocate(planned, budget)
+        return allocate(planned, budget, nowSeconds)
     }
 
     /** Ranking used when the schedule does not fit. Lower comes first. */
@@ -207,17 +207,36 @@ object NotificationPlanner {
      * whatever is left near term. The schedule degrades at its edges instead of
      * falling off a cliff.
      */
+    /**
+     * Days from now in which every enabled reminder type is kept. Beyond this
+     * the schedule degrades to adhan only. Mirror of iOS `fullFidelityDays`.
+     */
+    const val FULL_FIDELITY_DAYS = 2
+
     internal fun allocate(
         planned: List<PlannedNotification>,
         budget: Int,
+        nowSeconds: Long,
     ): List<PlannedNotification> {
         if (budget <= 0) return emptyList()
         if (planned.size <= budget) return planned.sortedBy { it.fireEpochSeconds }
-        // Chronological within each kind, so what survives is the *soonest* of
-        // that kind rather than an arbitrary subset.
-        return planned
-            .sortedWith(compareBy({ rank(it.kind) }, { it.fireEpochSeconds }))
-            .take(budget)
+
+        // The tension this resolves: with every type enabled a day emits up to
+        // 16 reminders. Allocating purely by chronology buys a few days of
+        // everything and then silence — the reported bug. Allocating purely by
+        // priority buys a long adhan horizon but strips the pre-adhan nudge
+        // entirely, which a user notices the next morning.
+        //
+        // So: full fidelity near term, adhan only beyond it.
+        val cutoff = nowSeconds + FULL_FIDELITY_DAYS * 86_400L
+        val near = planned.filter { it.fireEpochSeconds < cutoff }
             .sortedBy { it.fireEpochSeconds }
+        val far = planned
+            .filter { it.fireEpochSeconds >= cutoff && it.kind == PlannedNotification.Kind.ADHAN }
+            .sortedBy { it.fireEpochSeconds }
+
+        val result = near.take(budget).toMutableList()
+        if (result.size < budget) result += far.take(budget - result.size)
+        return result.sortedBy { it.fireEpochSeconds }
     }
 }

@@ -45,6 +45,11 @@ targets:
         # Declared so iOS shows the per-app Language picker in Settings (arabic-first).
         CFBundleLocalizations: [ar, en]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # Background refresh keeps the prayer schedule's horizon moving without
+        # the user opening the app. Without the identifier declared here,
+        # BGTaskScheduler.register throws at launch.
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.fatwabot.app.prayer-refresh]
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown

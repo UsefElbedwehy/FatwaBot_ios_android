@@ -1,4 +1,5 @@
 import AwradFeature
+import BackgroundTasks
 import ContentKit
 import DesignSystemKit
 import Factory
@@ -22,6 +23,11 @@ struct FatwaBotApp: App {
         // registered before the notification is delivered, and a reminder can be
         // delivered the instant the app finishes launching.
         Container.shared.wirdReminderScheduler().registerCategory()
+        // Also launch-time only: BGTaskScheduler rejects a handler registered
+        // after the app has finished launching.
+        PrayerScheduleRefreshTask.register {
+            await Container.shared.prayerViewModel().rescheduleNotifications()
+        }
     }
 
     var body: some Scene {
@@ -43,6 +49,10 @@ struct FatwaBotApp: App {
                     // user might never hit.
                     if phase == .background {
                         Task { await flushAnalytics() }
+                        // Queued on the way out: iOS only runs background refresh
+                        // for apps that are not in the foreground, so submitting
+                        // here is the moment it becomes eligible.
+                        PrayerScheduleRefreshTask.submit()
                     }
                     // Foregrounding is the other natural sync point: a long-lived
                     // app would otherwise never pick up published content after

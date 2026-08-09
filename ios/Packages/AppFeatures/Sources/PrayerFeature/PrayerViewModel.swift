@@ -99,12 +99,21 @@ public final class PrayerViewModel {
     }
 
     /// Rebuilds the rolling notification window (docs/features/prayer.md triggers).
+    /// How many days of prayer times to lay out for the notification schedule.
+    ///
+    /// Was 3, which silently capped the horizon: the planner had 48 slots but was
+    /// only ever handed three days of times, so the budget work above could never
+    /// reach past day three no matter how it allocated. Ten days is what 48 slots
+    /// can actually carry once the schedule degrades to adhan-only beyond the
+    /// full-fidelity window.
+    private var notificationHorizonDays: Int { 10 }
+
     public func rescheduleNotifications() async {
         guard let scheduler, let location else { return }
         let start = calendar.dateComponents([.year, .month, .day], from: now())
         guard let timeline = try? engine.timeline(
             latitude: location.latitude, longitude: location.longitude,
-            startDate: start, days: 3, settings: settings, calendar: calendar
+            startDate: start, days: notificationHorizonDays, settings: settings, calendar: calendar
         ) else { return }
         await scheduler.reschedule(timeline: timeline, preferences: notificationPreferences, now: now())
     }

@@ -210,7 +210,7 @@ public enum NotificationPlanner {
             }
         }
 
-        return allocate(planned, budget: budget)
+        return allocate(planned, budget: budget, now: now)
     }
 
     /// Ranking used when the schedule does not fit in `budget`. Lower comes first.
@@ -241,21 +241,40 @@ public enum NotificationPlanner {
     /// Allocating by priority instead means the same 48 slots cover roughly nine
     /// days of adhan, with the softer reminders filling whatever is left near
     /// term. The schedule degrades at the edges rather than falling off a cliff.
+    /// Days from `now` in which every enabled reminder type is kept.
+    ///
+    /// Beyond this the schedule degrades to adhan only. Two days is chosen so a
+    /// user always has their pre-adhan nudge for today and tomorrow — the window
+    /// where a soft reminder is actually useful — while the remaining budget
+    /// buys adhan coverage several days further out.
+    public static let fullFidelityDays = 2
+
     static func allocate(
-        _ planned: [PlannedNotification], budget: Int
+        _ planned: [PlannedNotification], budget: Int, now: Date
     ) -> [PlannedNotification] {
         guard budget > 0 else { return [] }
         guard planned.count > budget else {
             return planned.sorted { $0.fireDate < $1.fireDate }
         }
-        // Chronological within each kind, so what survives is the *soonest* of
-        // that kind rather than an arbitrary subset.
-        let ordered = planned.sorted {
-            rank($0.kind) != rank($1.kind)
-                ? rank($0.kind) < rank($1.kind)
-                : $0.fireDate < $1.fireDate
+
+        // The tension this resolves: iOS allows 64 pending requests, and with
+        // every type enabled a day emits up to 16. Allocating purely by priority
+        // buys ~9 days of adhan and strips the pre-adhan reminder entirely, which
+        // a user notices immediately. Allocating purely by chronology buys three
+        // days of everything and then silence, which is the reported bug.
+        //
+        // So: full fidelity near term, adhan only beyond it.
+        let cutoff = now.addingTimeInterval(TimeInterval(fullFidelityDays) * 86_400)
+        let near = planned.filter { $0.fireDate < cutoff }
+            .sorted { $0.fireDate < $1.fireDate }
+        let far = planned.filter { $0.fireDate >= cutoff && $0.kind == .adhan }
+            .sorted { $0.fireDate < $1.fireDate }
+
+        var result = Array(near.prefix(budget))
+        if result.count < budget {
+            result += far.prefix(budget - result.count)
         }
-        return ordered.prefix(budget).sorted { $0.fireDate < $1.fireDate }
+        return result.sorted { $0.fireDate < $1.fireDate }
     }
 
     private static func dayKey(_ components: DateComponents) -> String {

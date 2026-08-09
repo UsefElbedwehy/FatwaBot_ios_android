@@ -40,24 +40,46 @@ final class NotificationBudgetTests: XCTestCase {
                 Calendar.current.startOfDay(for: $0.fireDate)
             }
         )
-        XCTAssertGreaterThanOrEqual(adhanDays.count, 8, "adhan must cover most of the horizon")
+        // Measured under the tiered policy: two days of every reminder type,
+        // then the rest of the budget on adhan. Six days, against the three the
+        // old chronological truncation gave — and unlike pure adhan-first
+        // allocation, the pre-adhan nudge survives (see the test below).
+        XCTAssertGreaterThanOrEqual(adhanDays.count, 6, "adhan must reach well past day three")
         XCTAssertLessThanOrEqual(plan.count, 48)
     }
 
-    func testAdhanIsNeverDroppedInFavourOfASofterReminder() throws {
+    func testSoftRemindersSurviveNearTerm() throws {
         let days = try timeline(days: 10, from: DateComponents(year: 2026, month: 3, day: 20))
         let now = days[0].time(PrayerName.fajr).addingTimeInterval(-3600)
-        let full = NotificationPlanner.plan(
-            timeline: days, preferences: fullPreferences(), now: now, budget: 10_000
-        )
-        let capped = NotificationPlanner.plan(
+        let plan = NotificationPlanner.plan(
             timeline: days, preferences: fullPreferences(), now: now, budget: 48
         )
-        let allAdhan = full.filter { $0.kind == PlannedNotification.Kind.adhan }.count
-        let keptAdhan = capped.filter { $0.kind == PlannedNotification.Kind.adhan }.count
-        // With 48 slots and ~50 adhan available, essentially all of the budget
-        // should be adhan before anything softer is scheduled.
-        XCTAssertEqual(keptAdhan, min(allAdhan, 48))
+        // Pure adhan-first allocation would buy a longer horizon but strip the
+        // pre-adhan nudge entirely — a regression the user notices the next day.
+        let cutoff = now.addingTimeInterval(
+            TimeInterval(NotificationPlanner.fullFidelityDays) * 86_400
+        )
+        let nearSoft = plan.filter {
+            $0.fireDate < cutoff && $0.kind != PlannedNotification.Kind.adhan
+        }
+        XCTAssertFalse(nearSoft.isEmpty, "near-term must keep every enabled type")
+    }
+
+    func testBeyondTheFullFidelityWindowOnlyTheAdhanSurvives() throws {
+        let days = try timeline(days: 10, from: DateComponents(year: 2026, month: 3, day: 20))
+        let now = days[0].time(PrayerName.fajr).addingTimeInterval(-3600)
+        let plan = NotificationPlanner.plan(
+            timeline: days, preferences: fullPreferences(), now: now, budget: 48
+        )
+        let cutoff = now.addingTimeInterval(
+            TimeInterval(NotificationPlanner.fullFidelityDays) * 86_400
+        )
+        // The trade that buys the horizon: past the window the budget goes to
+        // the one reminder a user cannot substitute for themselves.
+        XCTAssertTrue(
+            plan.filter { $0.fireDate >= cutoff }
+                .allSatisfy { $0.kind == PlannedNotification.Kind.adhan }
+        )
     }
 
     func testThePlanIsStillChronologicalAfterAllocation() throws {

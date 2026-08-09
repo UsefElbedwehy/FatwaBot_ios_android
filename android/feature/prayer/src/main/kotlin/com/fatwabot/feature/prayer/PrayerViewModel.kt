@@ -22,6 +22,16 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
 /** Mirror of iOS PrayerViewModel — state machine for the Prayer surface. */
+/**
+ * Days of prayer times laid out for the notification schedule.
+ *
+ * Was 3, which silently capped the horizon: the planner had a large budget but
+ * was only ever handed three days of times, so no amount of allocation work
+ * could reach past day three. AlarmManager has no pending-alarm cap, so Android
+ * can carry a much longer window than iOS; the arithmetic is pure and cheap.
+ */
+private const val NOTIFICATION_HORIZON_DAYS = 30
+
 @HiltViewModel
 class PrayerViewModel @Inject constructor(
     private val locationProvider: LocationProviding,
@@ -98,7 +108,7 @@ class PrayerViewModel @Inject constructor(
             engine.timeline(
                 location.latitude, location.longitude,
                 today.year, today.monthValue, today.dayOfMonth,
-                days = 3, settings = _state.value.settings,
+                days = NOTIFICATION_HORIZON_DAYS, settings = _state.value.settings,
             )
         }.getOrNull() ?: return
         scheduler.ensureChannel()
