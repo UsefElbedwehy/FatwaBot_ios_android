@@ -67,4 +67,20 @@ class NotificationBudgetTest {
         assertTrue(plan.any { it.kind == PlannedNotification.Kind.LAST_THIRD })
         assertTrue(plan.any { it.kind == PlannedNotification.Kind.PRE_ADHAN })
     }
+
+    @Test
+    fun `only the adhan is armed as a user-visible alarm`() {
+        // setExactAndAllowWhileIdle is throttled in Doze — Android enforces a
+        // minimum gap between successive such alarms, and the pre-adhan reminder
+        // ten minutes ahead puts the adhan inside it. That deferral is the
+        // reported "الأذان يتأخر ٥ دقائق". setAlarmClock is exempt.
+        assertTrue(PlannedNotification.Kind.ADHAN.usesAlarmClock)
+
+        // The rest stay off it on purpose: setAlarmClock claims the system's
+        // "next alarm" indicator, and four reminders a day claiming it would
+        // make the indicator meaningless.
+        assertTrue(!PlannedNotification.Kind.PRE_ADHAN.usesAlarmClock)
+        assertTrue(!PlannedNotification.Kind.IQAMA.usesAlarmClock)
+        assertTrue(!PlannedNotification.Kind.LAST_THIRD.usesAlarmClock)
+    }
 }

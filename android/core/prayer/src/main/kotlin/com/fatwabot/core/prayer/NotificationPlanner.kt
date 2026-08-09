@@ -12,7 +12,30 @@ data class PlannedNotification(
     val titleKey: String,
     val bodyKey: String,
 ) {
-    enum class Kind { ADHAN, PRE_ADHAN, IQAMA, LAST_THIRD }
+    enum class Kind {
+        ADHAN, PRE_ADHAN, IQAMA, LAST_THIRD,
+        ;
+
+        /**
+         * Whether this kind should be armed as a user-visible alarm
+         * (`AlarmManager.setAlarmClock`) rather than an exact-while-idle alarm.
+         *
+         * Lives here rather than in the scheduler so the decision is testable
+         * without a Context, and so both the rule and its reasoning sit next to the
+         * kinds themselves.
+         *
+         * Only the adhan qualifies. `setExactAndAllowWhileIdle` is allowed in Doze
+         * but throttled — Android enforces a minimum interval between successive
+         * such alarms from one app, and our pre-adhan reminder ten minutes ahead
+         * puts the adhan inside that window, deferring it by minutes. `setAlarmClock`
+         * is exempt.
+         *
+         * The softer kinds stay on the throttled API deliberately: `setAlarmClock`
+         * claims the system's "next alarm" indicator, and four reminders a day
+         * claiming it would make that indicator meaningless.
+         */
+        val usesAlarmClock: Boolean get() = this == ADHAN
+    }
 }
 
 /**

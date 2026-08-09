@@ -69,19 +69,68 @@ class PrayerNotificationScheduler(
         // user does not open the app. Still bounded — exact alarms are a
         // resource, and some OEM builds throttle apps that register thousands.
         val plan = NotificationPlanner.plan(timeline, preferences, now, budget = ANDROID_BUDGET)
-        plan.forEach { item ->
-            val pending = pendingIntent(item)
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                item.fireEpochSeconds * 1000,
-                pending,
-            )
-        }
+        plan.forEach { item -> arm(item) }
         // Persist ids so a later cancelAll() can target them across process restarts.
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putStringSet(KEY_IDS, plan.map { it.id }.toSet())
             .apply()
     }
+
+    /**
+     * Arms one notification, choosing the alarm API by kind.
+     *
+     * ## Why the adhan uses setAlarmClock
+     * `setExactAndAllowWhileIdle` is *allowed* in Doze but not unrestricted:
+     * Android enforces a minimum interval (historically ~9 minutes) between
+     * successive such alarms from the same app. Our own schedule violates that
+     * spacing — the pre-adhan reminder fires ten minutes before the adhan, so
+     * the adhan itself lands inside the throttle window and is deferred. That is
+     * the reported "الأذان يتأخر ٥ دقائق": intermittent, only on some prayers,
+     * and impossible to reproduce with the app open because Doze is not active.
+     *
+     * `setAlarmClock` is exempt from that throttle entirely. It is the API the
+     * platform intends for user-visible alarms, and a call to prayer is exactly
+     * that.
+     *
+     * ## Why only the adhan
+     * `setAlarmClock` surfaces in the system's "next alarm" slot and puts an
+     * alarm icon in the status bar. That is honest for the adhan and noise for
+     * everything else — a pre-adhan nudge or an iqama reminder is not what a
+     * user means by "my next alarm", and four of them a day would make the
+     * indicator meaningless. The softer kinds keep the previous API, where a few
+     * minutes of drift costs nothing.
+     */
+    @SuppressLint("ScheduleExactAlarm")
+    private fun arm(item: PlannedNotification) {
+        val pending = pendingIntent(item)
+        val triggerAtMillis = item.fireEpochSeconds * 1000
+
+        if (item.kind.usesAlarmClock) {
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent()),
+                pending,
+            )
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerAtMillis,
+                pending,
+            )
+        }
+    }
+
+    /**
+     * Where the system sends a user who taps the alarm indicator. Opening the
+     * app is the only sensible destination; a null here would leave the
+     * indicator inert.
+     */
+    private fun showIntent(): PendingIntent? =
+        context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+            PendingIntent.getActivity(
+                context, 0, it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
 
     private fun cancelAll() {
         val ids = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
