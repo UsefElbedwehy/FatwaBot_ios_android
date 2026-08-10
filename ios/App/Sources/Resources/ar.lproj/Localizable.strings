@@ -268,6 +268,7 @@
 "azkar.search_empty" = "لا نتائج مطابقة";
 "azkar.start_session" = "ابدأ الورد";
 "azkar.copy" = "نسخ";
+"content.copy" = "نسخ";
 "azkar.repeat_a11y %lld" = "تُقال %lld مرات";
 
 "settings.notif.wird.time_other" = "بقية الأوراد";

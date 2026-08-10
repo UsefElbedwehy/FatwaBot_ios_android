@@ -1,8 +1,5 @@
 package com.fatwabot.feature.azkar
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -24,12 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,21 +41,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.core.content.AzkarCategory
 import com.fatwabot.core.content.AzkarItem
-import com.fatwabot.core.designsystem.BrandCard
+import com.fatwabot.core.designsystem.ArabicContentCard
 import com.fatwabot.core.designsystem.BrandEmptyState
 import com.fatwabot.core.designsystem.ColorTokens
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
+import com.fatwabot.core.designsystem.RepeatCountLabel
 import com.fatwabot.core.designsystem.brandScreenBackground
+import java.util.Locale
 
 /**
  * Browsing the azkar corpus: category chips, search, and every entry in the
@@ -73,13 +68,11 @@ import com.fatwabot.core.designsystem.brandScreenBackground
  * without counting through it, nor copy a single du'a without starting a session
  * you did not want. The session is still reachable from the top of the list.
  *
- * ## Where this departs from the reference design
- * The reference puts each title in a solid filled header band. At three cards
- * per screen that turns a reading surface into a stack of alerts and fights the
- * cream the rest of the app uses, so the title is maroon type on the same card
- * with a hairline rule under it — same hierarchy, a third of the visual weight.
- * The repeat count is a quiet marker rather than a filled pill: it matters while
- * reciting, not while choosing what to recite.
+ * ## Presentation
+ * Every entry is an [ArabicContentCard] — the same component Du'a and Hadith
+ * use, so the same passage looks identical wherever it is reached from. The card
+ * carries the passage and nothing else; see its documentation for what was
+ * deliberately taken off this surface and why.
  */
 @Composable
 fun AzkarBrowseScreen(
@@ -145,7 +138,7 @@ fun AzkarBrowseScreen(
                         )
                     }
                 }
-                items(visible, key = { it.id }) { EntryCard(it, tokens) }
+                items(visible, key = { it.id }) { EntryCard(it, tokens, locale) }
                 item { Spacer(Modifier.height(24.dp)) }
             }
         }
@@ -258,111 +251,29 @@ private fun StartSessionRow(
     }
 }
 
-@Composable
-private fun EntryCard(item: AzkarItem, tokens: ColorTokens) {
-    val context = LocalContext.current
-    BrandCard(tokens = tokens, contentPadding = 18.dp) {
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            EntryHeader(item, tokens)
-
-            Text(
-                text = item.arabicText,
-                color = tokens.onSurface,
-                textAlign = TextAlign.End,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            item.translation?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    color = tokens.onSurfaceSecondary,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(tokens.primary.copy(alpha = 0.10f))
-                        .clickable { copyToClipboard(context, item.arabicText) }
-                        .padding(horizontal = 12.dp, vertical = 7.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.ContentCopy,
-                        contentDescription = null,
-                        tint = tokens.primary,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.azkar_copy),
-                        color = tokens.primary,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
 /**
- * Title, source and repeat count.
+ * One entry: title, repeat marker, matn, copy. Nothing else.
  *
- * Skipped entirely when there is nothing to put in it — an untitled entry with
- * no source would otherwise get a rule floating above its matn. An entry with a
- * source but no title promotes the source into the header rather than leaving it
- * blank, which is what the whole corpus looks like until titles land.
+ * ## What used to be here
+ * The card also rendered `item.source` and `item.translation`. Both are gone at
+ * the owner's direction — "remove the red text and the english text, keep only
+ * the main".
+ *
+ * `source` was never the short attribution its name suggests: across the corpus
+ * it holds a 90–400 character takhrij chain
+ * («عن أنس يرفعه: … أبو داود، برقم ٣٦٧٧، وحسنه الألباني…»), and because it was
+ * the fallback whenever an entry had no title in the active locale, most cards
+ * opened with a paragraph of isnad in brand maroon before the reader reached the
+ * dhikr. Titles now cover the corpus, so the fallback is gone too — an untitled
+ * entry simply shows its matn.
  */
 @Composable
-private fun EntryHeader(item: AzkarItem, tokens: ColorTokens) {
-    val title = item.title?.trim().orEmpty()
-    val hasTitle = title.isNotEmpty()
-    if (!hasTitle && item.source.isEmpty() && item.repeatCount <= 1) return
-
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            if (item.repeatCount > 1) {
-                Text(
-                    text = "×${item.repeatCount}",
-                    color = tokens.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = if (hasTitle) title else item.source,
-                color = tokens.primary,
-                fontWeight = if (hasTitle) FontWeight.Bold else FontWeight.Medium,
-                textAlign = TextAlign.End,
-                style = MaterialTheme.typography.titleSmall,
-            )
-        }
-        if (hasTitle && item.source.isNotEmpty()) {
-            Text(
-                text = item.source,
-                color = tokens.onSurfaceSecondary,
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
-        HorizontalDivider(color = tokens.outline)
-    }
+private fun EntryCard(item: AzkarItem, tokens: ColorTokens, locale: String) {
+    ArabicContentCard(
+        arabic = item.arabicText,
+        tokens = tokens,
+        label = item.title,
+        badgeText = RepeatCountLabel.text(item.repeatCount, Locale(locale)),
+    )
 }
 
-private fun copyToClipboard(context: Context, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-    clipboard?.setPrimaryClip(ClipData.newPlainText("dhikr", text))
-}

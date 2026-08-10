@@ -3,10 +3,6 @@ import CoreKit
 import DesignSystemKit
 import SwiftUI
 
-#if canImport(UIKit)
-import UIKit
-#endif
-
 /// Browsing the azkar corpus: category chips, search, and every entry in the
 /// selected category as a scannable card.
 ///
@@ -21,16 +17,11 @@ import UIKit
 /// session answers "help me say it". Tapping a card's counter affordance still
 /// opens the session, so nothing is lost.
 ///
-/// ## Where this departs from the reference design
-/// The reference puts each title in a solid filled header band. At three cards
-/// per screen that turns a reading surface into a stack of alerts and fights the
-/// calm cream the rest of the app uses. Here the title is maroon type over the
-/// same card surface with a hairline rule under it — same hierarchy, a third of
-/// the visual weight.
-///
-/// The repeat count is likewise a quiet marker rather than a filled pill: it
-/// matters *while* reciting, not while choosing what to recite, so it should not
-/// compete with the title for first read.
+/// ## Presentation
+/// Every entry is an ``ArabicContentCard`` — the same component Du'a and Hadith
+/// use, so the same passage looks identical wherever it is reached from. The
+/// card carries the passage and nothing else; see its documentation for what was
+/// deliberately taken off this surface and why.
 public struct AzkarBrowseScreen: View {
     @State private var viewModel: AzkarViewModel
     @State private var selectedCategoryId: String?
@@ -204,97 +195,28 @@ public struct AzkarBrowseScreen: View {
         .buttonStyle(.plain)
     }
 
-    private func card(_ item: AzkarItem) -> some View {
-        BrandCard(tokens, padding: 18) {
-            VStack(alignment: .trailing, spacing: 12) {
-                header(item)
-
-                Text(item.arabicText.expandingArabicHonorifics)
-                    .font(.title3.weight(.medium))
-                    .lineSpacing(8)
-                    .foregroundStyle(Color(hexToken: tokens.onSurface))
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-
-                if let translation = item.translation, !translation.isEmpty {
-                    Text(translation)
-                        .font(.footnote)
-                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                copyButton(item)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(item.title ?? item.source))
-    }
-
-    /// Title, source and repeat count.
+    /// One entry: title, repeat marker, matn, copy. Nothing else.
     ///
-    /// The whole header is skipped when there is nothing to put in it — an
-    /// untitled entry with no source would otherwise get an empty band and a
-    /// rule floating above its matn.
-    @ViewBuilder
-    private func header(_ item: AzkarItem) -> some View {
-        let title = item.title?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let hasTitle = !(title ?? "").isEmpty
-        if hasTitle || !item.source.isEmpty || item.repeatCount > 1 {
-            VStack(alignment: .trailing, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    if item.repeatCount > 1 {
-                        Text(verbatim: "×\(item.repeatCount)")
-                            .font(.caption.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(Color(hexToken: tokens.primary))
-                            .accessibilityLabel(Text("azkar.repeat_a11y \(item.repeatCount)"))
-                    }
-                    Spacer(minLength: 0)
-                    if hasTitle, let title {
-                        Text(title)
-                            .font(.headline)
-                            .foregroundStyle(Color(hexToken: tokens.primary))
-                            .multilineTextAlignment(.trailing)
-                    } else if !item.source.isEmpty {
-                        // No title yet: the source carries the header alone
-                        // rather than leaving it blank, which is what most of
-                        // the corpus looks like until titles land.
-                        Text(item.source)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Color(hexToken: tokens.primary))
-                    }
-                }
-                if hasTitle, !item.source.isEmpty {
-                    Text(item.source)
-                        .font(.caption)
-                        .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                }
-                Divider().overlay(Color(hexToken: tokens.outline))
-            }
-        }
-    }
-
-    private func copyButton(_ item: AzkarItem) -> some View {
-        HStack {
-            Button {
-                #if canImport(UIKit)
-                // The matn as displayed, not as stored: the reader sees expanded
-                // honorifics, and pasting ligatures they never saw into a message
-                // that renders them as ▯ boxes would be a surprise.
-                UIPasteboard.general.string = item.arabicText.expandingArabicHonorifics
-                #endif
-            } label: {
-                Label("azkar.copy", systemImage: "doc.on.doc")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(Color(hexToken: tokens.primary))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule().fill(Color(hexToken: tokens.primary).opacity(0.10))
-                    )
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
+    /// ## What used to be here
+    /// The card also rendered `item.source` and `item.translation`. Both are
+    /// gone at the owner's direction — "remove the red text and the english
+    /// text, keep only the main".
+    ///
+    /// `source` in particular was never the short attribution its name suggests:
+    /// across the corpus it holds a 90–400 character takhrij chain
+    /// («عن أنس يرفعه: … أبو داود، برقم ٣٦٦٧، وحسنه الألباني…»), and because it
+    /// was the fallback whenever an entry had no title in the active locale, most
+    /// cards opened with a paragraph of isnad in brand maroon before the reader
+    /// reached the dhikr. The titles now cover the corpus, so the fallback is
+    /// gone too — an untitled entry simply shows its matn.
+    private func card(_ item: AzkarItem) -> some View {
+        ArabicContentCard(
+            label: item.title,
+            badgeText: RepeatCountLabel.text(
+                item.repeatCount, locale: Locale(identifier: locale)
+            ),
+            arabic: item.arabicText,
+            tokens: tokens
+        )
     }
 }

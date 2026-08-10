@@ -48,7 +48,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import com.fatwabot.core.config.ConfigService
-import com.fatwabot.core.content.HadithCollectionSummary
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -56,7 +55,6 @@ import dagger.hilt.components.SingletonComponent
 import java.util.Locale
 import com.fatwabot.feature.awrad.AwradBoardScreen
 import com.fatwabot.feature.hadith.HadithCollectionsScreen
-import com.fatwabot.feature.hadith.HadithReadingScreen
 import com.fatwabot.feature.prayer.PrayerScreen
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.QiblaScreen
@@ -165,20 +163,13 @@ fun WorshipTab(
             title = stringResource(WorshipDestination.AWRAD.titleRes),
             onBack = { onDestinationChange(null) },
         ) { AwradBoardScreen(viewModel = hiltViewModel()) }
-        WorshipDestination.HADITH -> {
-            var selectedCollection by remember { mutableStateOf<HadithCollectionSummary?>(null) }
-            WorshipDetailScaffold(
-                title = selectedCollection?.name ?: stringResource(WorshipDestination.HADITH.titleRes),
-                onBack = { if (selectedCollection != null) selectedCollection = null else onDestinationChange(null) },
-            ) {
-                val collection = selectedCollection
-                if (collection == null) {
-                    HadithCollectionsScreen(onCollectionSelected = { selectedCollection = it })
-                } else {
-                    HadithReadingScreen(slug = collection.slug)
-                }
-            }
-        }
+        // No pushed reader any more: the collections screen carries chips for the
+        // five collections and lists every entry underneath, so there is nothing
+        // left to open.
+        WorshipDestination.HADITH -> WorshipDetailScaffold(
+            title = stringResource(WorshipDestination.HADITH.titleRes),
+            onBack = { onDestinationChange(null) },
+        ) { HadithCollectionsScreen() }
         WorshipDestination.JOURNEY -> {
             BackHandler { onDestinationChange(null) }
             JourneyTab()

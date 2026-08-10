@@ -10,4 +10,5 @@
     <string name="dua_share">مشاركة</string>
     <string name="dua_show_transliteration">إظهار النطق</string>
     <string name="dua_transliteration_label">النطق</string>
+    <string name="dua_unfavorite">إزالة من المفضلة</string>
 </resources>

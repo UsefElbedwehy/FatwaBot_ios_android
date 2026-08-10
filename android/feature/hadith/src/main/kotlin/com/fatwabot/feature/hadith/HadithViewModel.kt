@@ -101,6 +101,43 @@ class HadithViewModel @Inject constructor(
         markCurrentRead()
     }
 
+    /**
+     * Records an entry as read because it scrolled into view. Mirror of iOS
+     * `HadithViewModel.markRead(number:)`.
+     *
+     * ## Why this exists alongside [markCurrentRead]
+     * Progress used to advance only through [next]/[previous], because the reader
+     * showed one entry at a time. The collection is now a scrollable list, so
+     * there is no "current" entry to advance to — "read" has to mean "reached the
+     * screen", which is what a list can actually observe.
+     *
+     * This does mean a fast scroll marks several entries at once. That is a real
+     * change in what progress measures, and it is the honest reading of a list:
+     * the alternative — a dwell timer, or a "mark read" control on every card —
+     * either lies in the other direction or puts a chore on a reading surface.
+     *
+     * Idempotent: the streak event fires only the first time an entry is seen, so
+     * scrolling back up does not re-award anything.
+     *
+     * No haptic, unlike [markCurrentRead]. There, one tick acknowledged one
+     * deliberate tap on "next"; here the trigger is scrolling, and a tick per card
+     * arriving on screen would buzz for the length of a flick.
+     */
+    fun markRead(number: Int) {
+        val current = _state.value
+        val detail = current.currentDetail ?: return
+        val existing = current.progress[detail.slug] ?: HadithProgress()
+        if (number in existing.readNumbers) return
+        val updated = existing.copy(
+            readNumbers = existing.readNumbers + number,
+            lastReadNumber = number,
+        )
+        val newProgress = current.progress + (detail.slug to updated)
+        store.saveProgress(newProgress)
+        _state.update { it.copy(progress = newProgress) }
+        activityEvents.record(eventType = "hadith_entry_read")
+    }
+
     private fun markCurrentRead() {
         val current = _state.value
         val detail = current.currentDetail ?: return

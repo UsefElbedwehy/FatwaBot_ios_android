@@ -21,10 +21,15 @@ android {
 }
 
 dependencies {
+    // For the Arabic honorific expansion the shared content card applies.
+    implementation(project(":core:common"))
+
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    // ContentCopy, used by the shared content card's copy chip.
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.ui.tooling.preview)
     testImplementation(libs.junit)
 }

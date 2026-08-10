@@ -7,6 +7,7 @@
     <string name="dua_empty">No du\'as available right now. Please try again later.</string>
     <string name="dua_favorites">Favorites</string>
     <string name="dua_favorite">Favorite</string>
+    <string name="dua_unfavorite">Remove from favorites</string>
     <string name="dua_share">Share</string>
     <string name="dua_show_transliteration">Show pronunciation</string>
     <string name="dua_transliteration_label">Pronunciation</string>

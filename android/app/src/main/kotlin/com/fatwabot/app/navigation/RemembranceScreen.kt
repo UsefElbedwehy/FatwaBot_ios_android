@@ -26,13 +26,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.fatwabot.app.R
 import com.fatwabot.core.content.AzkarCategory
-import com.fatwabot.core.content.Dua
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.feature.azkar.AzkarBrowseScreen
 import com.fatwabot.feature.azkar.AzkarSessionScreen
 import com.fatwabot.feature.dua.DuaLibraryScreen
-import com.fatwabot.feature.dua.DuaReadingScreen
 
 /** Which library the merged screen is showing. */
 enum class RemembranceSegment(@StringRes val titleRes: Int) {
@@ -75,8 +73,9 @@ fun RemembranceScreen(initial: RemembranceSegment, onExit: () -> Unit) {
     // Each library's push target, held separately so flipping the segment and
     // coming back doesn't lose your place. (Not `rememberSaveable`: the content
     // models aren't Parcelable — same as before the merge.)
+    // Azkar only. Du'a no longer pushes a detail: its library shows each dua in
+    // full, so there is nothing left to open.
     var selectedCategory by remember { mutableStateOf<AzkarCategory?>(null) }
-    var selectedDua by remember { mutableStateOf<Dua?>(null) }
 
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     val cs = MaterialTheme.colorScheme
@@ -85,14 +84,13 @@ fun RemembranceScreen(initial: RemembranceSegment, onExit: () -> Unit) {
     // Azkar and Du'a were separate destinations.
     val detailTitle = when (segment) {
         RemembranceSegment.AZKAR -> selectedCategory?.name
-        RemembranceSegment.DUA -> selectedDua?.title
+        RemembranceSegment.DUA -> null
     }
     WorshipDetailScaffold(
         title = detailTitle ?: stringResource(R.string.worship_remembrance),
         onBack = {
             when {
                 segment == RemembranceSegment.AZKAR && selectedCategory != null -> selectedCategory = null
-                segment == RemembranceSegment.DUA && selectedDua != null -> selectedDua = null
                 else -> onExit()
             }
         },
@@ -149,14 +147,7 @@ fun RemembranceScreen(initial: RemembranceSegment, onExit: () -> Unit) {
                             AzkarSessionScreen(category = category)
                         }
                     }
-                    RemembranceSegment.DUA -> {
-                        val dua = selectedDua
-                        if (dua == null) {
-                            DuaLibraryScreen(onDuaSelected = { selectedDua = it })
-                        } else {
-                            DuaReadingScreen(dua = dua)
-                        }
-                    }
+                    RemembranceSegment.DUA -> DuaLibraryScreen()
                 }
             }
         }
