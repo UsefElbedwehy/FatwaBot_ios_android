@@ -117,6 +117,10 @@
 "dua.unfavorite" = "إزالة من المفضلة";
 "dua.toggle_transliteration" = "إظهار/إخفاء اللفظ";
 "worship.awrad" = "أثرك";
+// Grid tile label — kept distinct from the screen title below, and from
+// "worship.awrad" above (which stays the in-screen section header).
+"worship.wird_tile" = "ورد";
+"worship.wird_daily" = "الورد اليومي";
 "awrad.mark_day_complete" = "أتممت وردي اليوم";
 "awrad.empty_title" = "لا توجد أوراد بعد";
 "awrad.empty_subtitle" = "أضف وردك الأول لتبدأ رحلتك اليومية";

@@ -110,13 +110,17 @@ private fun tasbeehNotice(): String? {
     }
 }
 
+// Declaration order is grid order (see WorshipMenu). AWRAD and TASBEEH swapped
+// places at the owner's request — no change to what either does, just where
+// they sit. AZKAR/DUA stay adjacent regardless: DUA is filtered out of the
+// grid (see WorshipMenu) and only rides along for the segment relationship.
 enum class WorshipDestination(@StringRes val titleRes: Int) {
     PRAYER(R.string.worship_prayer_times),
     QIBLA(R.string.worship_qibla),
-    TASBEEH(R.string.worship_tasbeeh),
+    AWRAD(R.string.worship_wird_daily),
     AZKAR(R.string.worship_azkar),
     DUA(R.string.worship_dua),
-    AWRAD(R.string.worship_awrad),
+    TASBEEH(R.string.worship_tasbeeh),
     HADITH(R.string.worship_hadith),
     JOURNEY(R.string.tab_journey),
 }
@@ -177,12 +181,16 @@ fun WorshipTab(
     }
 }
 
-/** Grid label. Only AZKAR differs from its own title: its tile is the entry point
- * for the merged Azkar + Du'a screen, so it announces both. `titleRes` stays the
- * name of the Azkar library itself — that's what the segment label needs. */
+/** Grid label. AZKAR and AWRAD both differ from their own `titleRes`:
+ *  - AZKAR's tile is the entry point for the merged Azkar + Du'a screen, so it
+ *    announces both. `titleRes` stays the name of the Azkar library itself —
+ *    that's what the segment label needs.
+ *  - AWRAD's tile reads "Wird" ("ورد"); the pushed screen's title is the fuller
+ *    "Daily Wird" ("الورد اليومي"). Two different jobs, two strings. */
 @StringRes
 private fun tileTitleRes(destination: WorshipDestination): Int = when (destination) {
     WorshipDestination.AZKAR -> R.string.worship_remembrance
+    WorshipDestination.AWRAD -> R.string.worship_wird_tile
     else -> destination.titleRes
 }
 

@@ -117,6 +117,8 @@
 "dua.unfavorite" = "Remove from favorites";
 "dua.toggle_transliteration" = "Toggle transliteration";
 "worship.awrad" = "My Awrad";
+"worship.wird_tile" = "Wird";
+"worship.wird_daily" = "Daily Wird";
 "awrad.mark_day_complete" = "Mark Today Complete";
 "awrad.empty_title" = "No wirds yet";
 "awrad.empty_subtitle" = "Add your first wird to start your daily journey";

@@ -291,7 +291,7 @@ struct RootTabView: View {
             .navigationBarTitleDisplayMode(.inline)
         case .awrad:
             AwradBoardScreen(viewModel: Container.shared.awradViewModel())
-                .navigationTitle(Text("worship.awrad"))
+                .navigationTitle(Text("worship.wird_daily"))
                 .navigationBarTitleDisplayMode(.inline)
         case .hadith:
             HadithCollectionsScreen(
@@ -488,15 +488,17 @@ struct WorshipTabView: View {
                         WorshipTile(icon: "safari.fill", titleKey: "worship.qibla", tokens: tokens)
                     }
                 }
-                NavigationLink(value: WorshipDestination.tasbeeh) {
-                    WorshipTile(icon: "circle.grid.3x3.fill", titleKey: "worship.tasbeeh", tokens: tokens)
+                // Wird and Tasbeeh swapped grid places at the owner's request —
+                // no change to what either does, just where they sit.
+                NavigationLink(value: WorshipDestination.awrad) {
+                    WorshipTile(icon: "leaf.fill", titleKey: "worship.wird_tile", tokens: tokens)
                 }
                 // Azkar + Du'a share one tile now; the screen behind it segments.
                 NavigationLink(value: WorshipDestination.azkar) {
                     WorshipTile(icon: "book.closed.fill", titleKey: "worship.remembrance", tokens: tokens)
                 }
-                NavigationLink(value: WorshipDestination.awrad) {
-                    WorshipTile(icon: "leaf.fill", titleKey: "worship.awrad", tokens: tokens)
+                NavigationLink(value: WorshipDestination.tasbeeh) {
+                    WorshipTile(icon: "circle.grid.3x3.fill", titleKey: "worship.tasbeeh", tokens: tokens)
                 }
                 NavigationLink(value: WorshipDestination.hadith) {
                     WorshipTile(icon: "text.book.closed.fill", titleKey: "worship.hadith", tokens: tokens)

@@ -67,7 +67,10 @@
     <string name="worship_dua">Du\'a</string>
     <!-- Title of the merged Azkar + Du'a screen (one Worship tile, two segments). -->
     <string name="worship_remembrance">Azkar &amp; Du\'a</string>
-    <string name="worship_awrad">Awrad</string>
+    <!-- Grid tile label — distinct from worship_wird_daily below, and from
+         feature/awrad's own awrad_my_awrad (that screen's internal header). -->
+    <string name="worship_wird_tile">Wird</string>
+    <string name="worship_wird_daily">Daily Wird</string>
     <string name="worship_hadith">Hadith</string>
     <string name="journey_leaderboards">Leaderboards</string>
     <string name="journey_search_history">Search history</string>
