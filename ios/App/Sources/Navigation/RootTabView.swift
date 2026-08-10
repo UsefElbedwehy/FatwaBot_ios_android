@@ -405,9 +405,10 @@ private struct FatwaBottomBar: View {
     private var homeItem: some View {
         Button { selection = .home } label: {
             VStack(spacing: 1) {
-                Image("LaunchLogo")
-                    .resizable()
-                    .scaledToFit()
+                // FatwaMark tints the raw raster explicitly rather than relying on
+                // its baked-in color, which isn't a brand token and reads poorly
+                // outside a light circle — see SearchHomeScreen for the same fix.
+                FatwaMark(color: Color(hexToken: tokens.primary))
                     .frame(width: 30, height: 40)
                 Text(AppTab.home.titleKey)
                     .font(.caption2.weight(.semibold))

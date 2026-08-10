@@ -146,6 +146,7 @@ private fun SignInStep(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
                 },
                 enabled = !isSigningIn,
                 modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 16.dp),
             ) {
                 Text(
                     when (provider) {

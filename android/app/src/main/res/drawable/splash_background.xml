@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The logo asset itself is a flat raster baked at a fixed dark maroon that
+  isn't even one of the brand tokens (it predates them) — fine on the cream
+  background, unreadable on the True Night dark one. `android:tint` on the
+  nested bitmap makes the mark alpha-mask-and-recolor the same way the in-app
+  BrandMark composable already does, instead of showing its baked-in color.
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/brand_cream" />
+    <item android:drawable="@color/splash_background" />
     <item
         android:width="140dp"
         android:height="140dp"
-        android:drawable="@drawable/fatwabot_logo"
-        android:gravity="center" />
+        android:gravity="center">
+        <bitmap
+            android:src="@drawable/fatwabot_logo"
+            android:tint="@color/splash_logo_tint" />
+    </item>
 </layer-list>

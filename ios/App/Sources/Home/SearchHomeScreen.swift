@@ -33,9 +33,13 @@ struct SearchHomeScreen: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 48)
 
-                Image("LaunchLogo")
-                    .resizable()
-                    .scaledToFit()
+                // FatwaMark, not a raw `Image("LaunchLogo")`: the asset is a flat
+                // maroon raster baked at a fixed color that isn't even one of the
+                // brand tokens, so on the dark surface it measured 1.5:1 contrast —
+                // present but barely visible. FatwaMark alpha-masks the same
+                // artwork and tints it explicitly, so it tracks light/dark like
+                // every other brand-mark usage in the app.
+                FatwaMark(color: Color(hexToken: tokens.primary))
                     .frame(width: 124, height: 174)
                     .accessibilityHidden(true)
 
