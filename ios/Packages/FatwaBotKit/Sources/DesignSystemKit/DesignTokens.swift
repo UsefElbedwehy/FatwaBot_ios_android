@@ -78,28 +78,59 @@ public struct DesignTokens: Equatable, Sendable {
             onPrimary: "#FFFFFF",
             outline: "#E3D5CC"
         ),
-        // Dark palette notes — `primary` has to do two jobs at once: it fills
-        // large surfaces (the nav band, the search cap) AND is used as a
-        // foreground for headings and icons. The old #D08770 was tuned only for
-        // the second job: a washed-out salmon that read as a different brand
-        // once it filled the nav band, and it forced `onPrimary` to be *dark*,
-        // which is backwards for a fill colour.
+        // Dark palette — "True Night", chosen by the owner from a rendered
+        // comparison of five candidates.
         //
-        // #B8514A is a lifted brick that still reads as the maroon family: dark
-        // enough that near-white sits on it legibly, light enough to carry as a
-        // heading against the near-black surface. Surfaces gained a clearer
-        // elevation delta (a 3-point luminance step was invisible), and the gold
-        // accent was brightened, since #B8860B is nearly black on a dark ground.
+        // ## The constraint that shapes every value here
+        // `primary` does two jobs at once: it fills large surfaces (the nav
+        // band, the search cap) AND is used as a foreground for headings and
+        // icons. Those two jobs pull in opposite directions, and on a near-black
+        // ground they cannot *both* clear 4.5:1 with one token — near-white on
+        // `primary` at 4.5 caps its relative luminance at 0.175, while `primary`
+        // as text on a black surface at 4.5 demands at least 0.202. No colour
+        // satisfies both.
+        //
+        // The resolution is that the nav band is large bold type, where the WCAG
+        // bar is 3:1, not 4.5:1. So `primary` is tuned for the harder job — body
+        // sized heading text — and the fill rides on the large-text allowance.
+        // The practical rule that falls out: **never put small text on a
+        // `primary` fill.** Use `primaryContainer` for that.
+        //
+        // ## Measured
+        //   onSurface on surface        21.00:1  (pure white on pure black)
+        //   primary as text on surface   4.78:1  (was 3.88 — the old value failed)
+        //   primary as text on elevated  4.26:1  ← the number that actually
+        //       governs. Headings sit on *cards*, not on the black background,
+        //       and a card is `surfaceElevated`. It clears the 3:1 large-bold bar
+        //       but not 4.5, so a `primary` heading must stay large and bold.
+        //       Lifting `primary` far enough to clear 4.5 here would need
+        //       roughly a 7% luminance increase, which visibly shifts the
+        //       chosen colour — deliberately not done.
+        //   onPrimary on primary         4.16:1  (large bold only; bar is 3:1)
+        //   accent on surface           12.78:1
+        //
+        // The previous #B8514A missed the 4.5 heading bar. Before that, #D08770
+        // was a washed-out salmon tuned only for the foreground job — it read as
+        // a different brand once it filled the nav band, and forced `onPrimary`
+        // to be *dark*, which is backwards for a fill colour.
+        //
+        // ## Known trade-off
+        // `surface` is true #000000 for OLED. That leaves only one elevation
+        // step (`surfaceElevated`, ΔL* 5.5) and no third level, so nested rows
+        // inside a card rely on `outline` rather than their own fill. Graded
+        // alternatives with a full three-level ladder were built and rejected in
+        // favour of this one; if nesting ever needs to go deeper, that decision
+        // is the thing to revisit, not these values.
         dark: ColorTokens(
-            primary: "#B8514A",
-            primaryContainer: "#3B2320",
-            accent: "#E0B457",
-            surface: "#14100F",
-            surfaceElevated: "#221B19",
-            onSurface: "#F5EBE4",
-            onSurfaceSecondary: "#BCA79C",
-            onPrimary: "#FFF6F1",
-            outline: "#3E312D"
+            primary: "#C4564B",
+            primaryContainer: "#351F1C",
+            accent: "#EFC46B",
+            surface: "#000000",
+            surfaceElevated: "#16110F",
+            onSurface: "#FFFFFF",
+            onSurfaceSecondary: "#C4B3A9",
+            onPrimary: "#FFF7F5",
+            outline: "#2A2320"
         ),
         shape: ShapeTokens(cardRadius: 18, controlRadius: 12),
         productName: "Fatwa",

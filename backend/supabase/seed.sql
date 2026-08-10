@@ -33,15 +33,15 @@ insert into config.themes (version, tokens, published) values (1, '{
     "color.outline": "#E3D5CC"
   },
   "dark": {
-    "color.primary": "#D08770",
-    "color.primary_container": "#3A2422",
-    "color.accent": "#D4A73F",
-    "color.surface": "#171210",
-    "color.surface_elevated": "#221A17",
-    "color.on_surface": "#F1E7E0",
-    "color.on_surface_secondary": "#B5A398",
-    "color.on_primary": "#2B1B17",
-    "color.outline": "#463832"
+    "color.primary": "#C4564B",
+    "color.primary_container": "#351F1C",
+    "color.accent": "#EFC46B",
+    "color.surface": "#000000",
+    "color.surface_elevated": "#16110F",
+    "color.on_surface": "#FFFFFF",
+    "color.on_surface_secondary": "#C4B3A9",
+    "color.on_primary": "#FFF7F5",
+    "color.outline": "#2A2320"
   },
   "shape": {"radius.card": 18, "radius.control": 12},
   "assets": {}

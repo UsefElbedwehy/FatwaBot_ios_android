@@ -31,27 +31,39 @@ val LightTokens = ColorTokens(
     outline = Color(0xFFE3D5CC),
 )
 
-// Dark palette notes — `primary` has to do two jobs at once: it fills large
-// surfaces (the nav band, the search cap) AND is used as a foreground for
-// headings and icons. The old #D08770 was tuned only for the second job: a
-// washed-out salmon that read as a different brand once it filled the nav band,
-// and it forced `onPrimary` to be *dark*, which is backwards for a fill colour.
+// Dark palette — "True Night", chosen by the owner from a rendered comparison
+// of five candidates. Mirror of iOS DesignTokens.swift; see the long note there
+// for the full reasoning. In short:
 //
-// #B8514A is a lifted brick that still reads as the maroon family: dark enough
-// that near-white sits on it legibly, light enough to carry as a heading against
-// the near-black surface. Surfaces gained a clearer elevation delta (a 3-point
-// luminance step was invisible), and the gold accent was brightened, since
-// #B8860B is nearly black on a dark ground.
+// `primary` does two jobs — it fills large surfaces (the nav band, the search
+// cap) AND is a foreground for headings and icons. On a near-black ground those
+// two jobs cannot both clear 4.5:1 with a single token; it is arithmetically
+// impossible. So `primary` is tuned for the harder job (body-sized heading
+// text) and the fill rides on the 3:1 large-bold-text allowance. The rule that
+// falls out: **never put small text on a `primary` fill** — use
+// `primaryContainer` for that.
+//
+// Measured: onSurface/surface 21.00:1 · primary-as-text/surface 4.78:1 (the old
+// #B8514A was 3.88 and failed) · primary-as-text/**elevated** 4.26:1 — that last
+// one is the number that actually governs, because headings sit on cards rather
+// than on the black background. It clears 3:1 but not 4.5, so a `primary`
+// heading must stay large and bold · onPrimary/primary 4.16:1 (large bold only)
+// · accent/surface 12.78:1.
+//
+// Trade-off: `surface` is true black for OLED, which leaves one elevation step
+// and no third level, so nested rows lean on `outline` rather than their own
+// fill. Graded three-level alternatives were built and rejected in favour of
+// this one.
 val DarkTokens = ColorTokens(
-    primary = Color(0xFFB8514A),
-    primaryContainer = Color(0xFF3B2320),
-    accent = Color(0xFFE0B457),
-    surface = Color(0xFF14100F),
-    surfaceElevated = Color(0xFF221B19),
-    onSurface = Color(0xFFF5EBE4),
-    onSurfaceSecondary = Color(0xFFBCA79C),
-    onPrimary = Color(0xFFFFF6F1),
-    outline = Color(0xFF3E312D),
+    primary = Color(0xFFC4564B),
+    primaryContainer = Color(0xFF351F1C),
+    accent = Color(0xFFEFC46B),
+    surface = Color(0xFF000000),
+    surfaceElevated = Color(0xFF16110F),
+    onSurface = Color(0xFFFFFFFF),
+    onSurfaceSecondary = Color(0xFFC4B3A9),
+    onPrimary = Color(0xFFFFF7F5),
+    outline = Color(0xFF2A2320),
 )
 
 object ShapeTokens {
