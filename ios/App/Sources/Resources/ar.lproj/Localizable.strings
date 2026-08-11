@@ -149,6 +149,7 @@
 "leaderboard.join" = "انضمام";
 "leaderboard.leave" = "مغادرة اللوحة";
 "leaderboard.my_rank %lld" = "ترتيبي: #%lld";
+"leaderboard.resets_on %@" = "يتجدد في %@";
 "leaderboard.empty_state" = "لا توجد لوحات متصدرين متاحة بعد.";
 "leaderboard.publish_name" = "نشر اسمي بدلاً من اسم مستعار";
 "leaderboard.city_placeholder" = "مدينتك";

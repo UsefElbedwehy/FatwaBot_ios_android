@@ -14,6 +14,9 @@ function nextHandle(): string {
 export class InMemoryLeaderboardRepo implements LeaderboardRepo {
   private memberships = new Map<string, LeaderboardMembership>(); // key: `${key}:${userId}`
   private snapshots = new Map<string, SnapshotEntry[]>(); // key: `${key}:${periodKey}`
+  /** Insertion order of period keys per board — mirrors the real repo's
+   * "newest first" via computed_at, without needing timestamps here. */
+  private periodOrder = new Map<string, string[]>(); // key: leaderboardKey -> [periodKey, ...]
 
   join(
     _ctx: AppContext,
@@ -85,11 +88,20 @@ export class InMemoryLeaderboardRepo implements LeaderboardRepo {
     // Mirrors the real repo writing computed_at, so a lazy recompute is seen as
     // fresh on the next read instead of firing again every request.
     this.computedAt.set(`${leaderboardKey}:${periodKey}`, new Date());
+    const order = this.periodOrder.get(leaderboardKey) ?? [];
+    if (!order.includes(periodKey)) {
+      order.unshift(periodKey); // newest first, same as the real repo
+      this.periodOrder.set(leaderboardKey, order);
+    }
     return Promise.resolve();
   }
 
   getSnapshot(_ctx: AppContext, leaderboardKey: string, periodKey: string): Promise<SnapshotEntry[]> {
     return Promise.resolve(this.snapshots.get(`${leaderboardKey}:${periodKey}`) ?? []);
+  }
+
+  listPeriodKeys(_ctx: AppContext, leaderboardKey: string): Promise<string[]> {
+    return Promise.resolve([...(this.periodOrder.get(leaderboardKey) ?? [])]);
   }
 
   /** Tests drive this explicitly so staleness is deterministic. */

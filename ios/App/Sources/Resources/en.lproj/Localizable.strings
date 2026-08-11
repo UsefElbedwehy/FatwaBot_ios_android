@@ -147,6 +147,7 @@
 "leaderboard.join" = "Join";
 "leaderboard.leave" = "Leave board";
 "leaderboard.my_rank %lld" = "My rank: #%lld";
+"leaderboard.resets_on %@" = "Resets %@";
 "leaderboard.empty_state" = "No leaderboards available yet.";
 "leaderboard.publish_name" = "Publish my name instead of a pseudonym";
 "leaderboard.city_placeholder" = "Your city";

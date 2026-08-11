@@ -56,6 +56,26 @@ export interface AdminUser {
   linkedAtEpochSeconds: number | null;
 }
 
+/** One ranked row of GET /admin/v1/leaderboards/{key}/standings — the full
+ * board, unfiltered by region, so an admin can find any period's winner. */
+export interface LeaderboardStandingEntry {
+  rank: number;
+  score: number;
+  /** Empty for a global board; a country code or city name otherwise. */
+  bucket: string;
+  country: string | null;
+  city: string | null;
+  displayName: string;
+}
+
+export interface LeaderboardStandings {
+  key: string;
+  period: string;
+  periodKey: string;
+  isCurrentPeriod: boolean;
+  entries: LeaderboardStandingEntry[];
+}
+
 const FALLBACK_LOCALES: LocaleInfo[] = [
   { locale: "ar", display_name: "العربية", direction: "rtl" },
   { locale: "en", display_name: "English", direction: "ltr" },
@@ -229,6 +249,43 @@ export async function listAdminUsers(query?: string): Promise<AdminUser[]> {
   if (!res.ok) throw new AdminApiError(res.status, await errorMessage(res, "Failed to list users"));
   const body = await res.json();
   return body.users;
+}
+
+/** Full standings for one board. Omit `periodKey` for the current period —
+ * the same window a user's own app would show — or pass one from
+ * `listLeaderboardPeriods` to see a past period's final ranks (e.g. last
+ * half's winner, after the board has already rolled to the next one). */
+export async function listLeaderboardStandings(
+  key: string,
+  periodKey?: string,
+): Promise<LeaderboardStandings> {
+  const qs = periodKey ? `?period_key=${encodeURIComponent(periodKey)}` : "";
+  const res = await adminFetch(`/admin/v1/leaderboards/${encodeURIComponent(key)}/standings${qs}`);
+  if (!res.ok) throw new AdminApiError(res.status, await errorMessage(res, "Failed to load standings"));
+  const body = await res.json();
+  return {
+    key: body.key,
+    period: body.period,
+    periodKey: body.period_key,
+    isCurrentPeriod: body.is_current_period,
+    entries: (body.entries as Record<string, unknown>[]).map((e) => ({
+      rank: e.rank as number,
+      score: e.score as number,
+      bucket: e.bucket as string,
+      country: e.country as string | null,
+      city: e.city as string | null,
+      displayName: e.display_name as string,
+    })),
+  };
+}
+
+/** Every period this board has ever had standings materialized for, newest
+ * first — powers the "view a past period" picker on the standings page. */
+export async function listLeaderboardPeriods(key: string): Promise<string[]> {
+  const res = await adminFetch(`/admin/v1/leaderboards/${encodeURIComponent(key)}/periods`);
+  if (!res.ok) throw new AdminApiError(res.status, await errorMessage(res, "Failed to load periods"));
+  const body = await res.json();
+  return body.periods;
 }
 
 /** Enabled locales drive the editor's locale tabs (spec: "tabs for enabled

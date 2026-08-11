@@ -160,4 +160,17 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
       bucket: (r.bucket as string | null) ?? "",
     }));
   }
+
+  async listPeriodKeys(ctx: AppContext, leaderboardKey: string): Promise<string[]> {
+    const { data, error } = await this.db
+      .schema("gamification").from("leaderboard_snapshots")
+      .select("period_key, computed_at")
+      .eq("app_id", ctx.appId).eq("leaderboard_key", leaderboardKey)
+      .order("computed_at", { ascending: false });
+    if (error) throw error;
+    // No native DISTINCT in the query builder — dedupe client-side. `Set`
+    // preserves first-seen order, which is `computed_at` descending from the
+    // query above, so the newest period naturally sorts first.
+    return [...new Set((data ?? []).map((r) => r.period_key as string))];
+  }
 }

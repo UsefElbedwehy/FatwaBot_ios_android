@@ -19,6 +19,15 @@ data class LeaderboardBoard(
     val joined: Boolean,
     @SerialName("my_rank") val myRank: Int? = null,
     val entries: List<LeaderboardEntry> = emptyList(),
+    /**
+     * The current period's calendar bounds as raw ISO-8601 strings (parsed at
+     * the display layer, same convention as [com.fatwabot.core.common.QueuedAnalyticsEvent]'s
+     * `occurredAt`) — for a "resets on" display, not the scoring window (which
+     * ends at "now", not the boundary). `null` for `lifetime` (no reset) and
+     * for a `seasonal`/`challenge` board an admin hasn't dated yet.
+     */
+    @SerialName("period_starts_at") val periodStartsAt: String? = null,
+    @SerialName("period_ends_at") val periodEndsAt: String? = null,
 )
 
 @Serializable

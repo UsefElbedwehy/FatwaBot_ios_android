@@ -55,6 +55,11 @@ import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.RankMedal
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.feature.leaderboard.R
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 /** Leaderboards screen — mirror of iOS LeaderboardScreen
@@ -123,6 +128,33 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
     }
 }
 
+/**
+ * "Resets 1 Jan 2027" when the board has a known reset date, falling back to
+ * the raw "scope · period" for `lifetime` (no reset at all) and for a
+ * `seasonal`/`challenge` board an admin hasn't dated yet. The recurring
+ * periods (`weekly`, `monthly`, `halfyearly`) always have one — see
+ * `periodBoundsFor` on the backend — so in practice this only falls back for
+ * the two admin-configured period types.
+ *
+ * `runCatching` rather than trusting the field, matching how
+ * `SearchHistoryScreen.groupByDay` treats a server timestamp: a malformed or
+ * unparseable date must degrade to the old text, not crash the card.
+ */
+@Composable
+private fun periodSummary(board: LeaderboardBoard): String {
+    val fallback = "${board.scope} · ${board.period}"
+    val endsAt = board.periodEndsAt ?: return fallback
+    // `runCatching` (not @Composable) must finish before any `stringResource`
+    // call — Compose only allows composable calls from a composable context,
+    // which a plain lambda passed to `runCatching` is not.
+    val formatted = runCatching {
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(Locale.getDefault())
+            .format(Instant.parse(endsAt).atZone(ZoneId.systemDefault()))
+    }.getOrNull() ?: return fallback
+    return stringResource(R.string.leaderboard_resets_on, formatted)
+}
+
 @Composable
 private fun NoticeCard(error: String, tokens: ColorTokens) {
     BrandCard(tokens = tokens) {
@@ -157,7 +189,7 @@ private fun BoardCard(
                         color = tokens.onSurface,
                     )
                     Text(
-                        "${board.scope} · ${board.period}",
+                        periodSummary(board),
                         style = MaterialTheme.typography.bodySmall,
                         color = tokens.onSurfaceSecondary,
                     )

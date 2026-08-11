@@ -2,6 +2,7 @@
 <resources>
     <string name="leaderboard_empty">No leaderboards available yet.</string>
     <string name="leaderboard_my_rank">My rank: #%1$d</string>
+    <string name="leaderboard_resets_on">Resets %1$s</string>
     <string name="leaderboard_leave">Leave board</string>
     <string name="leaderboard_join">Join</string>
     <string name="leaderboard_entry_cd">Rank %1$d, %2$s, %3$d</string>

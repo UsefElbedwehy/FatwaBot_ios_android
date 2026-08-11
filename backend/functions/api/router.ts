@@ -25,9 +25,11 @@ import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile, handleUp
 import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
 import { handleSubmitAnalyticsEvents } from "./handlers/analytics.ts";
 import {
+  handleGetStandings,
   handleJoinLeaderboard,
   handleLeaveLeaderboard,
   handleListLeaderboards,
+  handleListStandingsPeriods,
   handleRecomputeSnapshot,
   handleUpdateMembership,
 } from "./handlers/leaderboard.ts";
@@ -395,6 +397,18 @@ async function routeAdmin(
   if (recomputeMatch) {
     if (method !== "POST") return methodNotAllowed();
     return await handleRecomputeSnapshot(ctx, deps, recomputeMatch[1]);
+  }
+
+  const standingsMatch = path.match(/^\/admin\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/standings$/);
+  if (standingsMatch) {
+    if (method !== "GET") return methodNotAllowed();
+    return await handleGetStandings(ctx, deps, standingsMatch[1], url.searchParams.get("period_key"));
+  }
+
+  const standingsPeriodsMatch = path.match(/^\/admin\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/periods$/);
+  if (standingsPeriodsMatch) {
+    if (method !== "GET") return methodNotAllowed();
+    return await handleListStandingsPeriods(ctx, deps, standingsPeriodsMatch[1]);
   }
 
   const sendCampaignMatch = path.match(/^\/admin\/v1\/campaigns\/([A-Za-z0-9_-]{1,60})\/send$/);

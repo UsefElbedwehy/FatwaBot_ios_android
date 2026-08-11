@@ -181,7 +181,7 @@ export const GAMIFICATION_COLLECTIONS: CollectionDef[] = [
       { key: "key", label: "Key", kind: "text" },
       { key: "name_translations", label: "Name", kind: "translatable" },
       { key: "scope", label: "Scope (global | country | city)", kind: "text" },
-      { key: "period", label: "Period (weekly | monthly | seasonal | lifetime | challenge)", kind: "text" },
+      { key: "period", label: "Period (weekly | monthly | halfyearly | seasonal | lifetime | challenge)", kind: "text" },
       { key: "metric", label: "Metric (point formula JSON)", kind: "json" },
       { key: "eligibility", label: "Eligibility (JSON)", kind: "json" },
       { key: "tie_breakers", label: "Tie-breakers (ordered)", kind: "array" },

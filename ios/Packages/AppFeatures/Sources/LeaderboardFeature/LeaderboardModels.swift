@@ -20,10 +20,34 @@ public struct LeaderboardBoard: Decodable, Equatable, Identifiable, Sendable {
     public let joined: Bool
     public let myRank: Int?
     public let entries: [LeaderboardEntry]
+    /// The current period's calendar bounds, for a "resets on" display — not
+    /// the scoring window (which ends at "now", not the boundary). `nil` for
+    /// `lifetime` (no reset) and for `seasonal`/`challenge` boards an admin
+    /// hasn't dated yet.
+    public let periodStartsAt: Date?
+    public let periodEndsAt: Date?
+
+    public init(
+        key: String, name: String, scope: String, period: String,
+        joined: Bool, myRank: Int?, entries: [LeaderboardEntry],
+        periodStartsAt: Date? = nil, periodEndsAt: Date? = nil
+    ) {
+        self.key = key
+        self.name = name
+        self.scope = scope
+        self.period = period
+        self.joined = joined
+        self.myRank = myRank
+        self.entries = entries
+        self.periodStartsAt = periodStartsAt
+        self.periodEndsAt = periodEndsAt
+    }
 
     enum CodingKeys: String, CodingKey {
         case key, name, scope, period, joined, entries
         case myRank = "my_rank"
+        case periodStartsAt = "period_starts_at"
+        case periodEndsAt = "period_ends_at"
     }
 }
 

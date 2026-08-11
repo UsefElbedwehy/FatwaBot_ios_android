@@ -80,6 +80,19 @@ private struct BoardCard: View {
     let onJoin: () -> Void
     let onLeave: () -> Void
 
+    /// "Resets 1 Jan 2027" when the board has a known reset date, falling back
+    /// to the raw "scope · period" for `lifetime` (no reset at all) and for a
+    /// `seasonal`/`challenge` board an admin hasn't dated yet. The recurring
+    /// periods (`weekly`, `monthly`, `halfyearly`) always have one — see
+    /// `periodBoundsFor` on the backend — so in practice this only falls back
+    /// for the two admin-configured period types.
+    private var periodSummary: Text {
+        guard let endsAt = board.periodEndsAt else {
+            return Text("\(board.scope) · \(board.period)")
+        }
+        return Text("leaderboard.resets_on \(endsAt, format: .dateTime.day().month().year())")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
@@ -87,7 +100,7 @@ private struct BoardCard: View {
                     Text(board.name)
                         .font(.title3.weight(.bold))
                         .foregroundStyle(Color(hexToken: tokens.onSurface))
-                    Text("\(board.scope) · \(board.period)")
+                    periodSummary
                         .font(.caption)
                         .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
                 }

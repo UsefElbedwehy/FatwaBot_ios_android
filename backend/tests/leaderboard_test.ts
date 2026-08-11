@@ -322,6 +322,135 @@ Deno.test("city-scope boards rank within a city, not across all members", async 
   assertEquals(jBoard.entries.length, 1);
 });
 
+Deno.test("admin standings requires an admin token", async () => {
+  const d = await deps();
+  assertEquals((await route(new Request(`${BASE}/admin/v1/leaderboards/global_weekly/standings`), d)).status, 401);
+  assertEquals((await route(new Request(`${BASE}/admin/v1/leaderboards/global_weekly/periods`), d)).status, 401);
+});
+
+Deno.test("admin standings 404s for a leaderboard key that doesn't exist", async () => {
+  const d = await deps();
+  const adminLogin = await (
+    await route(post("/admin/v1/auth/login", { email: "admin@fatwabot.dev", password: "pw" }), d)
+  ).json();
+  const auth = { authorization: `Bearer ${adminLogin.access_token}` };
+
+  const res = await route(new Request(`${BASE}/admin/v1/leaderboards/no_such_board/standings`, { headers: auth }), d);
+  assertEquals(res.status, 404);
+});
+
+Deno.test("admin standings returns every member ranked, unfiltered by bucket, with country/city and a real name", async () => {
+  const d = await deps();
+  const cairoA = await signIn(d);
+  const cairoB = await signIn(d);
+  const jakarta = await signIn(d);
+
+  // A published display name, so this test also pins that the admin view
+  // shows it regardless of the member's own publish_name choice.
+  await route(
+    patch("/v1/me/profile", { display_name: "Jakarta Winner" }, { authorization: `Bearer ${jakarta.access_token}` }),
+    d,
+  );
+
+  const join = (token: string, city: string) =>
+    route(
+      post("/v1/leaderboards/city_board/join", { publish_name: false, city }, {
+        authorization: `Bearer ${token}`,
+      }),
+      d,
+    );
+  await join(cairoA.access_token, "Cairo");
+  await join(cairoB.access_token, "Cairo");
+  await join(jakarta.access_token, "Jakarta");
+
+  const emit = (token: string, ids: string[]) =>
+    route(
+      post("/v1/gamification/events", {
+        events: ids.map((id) => ({
+          client_event_id: id,
+          event_type: "azkar_completed",
+          occurred_at: "2026-07-01T00:00:00Z",
+          timezone: "UTC",
+        })),
+      }, { authorization: `Bearer ${token}` }),
+      d,
+    );
+  await emit(jakarta.access_token, ["j1", "j2", "j3"]);
+  await emit(cairoA.access_token, ["a1", "a2"]);
+  await emit(cairoB.access_token, ["b1"]);
+
+  const adminLogin = await (
+    await route(post("/admin/v1/auth/login", { email: "admin@fatwabot.dev", password: "pw" }), d)
+  ).json();
+  const auth = { authorization: `Bearer ${adminLogin.access_token}` };
+
+  const res = await route(new Request(`${BASE}/admin/v1/leaderboards/city_board/standings`, { headers: auth }), d);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+
+  // Unfiltered: a normal user only ever sees their own bucket (the test
+  // above this one proves that). The admin sees everyone across every city —
+  // this is exactly the gap the admin view exists to close.
+  assertEquals(body.entries.length, 3);
+  assertEquals(body.is_current_period, true);
+
+  const jakartaEntry = body.entries.find((e: { city: string }) => e.city === "Jakarta");
+  assertEquals(jakartaEntry.rank, 1);
+  assertEquals(jakartaEntry.display_name, "Jakarta Winner");
+
+  const cairoEntries = body.entries.filter((e: { city: string }) => e.city === "Cairo");
+  assertEquals(cairoEntries.length, 2);
+  // Both Cairo members rank 1 *within Cairo* (bucketed), not global rank 2/3 —
+  // same guarantee the public endpoint gives, just not bucket-filtered away.
+  assertEquals(cairoEntries.map((e: { rank: number }) => e.rank).sort(), [1, 2]);
+});
+
+Deno.test("admin standings serves a past period as stored, without recomputing it against today", async () => {
+  const d = await deps();
+  const alice = await signIn(d);
+  await route(
+    post("/v1/leaderboards/global_weekly/join", { publish_name: false }, {
+      authorization: `Bearer ${alice.access_token}`,
+    }),
+    d,
+  );
+  await route(
+    post("/v1/gamification/events", {
+      events: [{
+        client_event_id: "old1",
+        event_type: "azkar_completed",
+        occurred_at: "2026-07-01T00:00:00Z",
+        timezone: "UTC",
+      }],
+    }, { authorization: `Bearer ${alice.access_token}` }),
+    d,
+  );
+
+  const adminLogin = await (
+    await route(post("/admin/v1/auth/login", { email: "admin@fatwabot.dev", password: "pw" }), d)
+  ).json();
+  const auth = { authorization: `Bearer ${adminLogin.access_token}` };
+
+  // global_weekly is seeded with period "lifetime" (see deps() above), so its
+  // only ever period_key is "lifetime" — recompute it once, then list periods.
+  await route(post("/admin/v1/leaderboards/global_weekly/recompute", undefined, auth), d);
+
+  const periods = await (
+    await route(new Request(`${BASE}/admin/v1/leaderboards/global_weekly/periods`, { headers: auth }), d)
+  ).json();
+  assertEquals(periods.periods, ["lifetime"]);
+
+  const standings = await (
+    await route(
+      new Request(`${BASE}/admin/v1/leaderboards/global_weekly/standings?period_key=lifetime`, { headers: auth }),
+      d,
+    )
+  ).json();
+  assertEquals(standings.is_current_period, true); // "lifetime" is its own current period
+  assertEquals(standings.entries.length, 1);
+  assertEquals(standings.entries[0].score, 1);
+});
+
 Deno.test("standings materialize without an admin ever pressing recompute", async () => {
   const d = await deps();
   const alice = await signIn(d);

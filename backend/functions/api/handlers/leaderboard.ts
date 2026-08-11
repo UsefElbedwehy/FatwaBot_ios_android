@@ -14,7 +14,13 @@ import {
   rankEntries,
   type ScoredEntry,
 } from "../leaderboard_engine.ts";
-import { type LeaderboardPeriod, periodKeyFor, type Season, windowFor } from "../leaderboard_periods.ts";
+import {
+  type LeaderboardPeriod,
+  periodBoundsFor,
+  periodKeyFor,
+  type Season,
+  windowFor,
+} from "../leaderboard_periods.ts";
 
 interface LeaderboardDeps {
   leaderboard: LeaderboardRepo;
@@ -58,6 +64,19 @@ async function findDefByKey(
 ): Promise<AdminContentRow | null> {
   const rows = await deps.adminContent.list(ctx, "leaderboard-defs");
   return rows.find((r) => r.published && r.fields.enabled !== false && r.fields.key === key) ?? null;
+}
+
+/** Same lookup, but for the admin standings view — which must still show a
+ * board an admin unpublished (retired or paused, `consistency_city`-style),
+ * since "what were the final standings" doesn't stop being a real question
+ * just because the board is no longer live for users. */
+async function findAnyDefByKey(
+  deps: LeaderboardDeps,
+  ctx: AppContext,
+  key: string,
+): Promise<AdminContentRow | null> {
+  const rows = await deps.adminContent.list(ctx, "leaderboard-defs");
+  return rows.find((r) => r.fields.key === key) ?? null;
 }
 
 /**
@@ -150,12 +169,18 @@ export async function handleListLeaderboards(
     }));
 
     const myRank = visible.find((s) => s.userId === userId)?.rank ?? null;
+    const bounds = periodBoundsFor(period, now, seasonOf(row.fields));
 
     return {
       key: row.fields.key,
       name: resolveRequired(row.fields.name_translations as Record<string, string>, ctx.locale),
       scope: row.fields.scope,
       period: row.fields.period,
+      // null for `lifetime` (no reset), and for `seasonal`/`challenge` boards
+      // an admin hasn't dated yet — clients treat a missing end as "no
+      // countdown to show", not an error.
+      period_starts_at: bounds.start?.toISOString() ?? null,
+      period_ends_at: bounds.end?.toISOString() ?? null,
       joined: myMembership !== null,
       my_rank: myRank,
       entries,
@@ -268,6 +293,89 @@ export async function handleRecomputeSnapshot(
   const def = await findDefByKey(deps, ctx, key);
   if (!def) return apiError(404, "unknown_leaderboard", `No published leaderboard '${key}'`);
   return json(await recomputeSnapshotFor(ctx, deps, def));
+}
+
+/**
+ * GET /admin/v1/leaderboards/{key}/standings?period_key=... — every ranked
+ * entry, unfiltered by bucket, so an admin can find the winner: the true
+ * global #1, or #1 in any single country, not just their own.
+ *
+ * Defaults to the *current* period (recomputing first if it looks stale, the
+ * same freshness rule `handleListLeaderboards` applies) when no `period_key`
+ * is given. An explicit `period_key` is served as stored — recomputing a past
+ * period would mean re-deriving it from today's `now`, which is not what "the
+ * final standings for last half" means once that half is over.
+ */
+export async function handleGetStandings(
+  ctx: AppContext,
+  deps: LeaderboardDeps,
+  key: string,
+  periodKey: string | null,
+): Promise<Response> {
+  const def = await findAnyDefByKey(deps, ctx, key);
+  if (!def) return apiError(404, "unknown_leaderboard", `No leaderboard '${key}'`);
+
+  const now = new Date();
+  const period = def.fields.period as LeaderboardPeriod;
+  const currentPeriodKey = periodKeyFor(period, now, seasonOf(def.fields));
+  const resolvedPeriodKey = periodKey ?? currentPeriodKey;
+
+  if (resolvedPeriodKey === currentPeriodKey) {
+    const computedAt = await deps.leaderboard.snapshotComputedAt(ctx, key, currentPeriodKey);
+    if (computedAt === null || now.getTime() - computedAt.getTime() > SNAPSHOT_MAX_AGE_MS) {
+      try {
+        await recomputeSnapshotFor(ctx, deps, def);
+      } catch {
+        // Serve whatever was last materialized rather than fail the page.
+      }
+    }
+  }
+
+  const [snapshot, memberships] = await Promise.all([
+    deps.leaderboard.getSnapshot(ctx, key, resolvedPeriodKey),
+    deps.leaderboard.listMemberships(ctx, key),
+  ]);
+  const membershipByUser = new Map(memberships.map((m) => [m.userId, m]));
+
+  const entries = await Promise.all(
+    snapshot.map(async (s) => {
+      const membership = membershipByUser.get(s.userId);
+      const profile = await deps.identity.getProfile(s.userId);
+      return {
+        rank: s.rank,
+        score: s.score,
+        bucket: s.bucket,
+        country: membership?.country ?? null,
+        city: membership?.city ?? null,
+        // The admin view is not bound by a member's publish_name choice —
+        // that setting controls what *other users* see, not the operator
+        // who is about to hand them a prize and needs to know who they are.
+        display_name: profile?.displayName ?? membership?.handle ?? "unknown",
+      };
+    }),
+  );
+
+  return json({
+    key,
+    period: def.fields.period,
+    period_key: resolvedPeriodKey,
+    is_current_period: resolvedPeriodKey === currentPeriodKey,
+    entries,
+  });
+}
+
+/** GET /admin/v1/leaderboards/{key}/periods — every period this board has
+ * ever had standings for, newest first, so the admin view can offer "see a
+ * past period" (e.g. last half's final winner) as a simple picker. */
+export async function handleListStandingsPeriods(
+  ctx: AppContext,
+  deps: LeaderboardDeps,
+  key: string,
+): Promise<Response> {
+  const def = await findAnyDefByKey(deps, ctx, key);
+  if (!def) return apiError(404, "unknown_leaderboard", `No leaderboard '${key}'`);
+  const periods = await deps.leaderboard.listPeriodKeys(ctx, key);
+  return json({ periods });
 }
 
 /**

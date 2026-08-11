@@ -65,4 +65,12 @@ export interface LeaderboardRepo {
     leaderboardKey: string,
     periodKey: string,
   ): Promise<Date | null>;
+  /**
+   * Every distinct period a snapshot has ever been materialized under, newest
+   * first — how the admin standings view offers "see a past period" without
+   * a separate history table. A period's rows are never deleted when the next
+   * one starts, so this is the record of every half-year (or week, or month)
+   * that ever had a computed board.
+   */
+  listPeriodKeys(ctx: AppContext, leaderboardKey: string): Promise<string[]>;
 }

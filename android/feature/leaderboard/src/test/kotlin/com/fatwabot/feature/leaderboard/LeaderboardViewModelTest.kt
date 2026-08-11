@@ -49,6 +49,60 @@ class LeaderboardViewModelTest {
     }
 
     @Test
+    fun `load decodes the period bounds from the backend's millisecond format`() = runTest {
+        // `Date.prototype.toISOString()` on the backend always emits milliseconds
+        // ("2026-01-01T00:00:00.000Z"), unlike the plain-second examples in most
+        // ISO 8601 docs — pin that `Instant`-based parsing actually accepts that.
+        val json = """
+            {"boards":[{"key":"consistency_global","name":"Global","scope":"global","period":"halfyearly",
+            "joined":false,"my_rank":null,"entries":[],
+            "period_starts_at":"2026-01-01T00:00:00.000Z","period_ends_at":"2026-07-01T00:00:00.000Z"}]}
+        """.trimIndent()
+        val client = FakeApiClient(onGet = { json })
+        val viewModel = LeaderboardViewModel(client, NoopHaptics(), UnknownRegionResolver())
+
+        viewModel.load()
+
+        val board = viewModel.state.value.boards[0]
+        assertEquals("2026-01-01T00:00:00Z", board.periodStartsAt?.let { java.time.Instant.parse(it) }?.toString())
+        assertEquals("2026-07-01T00:00:00Z", board.periodEndsAt?.let { java.time.Instant.parse(it) }?.toString())
+    }
+
+    @Test
+    fun `load tolerates a lifetime board's null period bounds`() = runTest {
+        // A `lifetime` board's bounds are genuinely absent (explicit `null` on
+        // the wire, per `periodBoundsFor`), not an omitted key — this must not
+        // fail the whole board's decode.
+        val json = """
+            {"boards":[{"key":"old_board","name":"Old Board","scope":"global","period":"lifetime",
+            "joined":false,"my_rank":null,"entries":[],
+            "period_starts_at":null,"period_ends_at":null}]}
+        """.trimIndent()
+        val client = FakeApiClient(onGet = { json })
+        val viewModel = LeaderboardViewModel(client, NoopHaptics(), UnknownRegionResolver())
+
+        viewModel.load()
+
+        val board = viewModel.state.value.boards[0]
+        assertEquals(null, board.periodStartsAt)
+        assertEquals(null, board.periodEndsAt)
+    }
+
+    @Test
+    fun `load decodes cleanly when the period bound keys are absent entirely`() = runTest {
+        // Belt-and-suspenders against a server that omits the keys outright
+        // rather than sending explicit nulls.
+        val client = FakeApiClient(onGet = { boardJson }) // boardJson has neither key
+        val viewModel = LeaderboardViewModel(client, NoopHaptics(), UnknownRegionResolver())
+
+        viewModel.load()
+
+        val board = viewModel.state.value.boards[0]
+        assertEquals(null, board.periodStartsAt)
+        assertEquals(null, board.periodEndsAt)
+    }
+
+    @Test
     fun `load surfaces error on failure`() = runTest {
         val client = FakeApiClient(onGet = { throw RuntimeException("unauthorized") })
         val viewModel = LeaderboardViewModel(client, NoopHaptics(), UnknownRegionResolver())

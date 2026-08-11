@@ -8,6 +8,13 @@ export default function GamificationIndexPage() {
       <p className="mt-1 text-sm text-stone-500">Streak rules, missions, badges, and leaderboards — all rules as data (ADR-0012).</p>
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link
+          href="/gamification/leaderboards"
+          className="rounded-xl border border-stone-200 bg-white p-4 hover:border-[#7A2A2A]"
+        >
+          <h2 className="font-medium">Leaderboard Standings</h2>
+          <p className="mt-1 text-xs text-stone-500">Who&apos;s actually ranked, per board and period</p>
+        </Link>
         {GAMIFICATION_COLLECTIONS.map((c) => (
           <Link
             key={c.slug}
