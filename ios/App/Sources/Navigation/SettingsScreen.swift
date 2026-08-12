@@ -235,11 +235,33 @@ private struct AccountSection: View {
 /// and the pre-adhan/iqama offsets are user-set (stakeholder direction,
 /// 2026-07-12). Edits persist and reschedule immediately via the ViewModel.
 private struct NotificationsSection: View {
+    /// A native `DatePicker` in its compact style, sitting inside an Arabic
+    /// (RTL) layout, silently stops responding to taps — reproduced live on
+    /// device/simulator with the system language set to Arabic; the identical
+    /// row works fine under English. Forcing `.environment(\.layoutDirection,
+    /// .leftToRight)` and `.environment(\.calendar, .gregorian)` on the picker
+    /// were both tried and neither fixed it, so rather than depend on
+    /// compact-`DatePicker`'s undocumented RTL hit-testing, these rows drive
+    /// their own sheet — the same shape as Android's `TimePickerDialog` rows,
+    /// which never had this problem.
+    private enum TimeEditTarget: Identifiable, Equatable {
+        case slot(FixedWirdSlot)
+        case otherWirds
+
+        var id: String {
+            switch self {
+            case .slot(let slot): slot.wirdId
+            case .otherWirds: "other-wirds"
+            }
+        }
+    }
+
     let prayerViewModel: PrayerViewModel
     let tokens: ColorTokens
     @State private var prefs: PrayerNotificationPreferences
     @State private var contentPrefs: ContentReminderPreferences
     @State private var wirdPrefs: WirdReminderPreferences
+    @State private var timeEditTarget: TimeEditTarget?
 
     private let contentStore = Container.shared.contentReminderPreferenceStore()
     private let wirdStore = Container.shared.wirdReminderPreferenceStore()
@@ -333,6 +355,47 @@ private struct NotificationsSection: View {
                     )
                 }
             }
+            .sheet(item: $timeEditTarget) { target in
+                timeEditSheet(for: target)
+                    .presentationDetents([.height(280)])
+            }
+        }
+    }
+
+    /// The wheel picker shown for whichever row's pill was tapped. One sheet,
+    /// reused for every slot plus the "other wirds" row, driven by
+    /// `timeEditTarget`.
+    private func timeEditTitle(for target: TimeEditTarget) -> LocalizedStringKey {
+        switch target {
+        case .slot(let slot): LocalizedStringKey(slot.nameKey)
+        case .otherWirds: "settings.notif.wird.time_other"
+        }
+    }
+
+    private func timeEditBinding(for target: TimeEditTarget) -> Binding<Date> {
+        switch target {
+        case .slot(let slot): slotTimeBinding(slot)
+        case .otherWirds: otherWirdsTimeBinding
+        }
+    }
+
+    private func timeEditSheet(for target: TimeEditTarget) -> some View {
+        let title = timeEditTitle(for: target)
+        let binding = timeEditBinding(for: target)
+        return NavigationStack {
+            DatePicker(selection: binding, displayedComponents: .hourAndMinute) {
+                EmptyView()
+            }
+            .datePickerStyle(.wheel)
+            .labelsHidden()
+            .padding(.top, 8)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("common.done") { timeEditTarget = nil }
+                }
+            }
         }
     }
 
@@ -378,8 +441,8 @@ private struct NotificationsSection: View {
         }
     }
 
-    private func slotTimeRow(_ slot: FixedWirdSlot) -> some View {
-        let binding = Binding<Date>(
+    private func slotTimeBinding(_ slot: FixedWirdSlot) -> Binding<Date> {
+        Binding<Date>(
             get: {
                 let time = wirdPrefs.time(
                     forWirdId: slot.wirdId, slotDefaultHour: slot.reminderHour
@@ -396,19 +459,21 @@ private struct NotificationsSection: View {
                 )
             }
         )
-        return DatePicker(selection: binding, displayedComponents: .hourAndMinute) {
-            Text(NSLocalizedString(slot.nameKey, comment: ""))
-                .font(.subheadline)
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-        }
-        .tint(Color(hexToken: tokens.primary))
+    }
+
+    private func slotTimeRow(_ slot: FixedWirdSlot) -> some View {
+        timePillRow(
+            label: Text(NSLocalizedString(slot.nameKey, comment: "")),
+            date: slotTimeBinding(slot).wrappedValue,
+            target: .slot(slot)
+        )
     }
 
     /// Time-of-day picker for the wird reminder. Bound through a `Date` because
     /// that is what `DatePicker` speaks, while the preference persists as plain
     /// hour/minute — a stored `Date` would carry a calendar day with it and drift.
-    private func timeRow(_ label: LocalizedStringKey) -> some View {
-        let binding = Binding<Date>(
+    private var otherWirdsTimeBinding: Binding<Date> {
+        Binding<Date>(
             get: {
                 Calendar.current.date(
                     from: DateComponents(hour: wirdPrefs.hour, minute: wirdPrefs.minute)
@@ -428,12 +493,39 @@ private struct NotificationsSection: View {
                 )
             }
         )
-        return DatePicker(selection: binding, displayedComponents: .hourAndMinute) {
-            Text(label)
+    }
+
+    /// Time-of-day picker for the wird reminder. Bound through a `Date` because
+    /// that is what `DatePicker` speaks, while the preference persists as plain
+    /// hour/minute — a stored `Date` would carry a calendar day with it and drift.
+    private func timeRow(_ label: LocalizedStringKey) -> some View {
+        timePillRow(label: Text(label), date: otherWirdsTimeBinding.wrappedValue, target: .otherWirds)
+    }
+
+    /// A label plus a tappable pill showing the current time, opening
+    /// `timeEditSheet` on tap. Replaces a bare `DatePicker` — see the comment
+    /// on `TimeEditTarget` for why.
+    private func timePillRow(label: Text, date: Date, target: TimeEditTarget) -> some View {
+        HStack {
+            label
                 .font(.subheadline)
                 .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            Spacer()
+            Button {
+                timeEditTarget = target
+            } label: {
+                Text(date, style: .time)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(
+                        Color(hexToken: tokens.onSurface).opacity(0.08),
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(.plain)
         }
-        .tint(Color(hexToken: tokens.primary))
     }
 
     /// Stepper for "how many reminders a day", 0–5. Same shape as `offsetRow`

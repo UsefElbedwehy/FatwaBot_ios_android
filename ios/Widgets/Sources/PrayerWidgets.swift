@@ -257,6 +257,76 @@ struct NextPrayerAccessoryView: View {
     }
 }
 
+// MARK: - Lock Screen full-day prayer list (accessory family)
+
+struct AllPrayersAccessoryWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AllPrayersAccessoryWidget", provider: PrayerTimelineProvider()) { entry in
+            AllPrayersAccessoryView(entry: entry)
+                .containerBackground(.clear, for: .widget)
+                .widgetURL(DeepLink.prayer.url)
+        }
+        .configurationDisplayName(Text("widget.all_prayers.name"))
+        .description(Text("widget.all_prayers.desc"))
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+struct AllPrayersAccessoryView: View {
+    let entry: PrayerEntry
+
+    private var todaySheet: PrayerWidgetSnapshot.DaySheet? {
+        entry.snapshot?.sheet(for: entry.date)
+    }
+
+    /// The most recently passed time in the sheet — Fajr..Isha and sunrise
+    /// alike — so the dot marks where the day actually is, not just the next
+    /// countdown-eligible prayer.
+    private var currentPrayer: String? {
+        todaySheet?.times.last { $0.time <= entry.date }?.prayer
+    }
+
+    /// Six rows don't fit one column at Lock Screen size — split into two
+    /// chronological halves so it reads top-to-bottom, left column then right,
+    /// instead of a single cramped list.
+    private var columns: ([PrayerWidgetSnapshot.Entry], [PrayerWidgetSnapshot.Entry]) {
+        guard let times = todaySheet?.times else { return ([], []) }
+        let mid = (times.count + 1) / 2
+        return (Array(times.prefix(mid)), Array(times.dropFirst(mid)))
+    }
+
+    var body: some View {
+        if let sheet = todaySheet, !sheet.times.isEmpty {
+            HStack(alignment: .top, spacing: 8) {
+                column(columns.0)
+                column(columns.1)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        } else {
+            Text("widget.open_app").font(.caption2)
+        }
+    }
+
+    private func column(_ items: [PrayerWidgetSnapshot.Entry]) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(items, id: \.time) { item in
+                let isCurrent = item.prayer == currentPrayer
+                HStack(spacing: 3) {
+                    Image(systemName: isCurrent ? "circle.fill" : "circle")
+                        .font(.system(size: 5))
+                    Text(PrayerWidgetSnapshot.title(for: item.prayer))
+                        .font(.system(size: 9))
+                        .lineLimit(1)
+                    Spacer(minLength: 2)
+                    Text(item.time, style: .time)
+                        .font(.system(size: 9).monospacedDigit())
+                }
+                .widgetAccentable(isCurrent)
+            }
+        }
+    }
+}
+
 // MARK: - Hijri Date
 
 struct HijriDateWidget: Widget {
@@ -322,5 +392,6 @@ struct FatwaBotWidgets: WidgetBundle {
         HadithWidget()
         NextPrayerAccessoryWidget()
         DuaAccessoryWidget()
+        AllPrayersAccessoryWidget()
     }
 }

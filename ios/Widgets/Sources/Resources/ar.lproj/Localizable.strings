@@ -54,3 +54,6 @@
 "widget.prayer_calendar.name" = "الصلاة والتقويم";
 "widget.prayer_calendar.desc" = "الصلاة القادمة مع التقويم الهجري.";
 "widget.open_app" = "افتح التطبيق";
+
+"widget.all_prayers.name" = "كل الصلوات";
+"widget.all_prayers.desc" = "جميع مواقيت اليوم في الشاشة المقفلة.";

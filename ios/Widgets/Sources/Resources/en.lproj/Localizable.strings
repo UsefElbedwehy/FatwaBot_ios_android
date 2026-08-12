@@ -54,3 +54,6 @@
 "widget.prayer_calendar.name" = "Prayer & calendar";
 "widget.prayer_calendar.desc" = "The next prayer alongside the Hijri calendar.";
 "widget.open_app" = "Open the app";
+
+"widget.all_prayers.name" = "All Prayers";
+"widget.all_prayers.desc" = "All of today's prayer times on the Lock Screen.";
