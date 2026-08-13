@@ -38,12 +38,27 @@ final class AccountViewModel: ObservableObject {
     func load() async {
         guard profile == nil else { return }
         isLoading = true
+        errorMessage = nil
         defer { isLoading = false }
-        profile = try? await account.me()
+        do {
+            profile = try await account.me()
+        } catch {
+            // Left `profile == nil` (renders as Guest) rather than fabricating
+            // a signed-in state — but unlike before, this is no longer silent:
+            // a transient failure here used to look identical to a genuine
+            // guest, with nothing telling a signed-in user why they suddenly
+            // appear signed out.
+            errorMessage = String(localized: "settings.account.error.generic")
+        }
     }
 
     func reload() async {
-        profile = try? await account.me()
+        errorMessage = nil
+        do {
+            profile = try await account.me()
+        } catch {
+            errorMessage = String(localized: "settings.account.error.generic")
+        }
     }
 
     func saveDisplayName(_ name: String) async {
