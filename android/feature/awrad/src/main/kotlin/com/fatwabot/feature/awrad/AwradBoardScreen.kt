@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,14 +19,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -77,6 +80,12 @@ fun AwradBoardScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
+    var showCreateSheet by remember { mutableStateOf(false) }
+    var showAddMenu by remember { mutableStateOf(false) }
+    var wirdPendingDelete by remember { mutableStateOf<Wird?>(null) }
+    val hasAllFixedSlots = FixedWirdSlot.entries.all { slot ->
+        state.activeWirds.any { it.id == slot.wirdId }
+    }
 
     LaunchedEffect(locale) { viewModel.loadTemplates(locale) }
 
@@ -105,10 +114,37 @@ fun AwradBoardScreen(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Box {
+                    IconButton(onClick = { showAddMenu = true }) {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.awrad_add_today), tint = tokens.primary)
+                    }
+                    DropdownMenu(expanded = showAddMenu, onDismissRequest = { showAddMenu = false }) {
+                        if (!hasAllFixedSlots) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.awrad_add_today)) },
+                                onClick = {
+                                    viewModel.addTodaysWird()
+                                    showAddMenu = false
+                                },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.awrad_create_custom_wird)) },
+                            onClick = {
+                                showCreateSheet = true
+                                showAddMenu = false
+                            },
+                        )
+                    }
+                }
             }
 
-            if (state.wirds.isEmpty()) {
-                EmptyBoard(tokens = tokens)
+            if (state.activeWirds.isEmpty()) {
+                EmptyBoard(
+                    tokens = tokens,
+                    onAddToday = { viewModel.addTodaysWird() },
+                    onCreateCustom = { showCreateSheet = true },
+                )
             } else {
                 StatsGrid(stats = state.stats, tokens = tokens)
 
@@ -120,6 +156,7 @@ fun AwradBoardScreen(
                             todayCount = viewModel.todayCount(wird.id),
                             tokens = tokens,
                             onTick = { viewModel.tick(wird.id) },
+                            onDelete = { wirdPendingDelete = wird },
                         )
                     }
                 }
@@ -133,6 +170,28 @@ fun AwradBoardScreen(
         }
     }
 
+    if (showCreateSheet) {
+        AwradCreateDialog(
+            viewModel = viewModel,
+            onDismiss = { showCreateSheet = false },
+        )
+    }
+    wirdPendingDelete?.let { wird ->
+        AlertDialog(
+            onDismissRequest = { wirdPendingDelete = null },
+            title = { Text(stringResource(R.string.awrad_delete_confirm_title)) },
+            text = { Text(wird.name) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteWird(wird.id)
+                    wirdPendingDelete = null
+                }) { Text(stringResource(R.string.awrad_delete_confirm_action)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { wirdPendingDelete = null }) { Text(stringResource(R.string.awrad_cancel)) }
+            },
+        )
+    }
 }
 
 /** Four premium stat tiles — total dhikr, completed days, quran pages, salawat. */
@@ -183,7 +242,7 @@ private fun StatTile(
 }
 
 @Composable
-private fun EmptyBoard(tokens: ColorTokens) {
+private fun EmptyBoard(tokens: ColorTokens, onAddToday: () -> Unit, onCreateCustom: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -207,11 +266,22 @@ private fun EmptyBoard(tokens: ColorTokens) {
             color = tokens.onSurfaceSecondary,
             textAlign = TextAlign.Center,
         )
+        Column(
+            modifier = Modifier.width(280.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Button(onClick = onAddToday, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.awrad_add_today))
+            }
+            OutlinedButton(onClick = onCreateCustom, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.awrad_create_custom_wird))
+            }
+        }
     }
 }
 
 @Composable
-private fun WirdCard(wird: Wird, todayCount: Int, tokens: ColorTokens, onTick: () -> Unit) {
+private fun WirdCard(wird: Wird, todayCount: Int, tokens: ColorTokens, onTick: () -> Unit, onDelete: () -> Unit) {
     val reduceMotion = LocalReduceMotion.current
     val animatedCount by animateIntAsState(
         targetValue = todayCount,
@@ -241,20 +311,23 @@ private fun WirdCard(wird: Wird, todayCount: Int, tokens: ColorTokens, onTick: (
                 }
             }
             Column(modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        wird.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = tokens.onSurface,
-                    )
-                    // Explains, without a dialog, why this row has no way to
-                    // remove it — mirror of the iOS board's fixed badge.
-                }
+                Text(
+                    wird.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tokens.onSurface,
+                )
                 Text(
                     "$animatedCount/${wird.target}",
                     style = MaterialTheme.typography.labelMedium,
                     color = tokens.onSurfaceSecondary,
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.awrad_delete),
+                    tint = tokens.onSurfaceSecondary,
                 )
             }
             IconButton(onClick = onTick) {
@@ -300,15 +373,68 @@ private fun MarkDayCompleteCard(done: Boolean, tokens: ColorTokens, onComplete: 
     }
 }
 
-
+/** Guided creation (docs/features/awrad.md screen 2): templates first, custom
+ * wird as an explicit secondary path — mirror of iOS AwradCreateSheet. */
 @Composable
-private fun statRow(label: String, value: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(label)
-        Text("$value", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
+private fun AwradCreateDialog(viewModel: AwradViewModel, onDismiss: () -> Unit) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    var showCustomForm by remember { mutableStateOf(false) }
+    var customName by remember { mutableStateOf("") }
+    val customWirdDefault = stringResource(R.string.awrad_custom_wird_default)
 
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.awrad_new_wird)) },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.awrad_cancel)) } },
+        text = {
+            Column {
+                Text(stringResource(R.string.awrad_choose_template), style = MaterialTheme.typography.labelLarge)
+                state.templates.forEach { template ->
+                    Surface(
+                        onClick = {
+                            viewModel.createWird(template)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text(template.name)
+                            Text(
+                                template.description,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                if (showCustomForm) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = customName,
+                        onValueChange = { customName = it },
+                        placeholder = { Text(stringResource(R.string.awrad_wird_name)) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                    Button(
+                        onClick = {
+                            viewModel.createCustomWird(
+                                name = customName.ifEmpty { customWirdDefault },
+                                type = "custom",
+                                target = 1,
+                                unit = "times",
+                                frequency = "daily",
+                            )
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    ) { Text(stringResource(R.string.awrad_save_wird)) }
+                } else {
+                    OutlinedButton(
+                        onClick = { showCustomForm = true },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    ) { Text(stringResource(R.string.awrad_create_custom_wird)) }
+                }
+            }
+        },
+    )
+}

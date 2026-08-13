@@ -118,6 +118,16 @@ public final class PrayerViewModel {
         await scheduler.reschedule(timeline: timeline, preferences: notificationPreferences, now: now())
     }
 
+    /// Current OS notification permission — for a Settings banner. Distinct
+    /// from `rescheduleNotifications()` silently building a schedule nobody
+    /// will see: a `.denied` user gets exactly the same "success" from every
+    /// scheduler call as an authorized one, with nothing telling them why the
+    /// call to prayer never arrives.
+    public func notificationAuthorizationStatus() async -> NotificationAuthorization {
+        guard let scheduler else { return .notDetermined }
+        return await scheduler.authorizationStatus()
+    }
+
     /// Persist edited notification preferences and rebuild the schedule.
     public func setNotificationPreferences(_ preferences: PrayerNotificationPreferences) {
         notificationPreferences = preferences

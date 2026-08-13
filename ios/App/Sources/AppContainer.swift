@@ -178,20 +178,16 @@ extension Container {
     /// action path and the UI path write through the SAME object. A second
     /// `FileWirdStore` over the same directory would work too, but sharing one
     /// makes the "one source of truth" explicit.
-    ///
-    /// Wrapped in `SeededWirdStore` so the four fixed slots (`FixedWirdSlot`)
-    /// exist for every user on every read — existing installs included, not just
-    /// fresh ones. The names are resolved here because the localized strings live
-    /// in the app bundle, and they are frozen into the record at seeding time,
-    /// exactly like a template-created wird's name.
     var wirdStore: Factory<WirdStoring> {
-        self {
-            SeededWirdStore(
-                wrapping: FileWirdStore(directory: AppEnvironment.sharedContainerURL),
-                name: { slot in NSLocalizedString(slot.nameKey, comment: "") }
-            )
-        }
-        .singleton
+        self { FileWirdStore(directory: AppEnvironment.sharedContainerURL) }
+            .singleton
+    }
+
+    /// Resolves a `FixedWirdSlot`'s display name at the moment
+    /// `AwradViewModel.addTodaysWird()` seeds it — frozen into the record then,
+    /// exactly like a template-created wird's name.
+    var fixedWirdNameResolver: Factory<FixedWirdSlots.NameResolver> {
+        self { { slot in NSLocalizedString(slot.nameKey, comment: "") } }
     }
 
     /// Applies a notification "نعم" straight to the store. Resolvable off the
@@ -313,7 +309,8 @@ extension Container {
                 contentService: self.contentService(),
                 store: self.wirdStore(),
                 haptics: SystemHaptics(),
-                activityEvents: self.activityEventRecording()
+                activityEvents: self.activityEventRecording(),
+                nameResolver: self.fixedWirdNameResolver()
             )
         }
         .singleton

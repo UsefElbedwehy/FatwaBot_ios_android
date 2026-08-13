@@ -262,6 +262,10 @@ private struct NotificationsSection: View {
     @State private var contentPrefs: ContentReminderPreferences
     @State private var wirdPrefs: WirdReminderPreferences
     @State private var timeEditTarget: TimeEditTarget?
+    // Optimistic default: most sessions are authorized, and this only ever
+    // matters once the real check comes back — starting `.denied` would flash
+    // a banner that immediately disappears on every normal launch.
+    @State private var authStatus: NotificationAuthorization = .authorized
 
     private let contentStore = Container.shared.contentReminderPreferenceStore()
     private let wirdStore = Container.shared.wirdReminderPreferenceStore()
@@ -277,6 +281,9 @@ private struct NotificationsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             BrandSectionHeader("settings.notifications_section", systemImage: "bell.badge.fill", tokens: tokens)
+            if authStatus == .denied {
+                notificationsDisabledBanner
+            }
             VStack(spacing: 14) {
                 toggleRow("settings.notif.adhan.title", "settings.notif.adhan.subtitle", isOn: $prefs.adhanEnabled)
                 Divider().opacity(0.3)
@@ -359,7 +366,44 @@ private struct NotificationsSection: View {
                 timeEditSheet(for: target)
                     .presentationDetents([.height(280)])
             }
+            .task {
+                // Checks the *current* OS permission rather than trusting the
+                // one-time prompt at launch — the only way to notice a user
+                // revoked it later from iOS Settings, which otherwise looks
+                // identical to every notification just silently not arriving.
+                authStatus = await prayerViewModel.notificationAuthorizationStatus()
+            }
         }
+    }
+
+    /// Shown only when the OS permission is actually `.denied` — every toggle
+    /// below keeps building a schedule that will never surface, with nothing
+    /// else on screen explaining why.
+    private var notificationsDisabledBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "bell.slash.fill")
+                .font(.system(size: 17))
+                .foregroundStyle(Color(hexToken: tokens.primary))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("settings.notif.disabled_banner")
+                    .font(.footnote)
+                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("settings.notif.disabled_banner_action") {
+                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                    UIApplication.shared.open(url)
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color(hexToken: tokens.primary))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            Color(hexToken: tokens.primaryContainer).opacity(0.55),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
     }
 
     /// The wheel picker shown for whichever row's pill was tapped. One sheet,

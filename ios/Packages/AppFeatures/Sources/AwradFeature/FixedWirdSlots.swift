@@ -1,8 +1,11 @@
 import Foundation
 
-/// The four awrad every user has, on every install, forever (owner decision,
-/// 2026-07). They sit on the board next to whatever the user creates, can be
-/// ticked and retargeted like any other wird, and cannot be archived or removed.
+/// The four awrad offered as a one-tap starting board (client decision,
+/// 2026-08-12, reversing the 2026-08-09 "seeded for everyone, forever"
+/// decision): قيام الليل، ورد يومي من القرآن، أذكار الصباح، أذكار المساء. Nothing
+/// is seeded automatically — a user adds them via "أضف ورد اليوم" — and once on
+/// the board they are ordinary wirds: tickable, retargetable, and deletable
+/// like any wird the user creates themselves.
 ///
 /// The ids are stable literals rather than UUIDs precisely because they have to
 /// be recognisable across launches and across the two platforms — seeding is
@@ -142,17 +145,34 @@ public enum FixedWirdSlots {
         )
     }
 
-    /// The seeding rule, as one pure function so both platforms and the tests
-    /// can agree on it.
+    /// Refreshes the display name of every fixed-slot record to the
+    /// *current* resolver's value. Unlike `applied`, this neither adds a
+    /// missing slot nor reactivates an archived one, so it is safe to run
+    /// passively on every load — a fixed slot's name is not something a user
+    /// ever chose (retargeting is the only edit these slots offer), so unlike
+    /// a template wird's frozen name, it has no reason to stay frozen under
+    /// whatever language happened to be active the first time it was seeded.
+    public static func normalized(_ wirds: [Wird], name: NameResolver = defaultNames) -> [Wird] {
+        wirds.map { wird in
+            guard let slot = FixedWirdSlot(wirdId: wird.id) else { return wird }
+            var updated = wird
+            updated.name = name(slot)
+            return updated
+        }
+    }
+
+    /// The seeding rule, invoked once when the user taps "أضف ورد اليوم" — not on
+    /// every launch anymore, so both platforms and the tests can still agree on
+    /// what one tap does.
     ///
-    /// - Appends only the slots whose id is **missing**, in canonical order, so
-    ///   running it on every launch can never duplicate a slot or reset the
-    ///   target/name of one the user already has.
-    /// - Clears `archivedAt` on a fixed slot. That is a repair, not a
-    ///   resurrection: a fixed slot is never archivable in the first place, so a
-    ///   record carrying that flag came from a bug or a hand-edited file.
+    /// - Appends a fresh instance only for a slot whose id is **entirely
+    ///   missing**, in canonical order, so a repeat tap can never duplicate a
+    ///   slot or reset the target of one the user already has.
+    /// - Un-archives a fixed slot that is present but was previously deleted.
+    ///   That is exactly what re-adding it means: the same slot, its history
+    ///   under that id intact, active again — not a fresh duplicate record.
     public static func applied(to wirds: [Wird], name: NameResolver = defaultNames, now: Date) -> [Wird] {
-        var result = wirds.map { wird -> Wird in
+        var result = normalized(wirds, name: name).map { wird -> Wird in
             guard wird.isFixed || isFixed(wirdId: wird.id), wird.archivedAt != nil else { return wird }
             var repaired = wird
             repaired.archivedAt = nil
@@ -163,110 +183,5 @@ public enum FixedWirdSlots {
             result.append(wird(for: slot, name: name, now: now))
         }
         return result
-    }
-}
-
-/// `WirdStoring` decorator that guarantees the four fixed slots exist — for
-/// everyone, not just fresh installs.
-///
-/// ## Why a decorator instead of a first-launch migration
-/// Three separate paths read the wird list: the board's view model, the
-/// notification-action `WirdCompletionResponder`, and the reminder scheduler.
-/// A migration hung off app start would leave whichever of those ran first on a
-/// cold launch looking at an unseeded list. Doing it on read means every reader
-/// sees the same board, and the write only happens when something was actually
-/// missing — so repeated launches are a no-op, not a rewrite.
-public struct SeededWirdStore: WirdStoring {
-    private let base: WirdStoring
-    private let name: FixedWirdSlots.NameResolver
-    private let now: @Sendable () -> Date
-    private let calendar: Calendar
-
-    public init(
-        wrapping base: WirdStoring,
-        name: @escaping FixedWirdSlots.NameResolver = FixedWirdSlots.defaultNames,
-        now: @escaping @Sendable () -> Date = { Date() },
-        calendar: Calendar = .current
-    ) {
-        self.base = base
-        self.name = name
-        self.now = now
-        self.calendar = calendar
-    }
-
-    /// The four fixed slots, and only those.
-    ///
-    /// Client decision (2026-08-09): أثرك is the four everyone has — قيام الليل،
-    /// ورد القرآن، أذكار الصباح، أذكار المساء — not a list a user curates. The
-    /// board previously mixed them with user-created wirds and distinguished
-    /// them with an "أساسي" badge; the badge is gone because with only four
-    /// there is nothing left to distinguish.
-    ///
-    /// Filtered here rather than in the board, because the board is not the only
-    /// consumer: the reminder planner reads the same store, and filtering only
-    /// the UI would have kept firing "did you complete it?" for wirds the user
-    /// could no longer see.
-    ///
-    /// Existing user wirds are **not deleted from disk** — they are simply not
-    /// returned. Nothing is lost if this decision is revisited, and deleting
-    /// someone's history to satisfy a display change would be the wrong trade.
-    public func loadWirds() -> [Wird] {
-        allWirds().filter(\.isFixed)
-    }
-
-    /// Everything on disk, fixed and user-created. Kept so the seeding logic
-    /// below still sees the full board — seeding against a filtered list would
-    /// re-add the four slots on every read.
-    private func allWirds() -> [Wird] {
-        let existing = base.loadWirds()
-        let seeded = FixedWirdSlots.applied(to: existing, name: name, now: now())
-        guard seeded != existing else { return existing }
-        // Only reached the first time the four slots land on an existing board.
-        grantTodayIfAlreadyEarned(preSeed: existing)
-        base.saveWirds(seeded)
-        return seeded
-    }
-
-    /// Also enforced on write, so a caller that drops a fixed slot from the list
-    /// (or archives one) cannot persist that.
-    ///
-    /// ## Why this merges instead of replacing
-    /// `loadWirds()` now returns only the four fixed slots, and callers do
-    /// load → modify → save. A plain replace would therefore write back a
-    /// four-item list and **erase every user-created wird from disk** — turning
-    /// "hidden" into "destroyed" the first time someone tapped a counter, with
-    /// no warning and no way back. Anything on disk the caller never saw is
-    /// carried through untouched.
-    public func saveWirds(_ wirds: [Wird]) {
-        let incoming = Set(wirds.map(\.id))
-        let unseen = base.loadWirds().filter { !incoming.contains($0.id) }
-        base.saveWirds(FixedWirdSlots.applied(to: wirds + unseen, name: name, now: now()))
-    }
-
-    public func loadProgress() -> [WirdDailyProgress] { base.loadProgress() }
-    public func saveProgress(_ progress: [WirdDailyProgress]) { base.saveProgress(progress) }
-    public func loadDayCompletions() -> [WirdDayCompletionRecord] { base.loadDayCompletions() }
-    public func recordDayCompletion(_ record: WirdDayCompletionRecord) { base.recordDayCompletion(record) }
-
-    /// Day completion is all-or-nothing over the *active* wirds, so seeding four
-    /// more of them mid-day would retroactively un-earn a day a user had already
-    /// finished under the old board. Their history (`WirdDayCompletionRecord`s)
-    /// is never recomputed, so past days and streaks are safe — but today's,
-    /// which had been earned and not yet banked, would quietly vanish.
-    ///
-    /// So at the moment of seeding: if the pre-seed board was already fully done
-    /// today, bank that day before the new slots take effect. From tomorrow the
-    /// four count like everything else — which is the intended, harder rule.
-    private func grantTodayIfAlreadyEarned(preSeed: [Wird]) {
-        let active = preSeed.filter(\.isActive)
-        guard !active.isEmpty else { return } // fresh install: nothing was earned
-        let key = AwradViewModel.dateKey(for: now(), calendar: calendar)
-        guard !base.loadDayCompletions().contains(where: { $0.dateKey == key }) else { return }
-        let counts = Dictionary(
-            base.loadProgress().filter { $0.dateKey == key }.map { ($0.wirdId, $0.count) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        guard active.allSatisfy({ (counts[$0.id] ?? 0) >= $0.target }) else { return }
-        base.recordDayCompletion(WirdDayCompletionRecord(dateKey: key, completedAt: now()))
     }
 }

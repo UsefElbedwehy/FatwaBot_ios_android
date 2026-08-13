@@ -5,11 +5,23 @@ import PrayerKit
 import UserNotifications
 #endif
 
+/// Coarse enough to act on (show/hide a "notifications are off" banner)
+/// without leaking `UNAuthorizationStatus` past this file.
+public enum NotificationAuthorization: Sendable {
+    case authorized
+    case denied
+    case notDetermined
+}
+
 /// Registers the pure `NotificationPlanner` output with the OS. Reschedules on
 /// the triggers from docs/features/prayer.md (foreground, settings change,
 /// significant location change, daily background refresh).
 public protocol PrayerNotificationScheduling: Sendable {
     func requestAuthorization() async -> Bool
+    /// Current OS permission, without prompting — for surfacing a "notifications
+    /// are off" banner. `requestAuthorization()` only prompts once per install;
+    /// this is what notices a *later* revocation from iOS Settings.
+    func authorizationStatus() async -> NotificationAuthorization
     /// Replace all pending prayer notifications with a freshly built plan.
     func reschedule(
         timeline: [PrayerDay],
@@ -37,6 +49,15 @@ public final class PrayerNotificationScheduler: PrayerNotificationScheduling, @u
 
     public func requestAuthorization() async -> Bool {
         (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+    }
+
+    public func authorizationStatus() async -> NotificationAuthorization {
+        switch await center.notificationSettings().authorizationStatus {
+        case .authorized, .provisional, .ephemeral: .authorized
+        case .denied: .denied
+        case .notDetermined: .notDetermined
+        @unknown default: .notDetermined
+        }
     }
 
     public func reschedule(

@@ -170,7 +170,7 @@ struct RandomDuaWidget: Widget {
         }
         .configurationDisplayName(Text("widget.dua.name"))
         .description(Text("widget.dua.desc"))
-        .supportedFamilies([.systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
@@ -179,37 +179,51 @@ struct DuaWidgetView: View {
     let entry: DuaEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "hands.sparkles.fill")
-                    .font(.caption)
-                    .foregroundStyle(brandPrimary)
-                Text("widget.dua.title")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(brandPrimary)
-                Spacer()
+        if family == .systemSmall {
+            // No header row, no source line — at this size the matn itself
+            // has to have the space, same call as the Lock Screen accessory.
+            VStack {
+                Text(entry.dua.arabic)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(brandInk)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(4)
             }
-            Text(entry.dua.arabic)
-                .font(family == .systemLarge ? .title3.weight(.semibold) : .callout.weight(.medium))
-                .foregroundStyle(brandInk)
-                .multilineTextAlignment(.trailing)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .minimumScaleFactor(0.6)
-                .lineLimit(family == .systemLarge ? 5 : 3)
-            if family == .systemLarge {
-                Text(entry.dua.translation)
-                    .font(.footnote)
-                    .foregroundStyle(brandMuted)
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.7)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            VStack(alignment: .leading, spacing: family == .systemLarge ? 12 : 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "hands.sparkles.fill")
+                        .font(.caption)
+                        .foregroundStyle(brandPrimary)
+                    Text("widget.dua.title")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(brandPrimary)
+                    Spacer()
+                }
+                Text(entry.dua.arabic)
+                    .font(family == .systemLarge ? .title3.weight(.semibold) : .callout.weight(.medium))
+                    .foregroundStyle(brandInk)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(family == .systemLarge ? 5 : 3)
+                if family == .systemLarge {
+                    Text(entry.dua.translation)
+                        .font(.footnote)
+                        .foregroundStyle(brandMuted)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.7)
+                }
+                Spacer(minLength: 0)
+                Text(entry.dua.source)
+                    .font(.caption2)
+                    .foregroundStyle(brandPrimary.opacity(0.8))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            Spacer(minLength: 0)
-            Text(entry.dua.source)
-                .font(.caption2)
-                .foregroundStyle(brandPrimary.opacity(0.8))
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

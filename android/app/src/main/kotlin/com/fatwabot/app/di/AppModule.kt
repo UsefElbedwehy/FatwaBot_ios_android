@@ -63,8 +63,8 @@ import com.fatwabot.core.content.ContentService
 import com.fatwabot.feature.azkar.AzkarStoring
 import com.fatwabot.feature.azkar.FileAzkarStore
 import com.fatwabot.feature.awrad.FileWirdStore
+import com.fatwabot.feature.awrad.FixedWirdSlots
 import com.fatwabot.feature.awrad.fixedWirdNameResolver
-import com.fatwabot.feature.awrad.SeededWirdStore
 import com.fatwabot.feature.awrad.WirdStoring
 import com.fatwabot.feature.dua.DuaStoring
 import com.fatwabot.feature.dua.FileDuaStore
@@ -419,11 +419,18 @@ abstract class AppModule {
         @Singleton
         fun provideWirdStore(
             @ApplicationContext context: Context,
-        ): WirdStoring = SeededWirdStore(
-            base = FileWirdStore(File(context.filesDir, "awrad")),
-            name = fixedWirdNameResolver(context),
-            now = { System.currentTimeMillis() / 1000 },
-        )
+        ): WirdStoring = FileWirdStore(File(context.filesDir, "awrad"))
+
+        /**
+         * Resolves a [FixedWirdSlot]'s display name at the moment
+         * `AwradViewModel.addTodaysWird()` seeds it — frozen into the record
+         * then, exactly like a template-created wird's name.
+         */
+        @Provides
+        @Singleton
+        fun provideFixedWirdNameResolver(
+            @ApplicationContext context: Context,
+        ): FixedWirdSlots.NameResolver = fixedWirdNameResolver(context)
 
         @Provides
         @Singleton

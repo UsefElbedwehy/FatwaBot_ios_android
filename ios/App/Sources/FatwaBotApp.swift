@@ -77,6 +77,16 @@ struct FatwaBotApp: App {
                         // Foreground is the first moment we can upload them, and
                         // the streak stays wrong until we do.
                         Task { await drainWorshipInbox() }
+                        // The BG refresh task and the timezone-change handler
+                        // below are both opportunistic — iOS may simply never run
+                        // the former, and the latter only fires while a process is
+                        // alive to observe the notification. A user who resumes
+                        // the app from the switcher after the near-term horizon's
+                        // couple of full-fidelity days elapse (see
+                        // PrayerViewModel.notificationHorizonDays) would otherwise
+                        // go quiet with nothing on screen explaining why — this is
+                        // the one trigger neither of those can substitute for.
+                        Task { await Container.shared.prayerViewModel().rescheduleNotifications() }
                     }
                 }
         }

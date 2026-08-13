@@ -1,10 +1,12 @@
 package com.fatwabot.feature.awrad
 
 /**
- * The four awrad every user has, on every install, forever (owner decision,
- * 2026-07). Mirror of iOS `FixedWirdSlot`. They sit on the board next to
- * whatever the user creates, can be ticked and retargeted like any other wird,
- * and cannot be archived or removed.
+ * The four awrad offered as a one-tap starting board (client decision,
+ * 2026-08-12, reversing the 2026-08-09 "seeded for everyone, forever"
+ * decision). Mirror of iOS `FixedWirdSlot`. Nothing is seeded automatically —
+ * a user adds them via "أضف ورد اليوم" — and once on the board they are
+ * ordinary wirds: tickable, retargetable, and deletable like any wird the
+ * user creates themselves.
  *
  * The ids are stable literals rather than UUIDs precisely because they have to
  * be recognisable across launches and across the two platforms — seeding is
@@ -102,27 +104,39 @@ object FixedWirdSlots {
     )
 
     /**
-     * The seeding rule, as one pure function so both platforms and the tests
-     * can agree on it.
+     * Refreshes the display name (and repairs `isFixed`) of every fixed-slot
+     * record to the *current* resolver's value. Unlike [applied], this
+     * neither adds a missing slot nor reactivates an archived one, so it is
+     * safe to run passively on every load — a fixed slot's name is not
+     * something a user ever chose (retargeting is the only edit these slots
+     * offer), so unlike a template wird's frozen name, it has no reason to
+     * stay frozen under whatever language happened to be active the first
+     * time it was seeded.
+     */
+    fun normalized(wirds: List<Wird>, name: NameResolver = defaultNames): List<Wird> =
+        wirds.map { wird ->
+            val slot = FixedWirdSlot.forWirdId(wird.id) ?: return@map wird
+            wird.copy(isFixed = true, name = name.name(slot))
+        }
+
+    /**
+     * The seeding rule, invoked once when the user taps "أضف ورد اليوم" — not on
+     * every launch anymore, so both platforms and the tests can still agree on
+     * what one tap does.
      *
-     * - Appends only the slots whose id is **missing**, in canonical order, so
-     *   running it on every launch can never duplicate a slot or reset the
-     *   target/name of one the user already has.
-     * - Marks a record whose id matches a slot as fixed even when the stored
-     *   `isFixed` is absent/false. Records written before this feature existed
-     *   deserialize with `isFixed = false`; normalising here is the Kotlin
-     *   equivalent of the fallback in iOS's hand-written `Wird` decoder, and it
-     *   means nothing downstream has to remember to check the id as well.
-     * - Clears `archivedAtEpochSeconds` on a fixed slot. That is a repair, not a
-     *   resurrection: a fixed slot is never archivable in the first place, so a
-     *   record carrying that flag came from a bug or a hand-edited file.
+     * - Appends a fresh instance only for a slot whose id is **entirely
+     *   missing**, in canonical order, so a repeat tap can never duplicate a
+     *   slot or reset the target of one the user already has.
+     * - Un-archives a fixed slot that is present but was previously deleted.
+     *   That is exactly what re-adding it means: the same slot, its history
+     *   under that id intact, active again — not a fresh duplicate record.
      */
     fun applied(
         wirds: List<Wird>,
         name: NameResolver = defaultNames,
         nowEpochSeconds: Long,
     ): List<Wird> {
-        val result = wirds.map { wird ->
+        val result = normalized(wirds, name).map { wird ->
             if (!wird.isFixed && !isFixed(wird.id)) {
                 wird
             } else {
@@ -134,102 +148,5 @@ object FixedWirdSlots {
             if (slot.wirdId !in present) result += wird(slot, name, nowEpochSeconds)
         }
         return result
-    }
-}
-
-/**
- * [WirdStoring] decorator that guarantees the four fixed slots exist — for
- * everyone, not just fresh installs. Mirror of iOS `SeededWirdStore`.
- *
- * ## Why a decorator instead of a first-launch migration
- * Three separate paths read the wird list: the board's view model, the
- * notification-action [WirdCompletionResponder], and the reminder scheduler.
- * A migration hung off app start would leave whichever of those ran first on a
- * cold launch looking at an unseeded list. Doing it on read means every reader
- * sees the same board, and the write only happens when something was actually
- * missing — so repeated launches are a no-op, not a rewrite.
- */
-class SeededWirdStore(
-    private val base: WirdStoring,
-    private val name: FixedWirdSlots.NameResolver = FixedWirdSlots.defaultNames,
-    private val now: () -> Long,
-) : WirdStoring {
-
-    /**
-     * The four fixed slots, and only those.
-     *
-     * Client decision (2026-08-09): أثرك is the four everyone has, not a list a
-     * user curates. The board previously mixed them with user-created wirds and
-     * marked them with an "أساسي" badge; the badge is gone because with only
-     * four there is nothing left to distinguish.
-     *
-     * Filtered here rather than in the board, because the board is not the only
-     * consumer — the reminder planner reads the same store, and filtering only
-     * the UI would have kept firing "did you complete it?" for wirds the user
-     * could no longer see.
-     *
-     * Existing user wirds are **not deleted from disk**, only unreturned.
-     */
-    override fun loadWirds(): List<Wird> = allWirds().filter { it.isFixed }
-
-    /**
-     * Everything on disk. Seeding must see the full board, or it would re-add
-     * the four slots on every read.
-     */
-    private fun allWirds(): List<Wird> {
-        val existing = base.loadWirds()
-        val seeded = FixedWirdSlots.applied(existing, name, now())
-        if (seeded == existing) return existing
-        // Only reached the first time the four slots land on an existing board.
-        grantTodayIfAlreadyEarned(existing)
-        base.saveWirds(seeded)
-        return seeded
-    }
-
-    /**
-     * Also enforced on write, so a caller that drops a fixed slot from the list
-     * (or archives one) cannot persist that.
-     */
-    /**
-     * Merges rather than replaces.
-     *
-     * [loadWirds] now returns only the four fixed slots, and callers do
-     * load → modify → save. A plain replace would write back a four-item list
-     * and **erase every user-created wird from disk** — turning "hidden" into
-     * "destroyed" the first time someone tapped a counter, with no warning and
-     * no way back. Anything on disk the caller never saw is carried through.
-     */
-    override fun saveWirds(wirds: List<Wird>) {
-        val incoming = wirds.map { it.id }.toSet()
-        val unseen = base.loadWirds().filterNot { it.id in incoming }
-        base.saveWirds(FixedWirdSlots.applied(wirds + unseen, name, now()))
-    }
-
-    override fun loadProgress(): List<WirdDailyProgress> = base.loadProgress()
-    override fun saveProgress(progress: List<WirdDailyProgress>) = base.saveProgress(progress)
-    override fun loadDayCompletions(): List<WirdDayCompletionRecord> = base.loadDayCompletions()
-    override fun recordDayCompletion(record: WirdDayCompletionRecord) = base.recordDayCompletion(record)
-
-    /**
-     * Day completion is all-or-nothing over the *active* wirds, so seeding four
-     * more of them mid-day would retroactively un-earn a day a user had already
-     * finished under the old board. Their history ([WirdDayCompletionRecord]s)
-     * is never recomputed, so past days and streaks are safe — but today's,
-     * which had been earned and not yet banked, would quietly vanish.
-     *
-     * So at the moment of seeding: if the pre-seed board was already fully done
-     * today, bank that day before the new slots take effect. From tomorrow the
-     * four count like everything else — which is the intended, harder rule.
-     */
-    private fun grantTodayIfAlreadyEarned(preSeed: List<Wird>) {
-        val active = preSeed.filter { it.isActive }
-        if (active.isEmpty()) return // fresh install: nothing was earned
-        val key = AwradViewModel.dateKey(now())
-        if (base.loadDayCompletions().any { it.dateKey == key }) return
-        val counts = base.loadProgress()
-            .filter { it.dateKey == key }
-            .associate { it.wirdId to it.count }
-        if (!active.all { (counts[it.id] ?: 0) >= it.target }) return
-        base.recordDayCompletion(WirdDayCompletionRecord(key, now()))
     }
 }

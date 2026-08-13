@@ -14,12 +14,6 @@ class FixedWirdSlotsTest {
 
     private val now = 1_700_000_000L
 
-    private fun store(
-        wirds: List<Wird> = emptyList(),
-        progress: List<WirdDailyProgress> = emptyList(),
-        completions: List<WirdDayCompletionRecord> = emptyList(),
-    ) = FakeWirdStore(wirds, progress, completions)
-
     @Test
     fun `ids match the cross-platform contract`() {
         assertEquals(
@@ -89,65 +83,6 @@ class FixedWirdSlotsTest {
     }
 
     @Test
-    fun `store seeds on read and persists once`() {
-        val base = store()
-        val seeded = SeededWirdStore(base, now = { now })
-        assertEquals(4, seeded.loadWirds().size)
-        assertEquals(1, base.saveCount)
-        assertEquals(4, seeded.loadWirds().size)
-        assertEquals(1, base.saveCount) // second read is a no-op, not a rewrite
-    }
-
-    @Test
-    fun `store refuses to persist a board missing a fixed slot`() {
-        val base = store()
-        val seeded = SeededWirdStore(base, now = { now })
-        seeded.saveWirds(emptyList())
-        assertEquals(FixedWirdSlot.entries.map { it.wirdId }.toSet(), base.wirds.map { it.id }.toSet())
-    }
-
-    @Test
-    fun `banks a day that was already fully earned before seeding`() {
-        val key = AwradViewModel.dateKey(now)
-        val mine = Wird(
-            id = "mine",
-            name = "ورد",
-            type = "custom",
-            target = 1,
-            unit = "times",
-            frequency = "daily",
-            createdAtEpochSeconds = now,
-        )
-        val base = store(wirds = listOf(mine), progress = listOf(WirdDailyProgress("mine", key, 1)))
-        SeededWirdStore(base, now = { now }).loadWirds()
-        assertEquals(listOf(key), base.completions.map { it.dateKey })
-    }
-
-    @Test
-    fun `does not bank a day on a fresh install`() {
-        val base = store()
-        SeededWirdStore(base, now = { now }).loadWirds()
-        assertTrue(base.completions.isEmpty())
-    }
-
-    @Test
-    fun `does not bank a day that was not yet earned`() {
-        val key = AwradViewModel.dateKey(now)
-        val mine = Wird(
-            id = "mine",
-            name = "ورد",
-            type = "custom",
-            target = 5,
-            unit = "times",
-            frequency = "daily",
-            createdAtEpochSeconds = now,
-        )
-        val base = store(wirds = listOf(mine), progress = listOf(WirdDailyProgress("mine", key, 2)))
-        SeededWirdStore(base, now = { now }).loadWirds()
-        assertTrue(base.completions.isEmpty())
-    }
-
-    @Test
     fun `reminders put user wirds ahead of fixed slots and honour slot hours`() {
         val mine = Wird(
             id = "mine",
@@ -198,26 +133,5 @@ class FixedWirdSlotsTest {
         val plan = WirdReminderPlanner.plan(board, WirdReminderPreferences())
         assertEquals(WirdReminderPlanner.NOTIFICATION_RESERVE, plan.size)
         assertTrue(plan.none { FixedWirdSlots.isFixed(it.wirdId) })
-    }
-
-    private class FakeWirdStore(
-        var wirds: List<Wird>,
-        var progress: List<WirdDailyProgress>,
-        var completions: List<WirdDayCompletionRecord>,
-    ) : WirdStoring {
-        var saveCount = 0
-        override fun loadWirds() = wirds
-        override fun saveWirds(wirds: List<Wird>) {
-            this.wirds = wirds
-            saveCount++
-        }
-        override fun loadProgress() = progress
-        override fun saveProgress(progress: List<WirdDailyProgress>) {
-            this.progress = progress
-        }
-        override fun loadDayCompletions() = completions
-        override fun recordDayCompletion(record: WirdDayCompletionRecord) {
-            completions = completions + record
-        }
     }
 }

@@ -202,7 +202,17 @@ public enum WirdReminderPlanner {
     /// Slots carved out of the content reminders' slice of the 64-notification
     /// budget. Applied unconditionally (like the prayer reserve) so that turning
     /// wird reminders on can never push the total over the cap mid-session.
-    public static let notificationReserve = 5
+    ///
+    /// Sized for the four fixed slots at their worst case, not just their count:
+    /// both أذكار الصباح and أذكار المساء can be anchored to a prayer, and an
+    /// anchored slot costs `prayerAnchorHorizonDays` (3) reminders, not 1 — two
+    /// anchored azkar alone is 6, plus 1 each for قيام الليل and ورد القرآن at
+    /// their clock time is 8. The old reserve of 5 meant anchoring *both* azkar
+    /// silently dropped قيام الليل's reminder with nothing to explain why (it
+    /// sorts last — see `plan` below). 10 covers that worst case with two slots
+    /// left over for the user's own wirds; content reminders (`perDay` tops out
+    /// at 5) still fit in what's left of the 64 either way.
+    public static let notificationReserve = 10
 
     /// Days of dated reminders emitted for a prayer-anchored wird.
     ///

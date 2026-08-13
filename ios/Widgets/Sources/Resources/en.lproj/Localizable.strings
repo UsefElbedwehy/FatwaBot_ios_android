@@ -56,4 +56,7 @@
 "widget.open_app" = "Open the app";
 
 "widget.all_prayers.name" = "All Prayers";
-"widget.all_prayers.desc" = "All of today's prayer times on the Lock Screen.";
+"widget.all_prayers.desc" = "All of today's prayer times, two columns.";
+
+"widget.prayer_window.name" = "Nearby Prayers";
+"widget.prayer_window.desc" = "The previous, current, and next prayer on the Lock Screen.";

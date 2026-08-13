@@ -20,14 +20,15 @@ data class Wird(
     val createdAtEpochSeconds: Long,
     val archivedAtEpochSeconds: Long? = null,
     /**
-     * One of the four always-present slots ([FixedWirdSlot]). Persisted rather
-     * than derived so the marker survives a store round-trip on its own, and so
-     * a future slot whose id changed still reads back as fixed.
-     * Fixed wirds can be ticked and retargeted, never archived or removed.
+     * One of the four starter slots ([FixedWirdSlot]) offered by "أضف ورد
+     * اليوم". Persisted rather than derived so the marker survives a store
+     * round-trip on its own, and so a future slot whose id changed still reads
+     * back as fixed. Fixed wirds can be ticked, retargeted, and deleted like
+     * any other wird — no distinction from a custom one past creation.
      *
      * Records written before this field existed decode with `false`;
-     * [FixedWirdSlots.applied] — which every read goes through, via
-     * [SeededWirdStore] — repairs them by id.
+     * [FixedWirdSlots.applied] repairs them by id the next time it runs
+     * (`AwradViewModel.addTodaysWird`).
      */
     val isFixed: Boolean = false,
 ) {

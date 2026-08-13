@@ -102,6 +102,42 @@ final class WirdPrayerAnchorTests: XCTestCase {
         XCTAssertEqual(plan.count, 2)
     }
 
+    /// Client report: قيام الليل's reminder went silent with nothing to
+    /// explain why. Root cause — anchoring *both* azkar slots to a prayer
+    /// costs `prayerAnchorHorizonDays` (3) reminders each, 6 total, which used
+    /// to exceed the old reserve of 5 outright; قيام الليل sorts last among
+    /// the fixed slots and lost the budget race silently. Uses the *default*
+    /// reserve (no explicit `budget:` override), unlike the tests above, so
+    /// this fails again if the reserve ever regresses back down.
+    func testAllFourFixedSlotsFitTheDefaultReserveEvenWithBothAzkarAnchored() {
+        let eveningId = "fixed-evening-azkar"
+        let qiyamId = "fixed-qiyam-al-layl"
+        let quranId = "fixed-daily-quran"
+        let fajr = Date(timeIntervalSince1970: 1_800_000_000)
+        let prefs = WirdReminderPreferences()
+            .settingPrayerAnchor(prayer: "fajr", offsetMinutes: 0, forWirdId: morningId)
+            .settingPrayerAnchor(prayer: "asr", offsetMinutes: 0, forWirdId: eveningId)
+        let lookup: WirdReminderPlanner.PrayerTimeLookup = { offset, prayer in
+            switch prayer {
+            case "fajr": return fajr.addingTimeInterval(TimeInterval(offset) * 86_400)
+            case "asr": return fajr.addingTimeInterval(TimeInterval(offset) * 86_400 + 36_000)
+            default: return nil
+            }
+        }
+        let wirds = [
+            wird(morningId), wird(eveningId, name: "أذكار المساء"),
+            wird(qiyamId, name: "قيام الليل"), wird(quranId, name: "ورد يومي من القرآن"),
+        ]
+
+        let plan = WirdReminderPlanner.plan(
+            wirds: wirds, preferences: prefs, now: fajr.addingTimeInterval(-60), prayerTime: lookup
+        )
+
+        for id in [morningId, eveningId, qiyamId, quranId] {
+            XCTAssertTrue(plan.contains { $0.wirdId == id }, "\(id) must get at least one reminder")
+        }
+    }
+
     func testAnchorsSurviveAStoredRoundTrip() throws {
         let prefs = WirdReminderPreferences()
             .settingPrayerAnchor(prayer: "fajr", offsetMinutes: 15, forWirdId: morningId)

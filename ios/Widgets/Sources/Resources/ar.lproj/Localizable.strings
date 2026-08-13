@@ -56,4 +56,7 @@
 "widget.open_app" = "افتح التطبيق";
 
 "widget.all_prayers.name" = "كل الصلوات";
-"widget.all_prayers.desc" = "جميع مواقيت اليوم في الشاشة المقفلة.";
+"widget.all_prayers.desc" = "جميع مواقيت اليوم في عمودين.";
+
+"widget.prayer_window.name" = "الصلوات القريبة";
+"widget.prayer_window.desc" = "الصلاة السابقة والحالية والقادمة في الشاشة المقفلة.";

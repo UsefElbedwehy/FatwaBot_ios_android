@@ -116,7 +116,7 @@
 "dua.favorite" = "إضافة إلى المفضلة";
 "dua.unfavorite" = "إزالة من المفضلة";
 "dua.toggle_transliteration" = "إظهار/إخفاء اللفظ";
-"worship.awrad" = "أثرك";
+"worship.awrad" = "وردك اليوم";
 // Grid tile label — kept distinct from the screen title below, and from
 // "worship.awrad" above (which stays the in-screen section header).
 "worship.wird_tile" = "ورد";
@@ -124,7 +124,17 @@
 "awrad.mark_day_complete" = "أتممت وردي اليوم";
 "awrad.empty_title" = "لا توجد أوراد بعد";
 "awrad.empty_subtitle" = "أضف وردك الأول لتبدأ رحلتك اليومية";
+"awrad.add_today" = "أضف ورد اليوم";
+"awrad.templates_section" = "اختر من القوالب";
+"awrad.create_custom" = "إنشاء ورد مخصص";
+"awrad.custom_name_placeholder" = "اسم الورد";
+"awrad.custom_target_placeholder" = "الهدف اليومي";
+"awrad.save_custom" = "حفظ الورد";
+"awrad.create_title" = "ورد جديد";
 "awrad.edit_target" = "تعديل الهدف";
+"awrad.delete" = "حذف";
+"awrad.delete_confirm_title" = "حذف الورد؟";
+"awrad.delete_confirm_action" = "حذف";
 "awrad.fixed.qiyam_al_layl" = "قيام الليل";
 "awrad.fixed.daily_quran" = "ورد يومي من القرآن";
 "awrad.fixed.morning_azkar" = "أذكار الصباح";
@@ -194,6 +204,8 @@
 "notif.wird.action.yes" = "نعم";
 "notif.wird.action.later" = "لاحقاً";
 "settings.notifications_section" = "الإشعارات";
+"settings.notif.disabled_banner" = "الإشعارات مُعطّلة لتطبيق فتوى من إعدادات آيفون، فلن تصلك تنبيهات الصلاة أو الورد أو التذكيرات مهما كانت الخيارات أدناه.";
+"settings.notif.disabled_banner_action" = "فتح الإعدادات";
 "settings.notif.adhan.title" = "الأذان";
 "settings.notif.adhan.subtitle" = "إشعار عند دخول وقت كل صلاة.";
 "settings.notif.pre_adhan.title" = "تنبيه قبل الأذان";

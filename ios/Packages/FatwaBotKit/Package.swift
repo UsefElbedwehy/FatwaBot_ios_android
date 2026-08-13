@@ -27,6 +27,14 @@ let package = Package(
         .target(
             name: "DesignSystemKit",
             dependencies: ["CoreKit"],
+            // Amiri (SIL OFL) — bundled so Azkar/Du'a/Hadith cards match the
+            // client-specified reference typography without depending on a
+            // system font the device may not have (client direction, 2026-08-13).
+            // The client's reference named "Amiri Quran" specifically, a
+            // separate Uthmani-script variant of the same family this build
+            // does not have on hand — using standard Amiri until that file is
+            // provided; swapping it in later is just replacing these 4 files.
+            resources: [.process("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
         .target(

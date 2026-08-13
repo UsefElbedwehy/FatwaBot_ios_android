@@ -123,8 +123,8 @@ public struct ArabicContentCard<Accessory: View>: View {
                 }
 
                 Text(displayText)
-                    .font(.title3.weight(.medium))
-                    .lineSpacing(8)
+                    .font(AmiriFont.regular(21, relativeTo: .title3))
+                    .lineSpacing(10)
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: .infinity, alignment: .trailing)

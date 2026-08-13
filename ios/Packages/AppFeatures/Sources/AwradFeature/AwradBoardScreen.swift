@@ -6,6 +6,8 @@ import SwiftUI
 public struct AwradBoardScreen: View {
     @State private var viewModel: AwradViewModel
     @State private var editingWird: Wird?
+    @State private var wirdPendingDelete: Wird?
+    @State private var showCreateSheet = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     private let locale: String
@@ -19,10 +21,19 @@ public struct AwradBoardScreen: View {
         colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
     }
 
+    /// Whether "أضف ورد اليوم" would actually add anything right now — hides
+    /// the menu item once all four are already active, rather than offering an
+    /// action that's a silent no-op.
+    private var hasAllFixedSlots: Bool {
+        FixedWirdSlot.allCases.allSatisfy { slot in
+            viewModel.activeWirds.contains { $0.id == slot.wirdId }
+        }
+    }
+
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                if viewModel.wirds.isEmpty {
+                if viewModel.activeWirds.isEmpty {
                     emptyState
                 } else {
                     VStack(alignment: .leading, spacing: 12) {
@@ -40,10 +51,50 @@ public struct AwradBoardScreen: View {
             .padding(20)
         }
         .brandScreenBackground(tokens)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    if !hasAllFixedSlots {
+                        Button {
+                            viewModel.addTodaysWird()
+                        } label: {
+                            Label("awrad.add_today", systemImage: "leaf")
+                        }
+                    }
+                    Button {
+                        showCreateSheet = true
+                    } label: {
+                        Label("awrad.create_custom", systemImage: "plus.circle")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+        }
         .sheet(item: $editingWird) { wird in
             WirdTargetSheet(wird: wird) { newTarget in
                 viewModel.setTarget(wirdId: wird.id, target: newTarget)
             }
+        }
+        .sheet(isPresented: $showCreateSheet) {
+            AwradCreateSheet(viewModel: viewModel, locale: locale)
+        }
+        .confirmationDialog(
+            Text("awrad.delete_confirm_title"),
+            isPresented: Binding(
+                get: { wirdPendingDelete != nil },
+                set: { if !$0 { wirdPendingDelete = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: wirdPendingDelete
+        ) { wird in
+            Button("awrad.delete_confirm_action", role: .destructive) {
+                viewModel.deleteWird(wird.id)
+                wirdPendingDelete = nil
+            }
+            Button("common.cancel", role: .cancel) { wirdPendingDelete = nil }
+        } message: { wird in
+            Text(wird.name)
         }
         .task {
             // Picks up anything a notification "yes" wrote while the app was
@@ -70,6 +121,28 @@ public struct AwradBoardScreen: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
             }
+
+            VStack(spacing: 10) {
+                Button("awrad.add_today") { viewModel.addTodaysWird() }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.accent)],
+                            startPoint: .leading, endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
+
+                Button("awrad.create_custom") { showCreateSheet = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color(hexToken: tokens.primary))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+            }
+            .frame(maxWidth: 320)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 40)
@@ -118,6 +191,16 @@ public struct AwradBoardScreen: View {
             .accessibilityElement(children: .combine)
 
             Spacer(minLength: 8)
+
+            Button {
+                wirdPendingDelete = wird
+            } label: {
+                Image(systemName: "trash")
+                    .font(.body)
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("awrad.delete"))
 
             Button {
                 editingWird = wird

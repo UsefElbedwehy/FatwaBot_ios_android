@@ -257,38 +257,37 @@ struct NextPrayerAccessoryView: View {
     }
 }
 
-// MARK: - Lock Screen full-day prayer list (accessory family)
+// MARK: - Home Screen small "all prayers" widget
 
-struct AllPrayersAccessoryWidget: Widget {
+struct AllPrayersSmallWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "AllPrayersAccessoryWidget", provider: PrayerTimelineProvider()) { entry in
-            AllPrayersAccessoryView(entry: entry)
-                .containerBackground(.clear, for: .widget)
+        StaticConfiguration(kind: "AllPrayersSmallWidget", provider: PrayerTimelineProvider()) { entry in
+            AllPrayersSmallView(entry: entry)
+                .brandWidgetContainer()
                 .widgetURL(DeepLink.prayer.url)
         }
         .configurationDisplayName(Text("widget.all_prayers.name"))
         .description(Text("widget.all_prayers.desc"))
-        .supportedFamilies([.accessoryRectangular])
+        .supportedFamilies([.systemSmall])
     }
 }
 
-struct AllPrayersAccessoryView: View {
+struct AllPrayersSmallView: View {
     let entry: PrayerEntry
 
     private var todaySheet: PrayerWidgetSnapshot.DaySheet? {
         entry.snapshot?.sheet(for: entry.date)
     }
 
-    /// The most recently passed time in the sheet — Fajr..Isha and sunrise
-    /// alike — so the dot marks where the day actually is, not just the next
-    /// countdown-eligible prayer.
+    /// The most recently passed time — Fajr..Isha and sunrise alike — so the
+    /// dot marks where the day actually is, not just the next prayer.
     private var currentPrayer: String? {
         todaySheet?.times.last { $0.time <= entry.date }?.prayer
     }
 
-    /// Six rows don't fit one column at Lock Screen size — split into two
-    /// chronological halves so it reads top-to-bottom, left column then right,
-    /// instead of a single cramped list.
+    /// Two columns of three read top-to-bottom, left then right — the same
+    /// split as the (now-retired) Lock Screen six-up layout, just with more
+    /// room to breathe at Home Screen small size.
     private var columns: ([PrayerWidgetSnapshot.Entry], [PrayerWidgetSnapshot.Entry]) {
         guard let times = todaySheet?.times else { return ([], []) }
         let mid = (times.count + 1) / 2
@@ -297,32 +296,85 @@ struct AllPrayersAccessoryView: View {
 
     var body: some View {
         if let sheet = todaySheet, !sheet.times.isEmpty {
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
                 column(columns.0)
                 column(columns.1)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         } else {
-            Text("widget.open_app").font(.caption2)
+            WidgetPlaceholder()
         }
     }
 
     private func column(_ items: [PrayerWidgetSnapshot.Entry]) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(items, id: \.time) { item in
                 let isCurrent = item.prayer == currentPrayer
-                HStack(spacing: 3) {
-                    Image(systemName: isCurrent ? "circle.fill" : "circle")
-                        .font(.system(size: 5))
+                VStack(alignment: .leading, spacing: 0) {
                     Text(PrayerWidgetSnapshot.title(for: item.prayer))
-                        .font(.system(size: 9))
+                        .font(.system(size: 10, weight: isCurrent ? .bold : .regular))
+                        .foregroundStyle(isCurrent ? brandPrimary : brandMuted)
                         .lineLimit(1)
-                    Spacer(minLength: 2)
                     Text(item.time, style: .time)
-                        .font(.system(size: 9).monospacedDigit())
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(isCurrent ? brandPrimary : brandInk)
                 }
-                .widgetAccentable(isCurrent)
             }
+        }
+    }
+}
+
+// MARK: - Lock Screen previous/next/after-next prayer window (accessory family)
+
+struct AllPrayersAccessoryWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AllPrayersAccessoryWidget", provider: PrayerTimelineProvider()) { entry in
+            AllPrayersAccessoryView(entry: entry)
+                .containerBackground(.clear, for: .widget)
+                .widgetURL(DeepLink.prayer.url)
+        }
+        .configurationDisplayName(Text("widget.prayer_window.name"))
+        .description(Text("widget.prayer_window.desc"))
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+struct AllPrayersAccessoryView: View {
+    let entry: PrayerEntry
+
+    /// Previous / next / the one after next — three real prayers (client
+    /// direction: sunrise doesn't count), spanning the day boundary via
+    /// `upcoming` rather than a single day's sheet, same source as
+    /// `NextPrayerAccessoryView.previousTime`.
+    private var window: (previous: PrayerWidgetSnapshot.Entry?, next: PrayerWidgetSnapshot.Entry?, afterNext: PrayerWidgetSnapshot.Entry?) {
+        guard let upcoming = entry.snapshot?.upcoming else { return (nil, nil, nil) }
+        let previous = upcoming.last { $0.time <= entry.date }
+        let future = upcoming.filter { $0.time > entry.date }
+        return (previous, future.first, future.dropFirst().first)
+    }
+
+    var body: some View {
+        let items = [window.previous, window.next, window.afterNext].compactMap { $0 }
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(items, id: \.time) { item in
+                    let isNext = item.time == window.next?.time
+                    HStack(spacing: 4) {
+                        Image(systemName: isNext ? "circle.fill" : "circle")
+                            .font(.system(size: 6))
+                        Text(PrayerWidgetSnapshot.title(for: item.prayer))
+                            .font(.system(size: 11))
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text(item.time, style: .time)
+                            .font(.system(size: 11).monospacedDigit())
+                    }
+                    .widgetAccentable(isNext)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        } else {
+            Text("widget.open_app").font(.caption2)
         }
     }
 }
@@ -393,5 +445,6 @@ struct FatwaBotWidgets: WidgetBundle {
         NextPrayerAccessoryWidget()
         DuaAccessoryWidget()
         AllPrayersAccessoryWidget()
+        AllPrayersSmallWidget()
     }
 }

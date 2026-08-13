@@ -29,6 +29,7 @@ class AwradViewModel @Inject constructor(
     private val clock: Clock,
     private val haptics: HapticsProviding,
     private val activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
+    private val nameResolver: FixedWirdSlots.NameResolver = FixedWirdSlots.defaultNames,
 ) : ViewModel() {
 
     data class UiState(
@@ -41,25 +42,31 @@ class AwradViewModel @Inject constructor(
         val stats: WirdStats get() = WirdStats.compute(wirds, progress, dayCompletions)
     }
 
-    private val _state = MutableStateFlow(
-        UiState(
-            wirds = store.loadWirds(),
-            progress = store.loadProgress(),
-            dayCompletions = store.loadDayCompletions(),
-        ),
-    )
+    private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
+
+    init {
+        refresh()
+    }
 
     /**
      * Re-reads everything off the store. The view model outlives a backgrounding,
      * and [WirdCompletionResponder] writes to the same files from a notification
      * action while no UI is alive — without this the board would still show the
      * wird as outstanding after the user answered "yes" from the shade.
+     *
+     * Also normalizes fixed-slot names to the current language on every call
+     * ([FixedWirdSlots.normalized]) — passive, not "أضف ورد اليوم": it fixes a
+     * name frozen under a language the user isn't in anymore, it never adds or
+     * reactivates a slot, so it needs no button and no confirmation.
      */
     fun refresh() {
+        val loadedWirds = store.loadWirds()
+        val normalizedWirds = FixedWirdSlots.normalized(loadedWirds, nameResolver)
+        if (normalizedWirds != loadedWirds) store.saveWirds(normalizedWirds)
         _state.update {
             it.copy(
-                wirds = store.loadWirds(),
+                wirds = normalizedWirds,
                 progress = store.loadProgress(),
                 dayCompletions = store.loadDayCompletions(),
             )
@@ -75,6 +82,19 @@ class AwradViewModel @Inject constructor(
         _state.value.progress.firstOrNull { it.wirdId == wirdId && it.dateKey == todayKey() }?.count ?: 0
 
     fun isDayCompletedToday(): Boolean = _state.value.dayCompletions.any { it.dateKey == todayKey() }
+
+    /**
+     * "أضف ورد اليوم" — seeds whichever of the four fixed slots
+     * ([FixedWirdSlot]) aren't already active on the board. A deliberate,
+     * one-tap action rather than something that happens on every launch (see
+     * [FixedWirdSlots.applied]'s doc comment for why that changed).
+     */
+    fun addTodaysWird() {
+        val updated = FixedWirdSlots.applied(_state.value.wirds, nameResolver, clock.now().epochSeconds)
+        if (updated == _state.value.wirds) return
+        store.saveWirds(updated)
+        _state.update { it.copy(wirds = updated) }
+    }
 
     fun createWird(template: WirdTemplate) {
         appendWird(
@@ -167,17 +187,15 @@ class AwradViewModel @Inject constructor(
     }
 
     /**
-     * Archives without deleting historical progress — stats remain accurate.
-     *
-     * Returns `false`, changing nothing, for one of the four fixed slots: those
-     * are on every board by definition, so archiving one is not a user choice to
-     * honour. [SeededWirdStore] would undo it on the next read anyway; refusing
-     * here means the UI never briefly shows a state that is about to be reverted.
+     * Removes a wird from the active board — fixed or custom, no distinction
+     * anymore (client decision, 2026-08-12). Archives rather than erases, so
+     * historical progress/stats stay accurate and re-adding a fixed slot later
+     * via [addTodaysWird] restores its history under the same id instead of
+     * starting a duplicate record.
      */
-    fun archiveWird(wirdId: String): Boolean {
+    fun deleteWird(wirdId: String): Boolean {
         val index = _state.value.wirds.indexOfFirst { it.id == wirdId }
         if (index < 0) return false
-        if (_state.value.wirds[index].isFixed) return false
         val updated = _state.value.wirds.toMutableList().apply {
             this[index] = this[index].copy(archivedAtEpochSeconds = clock.now().epochSeconds)
         }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="awrad_my_stats">My stats</string>
-    <string name="awrad_my_awrad">My Awrad</string>
+    <string name="awrad_my_awrad">Your Wird Today</string>
     <string name="awrad_stat_total_dhikr">Total dhikr</string>
     <string name="awrad_stat_completed_days">Completed days</string>
     <string name="awrad_stat_quran_pages">Quran pages</string>
@@ -16,6 +16,11 @@
     <string name="awrad_wird_name">Wird name</string>
     <string name="awrad_custom_wird_default">Custom wird</string>
     <string name="awrad_save_wird">Save wird</string>
+    <string name="awrad_add_today">Add today\'s wird</string>
+    <string name="awrad_create_custom_wird">Create a custom wird</string>
+    <string name="awrad_delete">Delete</string>
+    <string name="awrad_delete_confirm_title">Delete this wird?</string>
+    <string name="awrad_delete_confirm_action">Delete</string>
     <string name="awrad_fixed_qiyam_al_layl">قيام الليل</string>
     <string name="awrad_fixed_daily_quran">ورد يومي من القرآن</string>
     <string name="awrad_fixed_morning_azkar">أذكار الصباح</string>

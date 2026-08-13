@@ -51,7 +51,8 @@ class AwradViewModelTest {
         store: WirdStoring = InMemoryStore(),
         haptics: HapticsProviding = NoopHaptics(),
         activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
-    ) = AwradViewModel(null, store, fixedClock, haptics, activityEvents)
+        nameResolver: FixedWirdSlots.NameResolver = FixedWirdSlots.defaultNames,
+    ) = AwradViewModel(null, store, fixedClock, haptics, activityEvents, nameResolver)
 
     private fun template(name: String = "الصلاة على النبي", type: String = "salawat", target: Int = 100, unit: String = "times") =
         WirdTemplate(id = "t1", name = name, description = "", type = type, defaultTarget = target, defaultUnit = unit, defaultFrequency = "daily")
@@ -132,8 +133,8 @@ class AwradViewModelTest {
     @Test
     fun `crossing target on a fixed slot emits the leaderboard event`() {
         val events = SpyActivityEvents()
-        val seeded = SeededWirdStore(InMemoryStore(), now = { fixedNow.epochSeconds })
-        val viewModel = makeViewModel(store = seeded, activityEvents = events)
+        val viewModel = makeViewModel(activityEvents = events)
+        viewModel.addTodaysWird()
 
         val quran = viewModel.state.value.wirds.first { it.id == FixedWirdSlot.DAILY_QURAN.wirdId }
         assertEquals(1, quran.target)
@@ -174,28 +175,106 @@ class AwradViewModelTest {
     }
 
     @Test
-    fun `archiving removes from active board but keeps historical progress`() {
+    fun `deleting removes from active board but keeps historical progress`() {
         val viewModel = makeViewModel()
         viewModel.createWird(template(target = 5))
         val wirdId = viewModel.state.value.wirds[0].id
         viewModel.tick(wirdId, 5)
         assertEquals(5, viewModel.state.value.stats.salawatCount)
 
-        viewModel.archiveWird(wirdId)
-        assertTrue("archived wird must not appear on the active board", viewModel.state.value.activeWirds.isEmpty())
+        viewModel.deleteWird(wirdId)
+        assertTrue("deleted wird must not appear on the active board", viewModel.state.value.activeWirds.isEmpty())
         assertEquals("historical progress must remain in stats", 5, viewModel.state.value.stats.salawatCount)
     }
 
     @Test
-    fun `day completion excludes archived wirds`() {
+    fun `day completion excludes deleted wirds`() {
         val viewModel = makeViewModel()
         viewModel.createWird(template(name = "A", target = 1))
         viewModel.createWird(template(name = "B", target = 1))
         val (a, b) = viewModel.state.value.wirds.map { it.id }
-        viewModel.archiveWird(b) // archived before ever being touched
+        viewModel.deleteWird(b) // deleted before ever being touched
 
         viewModel.tick(a, 1)
-        assertTrue("archived wird B must not block completion", viewModel.markDayComplete())
+        assertTrue("deleted wird B must not block completion", viewModel.markDayComplete())
+    }
+
+    // Fixed-slot seeding and deletion (client decision, 2026-08-12). Nothing is
+    // seeded by default anymore; a user opts in with "أضف ورد اليوم", and once
+    // on the board the four fixed slots are ordinary wirds — including being
+    // deletable, which the old model explicitly refused.
+
+    @Test
+    fun `fresh board has no wirds until add today's wird is called`() {
+        val viewModel = makeViewModel()
+        assertTrue(viewModel.state.value.wirds.isEmpty())
+
+        viewModel.addTodaysWird()
+        assertEquals(FixedWirdSlot.entries.size, viewModel.state.value.wirds.size)
+        assertTrue(viewModel.state.value.wirds.all { it.isFixed })
+    }
+
+    @Test
+    fun `add today's wird persists through the store`() {
+        val store = InMemoryStore()
+        val viewModel = makeViewModel(store = store)
+        viewModel.addTodaysWird()
+
+        assertEquals(FixedWirdSlot.entries.size, store.wirds.size)
+    }
+
+    @Test
+    fun `add today's wird does not disturb existing custom wirds`() {
+        val viewModel = makeViewModel()
+        viewModel.createCustomWird(name = "ورد خاص", type = "custom", target = 3, unit = "times", frequency = "daily")
+        val customId = viewModel.state.value.wirds[0].id
+
+        viewModel.addTodaysWird()
+        assertTrue(viewModel.state.value.wirds.any { it.id == customId })
+        assertEquals(FixedWirdSlot.entries.size + 1, viewModel.state.value.wirds.size)
+    }
+
+    @Test
+    fun `fixed slots can be deleted unlike the old model`() {
+        val viewModel = makeViewModel()
+        viewModel.addTodaysWird()
+        val qiyamId = FixedWirdSlot.QIYAM_AL_LAYL.wirdId
+
+        assertTrue(viewModel.deleteWird(qiyamId))
+        assertFalse(viewModel.state.value.activeWirds.any { it.id == qiyamId })
+    }
+
+    @Test
+    fun `add today's wird re-adds only the missing slots`() {
+        val viewModel = makeViewModel()
+        viewModel.addTodaysWird()
+        viewModel.deleteWird(FixedWirdSlot.QIYAM_AL_LAYL.wirdId)
+        assertEquals(FixedWirdSlot.entries.size - 1, viewModel.state.value.activeWirds.size)
+
+        viewModel.addTodaysWird()
+        assertEquals(FixedWirdSlot.entries.size, viewModel.state.value.activeWirds.size)
+    }
+
+    /** Client report: a fixed slot seeded under one language stayed in that
+     * language forever after switching the device's language — because
+     * nothing re-seeds automatically anymore, and the old name was frozen at
+     * creation. Loading the board (init or [AwradViewModel.refresh]) must
+     * self-heal this without the user doing anything. */
+    @Test
+    fun `loading the board refreshes a stale fixed slot name to the current language`() {
+        val store = InMemoryStore()
+        store.wirds = listOf(
+            FixedWirdSlots.wird(
+                FixedWirdSlot.QIYAM_AL_LAYL,
+                name = FixedWirdSlots.NameResolver { "Night Prayer (Qiyam)" },
+                nowEpochSeconds = fixedNow.epochSeconds,
+            ),
+        )
+
+        val viewModel = makeViewModel(store = store, nameResolver = FixedWirdSlots.NameResolver { "قيام الليل" })
+
+        assertEquals("قيام الليل", viewModel.state.value.wirds.first().name)
+        assertEquals("the refreshed name must be persisted, not just shown in memory", "قيام الليل", store.wirds.first().name)
     }
 
     @Test
