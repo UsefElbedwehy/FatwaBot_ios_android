@@ -27,16 +27,24 @@ struct RemembranceScreen: View {
     @State private var segment: Segment
     private let azkarViewModel: AzkarViewModel
     private let duaViewModel: DuaViewModel
+    /// Which specific item to scroll to, from a content-reminder tap. Only
+    /// azkar reminders exist today (`PlannedContentReminder.Kind` has no
+    /// `.dua` case), so this only ever reaches `AzkarBrowseScreen`.
+    private let focus: ContentFocus?
 
     @Environment(\.colorScheme) private var colorScheme
     private var tokens: ColorTokens {
         colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
     }
 
-    init(initial: Segment, azkarViewModel: AzkarViewModel, duaViewModel: DuaViewModel) {
+    init(
+        initial: Segment, azkarViewModel: AzkarViewModel, duaViewModel: DuaViewModel,
+        focus: ContentFocus? = nil
+    ) {
         _segment = State(initialValue: initial)
         self.azkarViewModel = azkarViewModel
         self.duaViewModel = duaViewModel
+        self.focus = focus
     }
 
     var body: some View {
@@ -56,7 +64,11 @@ struct RemembranceScreen: View {
             // should be loading content and holding list state.
             switch segment {
             case .azkar:
-                AzkarBrowseScreen(viewModel: azkarViewModel)
+                AzkarBrowseScreen(
+                    viewModel: azkarViewModel,
+                    focusItemID: focus?.contentID,
+                    focusCategoryID: focus?.categorySlug
+                )
             case .dua:
                 DuaLibraryScreen(viewModel: duaViewModel)
             }

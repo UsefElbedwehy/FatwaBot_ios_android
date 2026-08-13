@@ -22,6 +22,11 @@ public struct PlannedContentReminder: Equatable, Sendable, Identifiable {
     public let kind: Kind
     /// The azkar/hadith item this reminder is showing, so the app can attribute it.
     public let contentID: String
+    /// The collection (hadith) or category (azkar) `contentID` belongs to.
+    /// Carried through so a notification tap can select the right chip before
+    /// scrolling to the item, without having to load the whole corpus just to
+    /// find which collection an id lives in.
+    public let categorySlug: String?
     public let fireDate: Date
     /// Notification-template key resolved to localized text at registration time.
     public let titleKey: String
@@ -30,10 +35,14 @@ public struct PlannedContentReminder: Equatable, Sendable, Identifiable {
 
     public var deepLink: DeepLink { kind.deepLink }
 
-    public init(id: String, kind: Kind, contentID: String, fireDate: Date, titleKey: String, body: String) {
+    public init(
+        id: String, kind: Kind, contentID: String, categorySlug: String? = nil,
+        fireDate: Date, titleKey: String, body: String
+    ) {
         self.id = id
         self.kind = kind
         self.contentID = contentID
+        self.categorySlug = categorySlug
         self.fireDate = fireDate
         self.titleKey = titleKey
         self.body = body
@@ -46,10 +55,14 @@ public struct PlannedContentReminder: Equatable, Sendable, Identifiable {
 /// text vs. translation) to feed in for the current locale.
 public struct ContentSnippet: Equatable, Sendable {
     public let id: String
+    /// Which collection (hadith) or category (azkar) owns this item — see
+    /// `PlannedContentReminder.categorySlug` for why this travels along.
+    public let categorySlug: String?
     public let text: String
 
-    public init(id: String, text: String) {
+    public init(id: String, categorySlug: String? = nil, text: String) {
         self.id = id
+        self.categorySlug = categorySlug
         self.text = text
     }
 }
@@ -190,6 +203,7 @@ public enum ContentReminderPlanner {
                     id: "content-\(kind.rawValue)-\(dayKey)-\(slot)",
                     kind: kind,
                     contentID: item.id,
+                    categorySlug: item.categorySlug,
                     fireDate: fire,
                     titleKey: "notif.content.\(kind.rawValue).title",
                     body: truncate(item.text)

@@ -29,12 +29,23 @@ import SwiftUI
 public struct HadithCollectionsScreen: View {
     @State private var viewModel: HadithViewModel
     @State private var selectedSlug: String?
+    @State private var highlightedEntryID: String?
     @Environment(\.colorScheme) private var colorScheme
     private let locale: String
+    /// A specific entry to land on — from a content-reminder tap
+    /// (`ContentReminderScheduler`). `nil` for the ordinary "just opened the
+    /// tab" path, which is nearly always.
+    private let focusEntryID: String?
+    private let focusCollectionSlug: String?
 
-    public init(viewModel: HadithViewModel, locale: String = "ar") {
+    public init(
+        viewModel: HadithViewModel, locale: String = "ar",
+        focusEntryID: String? = nil, focusCollectionSlug: String? = nil
+    ) {
         _viewModel = State(initialValue: viewModel)
         self.locale = locale
+        self.focusEntryID = focusEntryID
+        self.focusCollectionSlug = focusCollectionSlug
     }
 
     private var tokens: ColorTokens {
@@ -79,7 +90,15 @@ public struct HadithCollectionsScreen: View {
             content
         }
         .brandScreenBackground(tokens)
-        .task { await viewModel.loadCollections(locale: locale) }
+        .task {
+            await viewModel.loadCollections(locale: locale)
+            // Land on the collection the reminder's entry actually belongs
+            // to — `entries` only ever reflects whichever collection is
+            // selected, so without this the entry may never appear at all.
+            if let focusCollectionSlug {
+                selectedSlug = focusCollectionSlug
+            }
+        }
         // Keyed on the resolved slug, not the raw selection, so the first load
         // (where nothing is selected yet and `activeSlug` falls back to the
         // first collection) fetches too.
@@ -161,15 +180,41 @@ public struct HadithCollectionsScreen: View {
                 .tint(Color(hexToken: tokens.primary))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(entries, id: \.id) { entry in
-                        card(entry)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(entries, id: \.id) { entry in
+                            card(entry).id(entry.id)
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                // Runs once the focused entry actually appears in the list —
+                // it isn't there on the first pass while `loadCollections` and
+                // the collection switch from `.task` above are still loading.
+                .onChange(of: entries.map(\.id)) { _, ids in
+                    guard let focusEntryID, ids.contains(focusEntryID) else { return }
+                    scrollToFocus(focusEntryID, proxy: proxy)
+                }
+                .onAppear {
+                    guard let focusEntryID, entries.contains(where: { $0.id == focusEntryID }) else { return }
+                    scrollToFocus(focusEntryID, proxy: proxy)
+                }
             }
+        }
+    }
+
+    /// Scrolls to and briefly highlights the entry a content-reminder tap
+    /// named — a plain jump-to would land the reader on the right hadith with
+    /// no sense of why THAT card, among the whole collection, is the one the
+    /// notification meant.
+    private func scrollToFocus(_ id: String, proxy: ScrollViewProxy) {
+        withAnimation { proxy.scrollTo(id, anchor: .center) }
+        withAnimation { highlightedEntryID = id }
+        Task {
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            withAnimation { highlightedEntryID = nil }
         }
     }
 
@@ -183,6 +228,10 @@ public struct HadithCollectionsScreen: View {
             // again trailing the text.
             arabic: HadithDisplay.matnWithoutTakhrij(entry.arabicText, grading: entry.grading),
             tokens: tokens
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color(hexToken: tokens.primary), lineWidth: highlightedEntryID == entry.id ? 2.5 : 0)
         )
         .onAppear { viewModel.markRead(number: entry.number) }
     }

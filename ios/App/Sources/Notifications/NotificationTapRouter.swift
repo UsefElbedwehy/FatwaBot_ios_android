@@ -24,11 +24,25 @@ final class NotificationTapRouter {
     /// Set by the delegate, observed and cleared by `RootTabView`.
     var pendingLink: DeepLink?
 
+    /// Which specific azkar/hadith item a content-reminder tap should land on
+    /// — set alongside `pendingLink` only for that notification kind, `nil`
+    /// for every other route. Without this a hadith/azkar reminder tap opens
+    /// the tab in general rather than the entry the notification showed.
+    var pendingContentFocus: ContentFocus?
+
     private init() {}
 
     func consume() {
         pendingLink = nil
+        pendingContentFocus = nil
     }
+}
+
+/// Which item and, if applicable, which collection/category it lives in —
+/// enough for the receiving screen to select the right chip and scroll to it.
+struct ContentFocus: Equatable, Sendable {
+    let contentID: String
+    let categorySlug: String?
 }
 
 /// The `UNUserNotificationCenterDelegate` itself. Kept off `NotificationTapRouter`
@@ -74,7 +88,16 @@ final class NotificationTapDelegate: NSObject, UNUserNotificationCenterDelegate 
             // tapped) — route it exactly as before.
             if let raw = userInfo[NotificationTapRouter.userInfoKey] as? String,
                let link = DeepLink(rawValue: raw) {
-                Task { @MainActor in NotificationTapRouter.shared.pendingLink = link }
+                // Only azkar/hadith reminders carry a content id — every other
+                // notification (prayer, wird) leaves this nil, and the
+                // receiving screens treat nil as "no specific item".
+                let focus = (userInfo[ContentReminderScheduler.contentIdKey] as? String).map {
+                    ContentFocus(contentID: $0, categorySlug: userInfo[ContentReminderScheduler.categorySlugKey] as? String)
+                }
+                Task { @MainActor in
+                    NotificationTapRouter.shared.pendingLink = link
+                    NotificationTapRouter.shared.pendingContentFocus = focus
+                }
             }
         }
 

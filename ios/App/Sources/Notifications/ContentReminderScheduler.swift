@@ -20,6 +20,13 @@ final class ContentReminderScheduler: ContentReminderScheduling, @unchecked Send
     /// prayer schedule's pending requests.
     static let idPrefix = "content-"
 
+    /// `userInfo` keys carrying which specific item the notification showed —
+    /// read back by `NotificationTapDelegate` so the tap can land on that item
+    /// instead of just the Azkar/Hadith tab in general. Mirrors the shape of
+    /// `WirdReminderScheduler.wirdIdKey`.
+    static let contentIdKey = "contentId"
+    static let categorySlugKey = "categorySlug"
+
     private let center: UNUserNotificationCenter
     private let contentService: ContentService
     private let stringProvider: @Sendable (String) -> String
@@ -72,9 +79,14 @@ final class ContentReminderScheduler: ContentReminderScheduling, @unchecked Send
             content.body = item.body
             content.sound = .default
             content.categoryIdentifier = "content." + item.kind.rawValue
-            // What makes the tap land on the right screen — read back by
-            // `NotificationTapDelegate`.
-            content.userInfo = [NotificationTapRouter.userInfoKey: item.deepLink.rawValue]
+            // What makes the tap land on the right screen — and the right ITEM
+            // on it — read back by `NotificationTapDelegate`.
+            var userInfo: [String: String] = [
+                NotificationTapRouter.userInfoKey: item.deepLink.rawValue,
+                Self.contentIdKey: item.contentID,
+            ]
+            userInfo[Self.categorySlugKey] = item.categorySlug
+            content.userInfo = userInfo
 
             let components = Calendar.current.dateComponents(
                 [.year, .month, .day, .hour, .minute], from: item.fireDate
@@ -91,18 +103,23 @@ final class ContentReminderScheduler: ContentReminderScheduling, @unchecked Send
     /// locale: an English reader gets the translation when there is one, and the
     /// Arabic falls back in when there isn't.
     static func azkarSnippets(_ collection: AzkarCollection?, locale: String) -> [ContentSnippet] {
-        (collection?.categories.flatMap(\.items) ?? []).compactMap { item in
-            guard let text = preferredText(arabic: item.arabicText, translation: item.translation, locale: locale)
-            else { return nil }
-            return ContentSnippet(id: item.id, text: text)
+        (collection?.categories ?? []).flatMap { category in
+            category.items.compactMap { item -> ContentSnippet? in
+                guard let text = preferredText(arabic: item.arabicText, translation: item.translation, locale: locale)
+                else { return nil }
+                // `category.id`, not `.slug` — `AzkarBrowseScreen` selects by id.
+                return ContentSnippet(id: item.id, categorySlug: category.id, text: text)
+            }
         }
     }
 
     static func hadithSnippets(_ details: [HadithCollectionDetail], locale: String) -> [ContentSnippet] {
-        details.flatMap(\.entries).compactMap { entry in
-            guard let text = preferredText(arabic: entry.arabicText, translation: entry.translation, locale: locale)
-            else { return nil }
-            return ContentSnippet(id: entry.id, text: text)
+        details.flatMap { detail in
+            detail.entries.compactMap { entry -> ContentSnippet? in
+                guard let text = preferredText(arabic: entry.arabicText, translation: entry.translation, locale: locale)
+                else { return nil }
+                return ContentSnippet(id: entry.id, categorySlug: detail.slug, text: text)
+            }
         }
     }
 

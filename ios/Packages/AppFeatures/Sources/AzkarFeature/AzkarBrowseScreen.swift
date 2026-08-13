@@ -26,12 +26,23 @@ public struct AzkarBrowseScreen: View {
     @State private var viewModel: AzkarViewModel
     @State private var selectedCategoryId: String?
     @State private var query: String = ""
+    @State private var highlightedItemID: String?
     @Environment(\.colorScheme) private var colorScheme
     private let locale: String
+    /// A specific item to land on — from a content-reminder tap
+    /// (`ContentReminderScheduler`). `nil` for the ordinary "just opened the
+    /// tab" path, which is nearly always.
+    private let focusItemID: String?
+    private let focusCategoryID: String?
 
-    public init(viewModel: AzkarViewModel, locale: String = "ar") {
+    public init(
+        viewModel: AzkarViewModel, locale: String = "ar",
+        focusItemID: String? = nil, focusCategoryID: String? = nil
+    ) {
         _viewModel = State(initialValue: viewModel)
         self.locale = locale
+        self.focusItemID = focusItemID
+        self.focusCategoryID = focusCategoryID
     }
 
     private var tokens: ColorTokens {
@@ -59,7 +70,15 @@ public struct AzkarBrowseScreen: View {
             content
         }
         .brandScreenBackground(tokens)
-        .task { await viewModel.loadCategories(locale: locale) }
+        .task {
+            await viewModel.loadCategories(locale: locale)
+            // Land on the category the reminder's item actually belongs to —
+            // without this the item may not even be in `visibleItems` yet,
+            // since that is filtered to whichever category is selected.
+            if let focusCategoryID {
+                selectedCategoryId = focusCategoryID
+            }
+        }
     }
 
     // MARK: - Header
@@ -151,18 +170,44 @@ public struct AzkarBrowseScreen: View {
             )
             .frame(maxHeight: .infinity)
         } else {
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    if let category = selectedCategory {
-                        startSessionRow(category)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        if let category = selectedCategory {
+                            startSessionRow(category)
+                        }
+                        ForEach(visibleItems) { item in
+                            card(item).id(item.id)
+                        }
                     }
-                    ForEach(visibleItems) { item in
-                        card(item)
-                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                // Runs once the focused item actually appears in the list —
+                // it isn't there on the first pass while `loadCategories` and
+                // the category switch from `.task` above are still in flight.
+                .onChange(of: visibleItems.map(\.id)) { _, ids in
+                    guard let focusItemID, ids.contains(focusItemID) else { return }
+                    scrollToFocus(focusItemID, proxy: proxy)
+                }
+                .onAppear {
+                    guard let focusItemID, visibleItems.contains(where: { $0.id == focusItemID }) else { return }
+                    scrollToFocus(focusItemID, proxy: proxy)
+                }
             }
+        }
+    }
+
+    /// Scrolls to and briefly highlights the item a content-reminder tap named
+    /// — a plain jump-to would land the reader on the right passage with no
+    /// sense of why THAT card, among a whole category of nearly identical
+    /// cards, is the one the notification meant.
+    private func scrollToFocus(_ id: String, proxy: ScrollViewProxy) {
+        withAnimation { proxy.scrollTo(id, anchor: .center) }
+        withAnimation { highlightedItemID = id }
+        Task {
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            withAnimation { highlightedItemID = nil }
         }
     }
 
@@ -217,6 +262,10 @@ public struct AzkarBrowseScreen: View {
             ),
             arabic: item.arabicText,
             tokens: tokens
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color(hexToken: tokens.primary), lineWidth: highlightedItemID == item.id ? 2.5 : 0)
         )
     }
 }

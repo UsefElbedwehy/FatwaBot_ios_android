@@ -252,4 +252,30 @@ final class ContentReminderPlannerTests: XCTestCase {
         XCTAssertEqual(decoded.perDay, 2)
         XCTAssertTrue(decoded.enabled)
     }
+
+    // MARK: - categorySlug (client report: tapping a hadith/azkar reminder
+    // didn't open the specific entry it showed)
+
+    /// The whole fix hinges on this surviving the trip from `ContentSnippet`
+    /// through to `PlannedContentReminder` — that's what a notification's
+    /// `userInfo` is built from, and from there what the tap handler uses to
+    /// select the right collection/category before scrolling to the item.
+    func testCategorySlugSurvivesFromSnippetToPlannedReminder() {
+        let azkar = [ContentSnippet(id: "z1", categorySlug: "morning", text: "ذكر الصباح")]
+        let hadith = [ContentSnippet(id: "h1", categorySlug: "bukhari", text: "حديث البخاري")]
+        let result = plan(perDay: 2, azkar: azkar, hadith: hadith)
+
+        let azkarReminder = result.first { $0.kind == .azkar }
+        let hadithReminder = result.first { $0.kind == .hadith }
+        XCTAssertEqual(azkarReminder?.categorySlug, "morning")
+        XCTAssertEqual(hadithReminder?.categorySlug, "bukhari")
+    }
+
+    /// A snippet built without one (or an older cached pool) must not crash —
+    /// `categorySlug` is optional precisely so this degrades to "no specific
+    /// collection to select", not a decode failure.
+    func testMissingCategorySlugPlansCleanlyAsNil() {
+        let result = plan(perDay: 1, azkar: [ContentSnippet(id: "z1", text: "ذكر")])
+        XCTAssertNil(result.first?.categorySlug)
+    }
 }

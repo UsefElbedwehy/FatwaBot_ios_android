@@ -77,6 +77,9 @@ struct RootTabView: View {
     // Typed rather than `NavigationPath` so the screen on top is readable
     // (NavigationPath is opaque) — needed for screen-view reporting.
     @State private var worshipPath: [WorshipDestination] = []
+    // Which specific azkar/hadith item to land on — set only when the tap
+    // that opened this path was a content-reminder notification.
+    @State private var worshipContentFocus: ContentFocus?
     // Hoisted so they're created ONCE and survive tab switches. Previously
     // built inline in `body` (recreated on every re-eval → the Journey tab
     // reset to an empty profile and re-ran a full network reload on every
@@ -152,7 +155,7 @@ struct RootTabView: View {
                     AnalyticsEvents.notificationOpenedApp,
                     params: [AnalyticsEvents.paramRoute: link.rawValue]
                 )
-                open(link)
+                open(link, contentFocus: tapRouter.pendingContentFocus)
                 tapRouter.consume()
             }
             .onOpenURL { url in
@@ -223,10 +226,14 @@ struct RootTabView: View {
         }
     }
 
-    /// Routes a widget / Live Activity tap to the screen it promised. Resets the
-    /// worship stack first so a second tap from a different widget doesn't land
-    /// on top of the previous destination.
-    private func open(_ link: DeepLink) {
+    /// Routes a widget / Live Activity / notification tap to the screen it
+    /// promised. Resets the worship stack first so a second tap from a
+    /// different source doesn't land on top of the previous destination.
+    ///
+    /// - Parameter contentFocus: which specific azkar/hadith item to land on,
+    ///   for a content-reminder tap. `nil` for every other source (widgets and
+    ///   Live Activities have never known about a specific item, only a tab).
+    private func open(_ link: DeepLink, contentFocus: ContentFocus? = nil) {
         switch link {
         case .home:
             selection = .home
@@ -239,6 +246,7 @@ struct RootTabView: View {
         case .qibla, .tasbeeh, .azkar, .dua, .awrad, .hadith, .journey:
             selection = .worship
             worshipPath = link.worshipDestination.map { [$0] } ?? []
+            worshipContentFocus = contentFocus
         }
     }
 
@@ -285,7 +293,8 @@ struct RootTabView: View {
             RemembranceScreen(
                 initial: destination == .dua ? .dua : .azkar,
                 azkarViewModel: azkarViewModel,
-                duaViewModel: duaViewModel
+                duaViewModel: duaViewModel,
+                focus: worshipContentFocus
             )
             .navigationTitle(Text("worship.remembrance"))
             .navigationBarTitleDisplayMode(.inline)
@@ -296,7 +305,9 @@ struct RootTabView: View {
         case .hadith:
             HadithCollectionsScreen(
                 viewModel: Container.shared.hadithViewModel(),
-                locale: ContentLocale.current
+                locale: ContentLocale.current,
+                focusEntryID: worshipContentFocus?.contentID,
+                focusCollectionSlug: worshipContentFocus?.categorySlug
             )
                 .navigationTitle(Text("worship.hadith"))
                 .navigationBarTitleDisplayMode(.inline)
