@@ -30,7 +30,7 @@
         {
           "id": "fad6d966-b689-43fa-82f3-94e562c5fbe2",
           "sortOrder": 2,
-          "arabicText": "قُلْ هُوَ ٱللَّهُ أَحَدٌ، ٱللَّهُ ٱلصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ",
+          "arabicText": "قُلْ هُوَ ٱللَّهُ أَحَدٌ ۝ ٱللَّهُ ٱلصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ",
           "transliteration": "Bismillaahir Rahmaanir Raheem \"Qul huwal laahu ahad (1) Allah hus-samad (2) Lam yalid wa lam yoolad (3) Wa lam yakul-lahoo kufuwan ahad (4)",
           "translation": "(1) Say, He is Allah, [who is] One, (2) Allah, the Eternal Refuge.(3) He neither begets nor is born,(4) Nor is there to Him any equivalent.",
           "virtueNote": "من قالها ثلاث مرات حين يصبح وحين يمسي كفته من كل شيء",
@@ -40,7 +40,7 @@
         {
           "id": "d6baa79d-0398-4b63-8b80-4388ef4c098a",
           "sortOrder": 3,
-          "arabicText": "قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ ٱلنَّفَّٰثَٰتِ فِى ٱلْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
+          "arabicText": "قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ ۝ مِن شَرِّ مَا خَلَقَ ۝ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ۝ وَمِن شَرِّ ٱلنَّفَّٰثَٰتِ فِى ٱلْعُقَدِ ۝ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
           "transliteration": "Bismillaahir Rahmaanir Raheem \"Qul a'oozu bi rabbil-falaq (1) Min sharri maa khalaq (2) Wa min sharri ghaasiqin izaa waqab (3) Wa min sharrin-naffaa-taati fil 'uqad (4) Wa min sharri haasidin izaa hasad (5)",
           "translation": "(1) Say, I seek refuge in the Lord of daybreak (2) From the evil of that which He created (3) And from the evil of darkness when it settles (4) And from the evil of the blowers in knots (5) And from the evil of an envier when he envies.",
           "virtueNote": "من قالها ثلاث مرات حين يصبح وحين يمسي كفته من كل شيء",
@@ -50,7 +50,7 @@
         {
           "id": "d17b42c0-ab21-448c-970f-da038537499e",
           "sortOrder": 4,
-          "arabicText": "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ، مَلِكِ ٱلنَّاسِ، إِلَٰهِ ٱلنَّاسِ، مِن شَرِّ ٱلْوَسْوَاسِ ٱلْخَنَّاسِ، ٱلَّذِى يُوَسْوِسُ فِى صُدُورِ ٱلنَّاسِ، مِنَ ٱلْجِنَّةِ وَٱلنَّاسِ",
+          "arabicText": "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ ۝ مَلِكِ ٱلنَّاسِ ۝ إِلَٰهِ ٱلنَّاسِ ۝ مِن شَرِّ ٱلْوَسْوَاسِ ٱلْخَنَّاسِ ۝ ٱلَّذِى يُوَسْوِسُ فِى صُدُورِ ٱلنَّاسِ ۝ مِنَ ٱلْجِنَّةِ وَٱلنَّاسِ",
           "transliteration": "Bismillaahir Rahmaanir Raheem \"Qul a'oozu birabbin naas (1)\nMalikin naas (2)\nIlaahin naas (3)\nMin sharril waswaasil khannaas (4)\nAllazee yuwaswisu fee sudoorin naas (5)\nMinal jinnati wannaas (6)",
           "translation": "(1) Say, I seek refuge in the Lord of mankind (2) The Sovereign of mankind (3) The God of mankind (4) From the evil of the retreating whisperer (5) Who whispers [evil] into the breasts of mankind (6) From among the jinn and mankind.",
           "virtueNote": "من قالها ثلاث مرات حين يصبح وحين يمسي كفته من كل شيء",
@@ -308,7 +308,7 @@
         {
           "id": "c537d47c-8a7d-4e41-a7eb-c4350b328b0c",
           "sortOrder": 3,
-          "arabicText": "قُلْ هُوَ ٱللَّهُ أَحَدٌ، ٱللَّهُ ٱلصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ",
+          "arabicText": "قُلْ هُوَ ٱللَّهُ أَحَدٌ ۝ ٱللَّهُ ٱلصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ",
           "transliteration": "Bismillaahir Rahmaanir Raheem \"Qul huwal laahu ahad (1) Allah hus-samad (2) Lam yalid wa lam yoolad (3) Wa lam yakul-lahoo kufuwan ahad (4)",
           "translation": "(1) Say, He is Allah, [who is] One, (2) Allah, the Eternal Refuge.(3) He neither begets nor is born,(4) Nor is there to Him any equivalent.",
           "virtueNote": "من قالها ثلاث مرات حين يصبح وحين يمسي كفته من كل شيء",
@@ -318,7 +318,7 @@
         {
           "id": "172926f5-216c-46ce-886b-5ebe2c171680",
           "sortOrder": 4,
-          "arabicText": "قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ ٱلنَّفَّٰثَٰتِ فِى ٱلْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
+          "arabicText": "قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ ۝ مِن شَرِّ مَا خَلَقَ ۝ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ۝ وَمِن شَرِّ ٱلنَّفَّٰثَٰتِ فِى ٱلْعُقَدِ ۝ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
           "transliteration": "Bismillaahir Rahmaanir Raheem \"Qul a'oozu bi rabbil-falaq (1) Min sharri maa khalaq (2) Wa min sharri ghaasiqin izaa waqab (3) Wa min sharrin-naffaa-taati fil 'uqad (4) Wa min sharri haasidin izaa hasad (5)",
           "translation": "(1) Say, I seek refuge in the Lord of daybreak (2) From the evil of that which He created (3) And from the evil of darkness when it settles (4) And from the evil of the blowers in knots (5) And from the evil of an envier when he envies.",
           "virtueNote": "من قالها ثلاث مرات حين يصبح وحين يمسي كفته من كل شيء",
@@ -328,7 +328,7 @@
         {
           "id": "328d50da-d45f-4f77-b31e-039babd7f438",
           "sortOrder": 5,
-          "arabicText": "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ، مَلِكِ ٱلنَّاسِ، إِلَٰهِ ٱلنَّاسِ، مِن شَرِّ ٱلْوَسْوَاسِ ٱلْخَنَّاسِ، ٱلَّذِى يُوَسْوِسُ فِى صُدُورِ ٱلنَّاسِ، مِنَ ٱلْجِنَّةِ وَٱلنَّاسِ",
+          "arabicText": "قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ ۝ مَلِكِ ٱلنَّاسِ ۝ إِلَٰهِ ٱلنَّاسِ ۝ مِن شَرِّ ٱلْوَسْوَاسِ ٱلْخَنَّاسِ ۝ ٱلَّذِى يُوَسْوِسُ فِى صُدُورِ ٱلنَّاسِ ۝ مِنَ ٱلْجِنَّةِ وَٱلنَّاسِ",
           "transliteration": "Bismillaahir Rahmaanir Raheem \"Qul a'oozu birabbin naas (1)\nMalikin naas (2)\nIlaahin naas (3)\nMin sharril waswaasil khannaas (4)\nAllazee yuwaswisu fee sudoorin naas (5)\nMinal jinnati wannaas (6)",
           "translation": "(1) Say, I seek refuge in the Lord of mankind (2) The Sovereign of mankind (3) The God of mankind (4) From the evil of the retreating whisperer (5) Who whispers [evil] into the breasts of mankind (6) From among the jinn and mankind.",
           "virtueNote": "من قالها ثلاث مرات حين يصبح وحين يمسي كفته من كل شيء",
