@@ -54,7 +54,16 @@ struct FatwaBotApp: App {
                         for: Notification.Name.NSSystemTimeZoneDidChange
                     )
                 ) { _ in
-                    Task { await Container.shared.prayerViewModel().rescheduleNotifications() }
+                    Task { @MainActor in
+                        let viewModel = Container.shared.prayerViewModel()
+                        await viewModel.rescheduleNotifications()
+                        // Rebuilds the pending notification queue, but the
+                        // on-screen "next prayer" highlight and the Live
+                        // Activity are a separate piece of state that only
+                        // `refreshNextPrayer()` touches — without this they
+                        // kept showing whatever was next before the move.
+                        viewModel.refreshNextPrayer()
+                    }
                 }
                 .onChange(of: scenePhase) { _, phase in
                     // Backgrounding is the natural batch boundary: it's when a
@@ -86,7 +95,17 @@ struct FatwaBotApp: App {
                         // PrayerViewModel.notificationHorizonDays) would otherwise
                         // go quiet with nothing on screen explaining why — this is
                         // the one trigger neither of those can substitute for.
-                        Task { await Container.shared.prayerViewModel().rescheduleNotifications() }
+                        Task { @MainActor in
+                            let viewModel = Container.shared.prayerViewModel()
+                            await viewModel.rescheduleNotifications()
+                            // Same reasoning as the timezone-change handler
+                            // above: without this, resuming from the
+                            // background across a prayer transition (or
+                            // midnight) leaves the "next" highlight and Live
+                            // Activity pointing at whatever was next before
+                            // the app went away.
+                            viewModel.refreshNextPrayer()
+                        }
                     }
                 }
         }

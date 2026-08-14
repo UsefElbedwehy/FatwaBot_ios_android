@@ -93,8 +93,12 @@ public struct PrayerScreen: View {
     }
 
     private var dayTitle: String {
-        let date = Calendar.current.date(byAdding: .day, value: dayOffset, to: Date())!
-        return date.formatted(.dateTime.weekday(.wide).day().month(.wide))
+        var calendar = Calendar.current
+        calendar.timeZone = viewModel.displayTimeZone
+        let date = calendar.date(byAdding: .day, value: dayOffset, to: Date())!
+        return date.formatted(
+            Date.FormatStyle(timeZone: viewModel.displayTimeZone).weekday(.wide).day().month(.wide)
+        )
     }
 
     private func timesCard(for day: PrayerDay) -> some View {
@@ -105,7 +109,9 @@ public struct PrayerScreen: View {
                     Text(entry.name.localizedTitle)
                         .font(isNext ? .body.weight(.semibold) : .body)
                     Spacer()
-                    Text(entry.time.formatted(date: .omitted, time: .shortened))
+                    Text(entry.time.formatted(
+                        Date.FormatStyle(date: .omitted, time: .shortened, timeZone: viewModel.displayTimeZone)
+                    ))
                         .font(isNext ? .body.weight(.semibold) : .body)
                         .monospacedDigit()
                 }

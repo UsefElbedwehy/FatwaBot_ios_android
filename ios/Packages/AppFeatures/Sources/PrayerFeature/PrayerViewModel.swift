@@ -89,14 +89,37 @@ public final class PrayerViewModel {
     /// emitting nothing.
     public func prayerTime(dayOffset: Int, prayer: String) -> Date? {
         guard let location, let name = PrayerName(rawValue: prayer) else { return nil }
-        guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now()) else { return nil }
-        let start = calendar.dateComponents([.year, .month, .day], from: day)
+        let cal = locationCalendar(for: location)
+        guard let day = cal.date(byAdding: .day, value: dayOffset, to: now()) else { return nil }
+        let start = cal.dateComponents([.year, .month, .day], from: day)
         guard let timeline = try? engine.timeline(
             latitude: location.latitude, longitude: location.longitude,
-            startDate: start, days: 1, settings: settings, calendar: calendar
+            startDate: start, days: 1, settings: settings, calendar: cal
         ) else { return nil }
         return timeline.first?.times[name]
     }
+
+    /// A calendar anchored to the resolved location's timezone rather than the
+    /// device's, for resolving which civil day/hour "today"/"now" means. Falls
+    /// back to `calendar`'s own (device) timezone with no location, or if
+    /// reverse-geocoding didn't return one.
+    ///
+    /// Without this, a manually selected city (or GPS resolving faster than an
+    /// automatic-timezone device catches up) in a different timezone than the
+    /// device computed and *displayed* prayer times using the device's
+    /// timezone — correct in absolute UTC terms, but shown as, say, Fajr at
+    /// 3 PM local device time. Prayer times are inherently local-to-the-place;
+    /// nothing else about "next prayer" makes sense translated through a
+    /// timezone the location doesn't have.
+    private func locationCalendar(for location: UserLocation?) -> Calendar {
+        guard let zone = location?.timeZone else { return calendar }
+        var cal = calendar
+        cal.timeZone = zone
+        return cal
+    }
+
+    /// The timezone prayer times should be displayed in — see `locationCalendar(for:)`.
+    public var displayTimeZone: TimeZone { location?.timeZone ?? calendar.timeZone }
 
     /// Rebuilds the rolling notification window (docs/features/prayer.md triggers).
     /// How many days of prayer times to lay out for the notification schedule.
@@ -110,10 +133,11 @@ public final class PrayerViewModel {
 
     public func rescheduleNotifications() async {
         guard let scheduler, let location else { return }
-        let start = calendar.dateComponents([.year, .month, .day], from: now())
+        let cal = locationCalendar(for: location)
+        let start = cal.dateComponents([.year, .month, .day], from: now())
         guard let timeline = try? engine.timeline(
             latitude: location.latitude, longitude: location.longitude,
-            startDate: start, days: notificationHorizonDays, settings: settings, calendar: calendar
+            startDate: start, days: notificationHorizonDays, settings: settings, calendar: cal
         ) else { return }
         await scheduler.reschedule(timeline: timeline, preferences: notificationPreferences, now: now())
     }
@@ -139,7 +163,8 @@ public final class PrayerViewModel {
         (locationProvider as? SystemLocationProvider)?.setManualCity(city, displayName: displayName)
         apply(location: UserLocation(
             latitude: city.latitude, longitude: city.longitude,
-            name: displayName, countryCode: city.countryCode, isManual: true
+            name: displayName, countryCode: city.countryCode, isManual: true,
+            timeZone: city.timeZone
         ))
     }
 
@@ -169,8 +194,9 @@ public final class PrayerViewModel {
 
     public func day(offset: Int) -> PrayerDay? {
         guard let location else { return nil }
-        let date = calendar.date(byAdding: .day, value: offset, to: now())!
-        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        let cal = locationCalendar(for: location)
+        let date = cal.date(byAdding: .day, value: offset, to: now())!
+        let components = cal.dateComponents([.year, .month, .day], from: date)
         return try? engine.day(
             latitude: location.latitude, longitude: location.longitude,
             date: components, settings: settings
@@ -180,18 +206,19 @@ public final class PrayerViewModel {
     private func apply(location: UserLocation, updateWidget: Bool = true) {
         self.location = location
         self.status = .ready
+        let cal = locationCalendar(for: location)
         let currentDate = now()
-        let todayComponents = calendar.dateComponents([.year, .month, .day], from: currentDate)
+        let todayComponents = cal.dateComponents([.year, .month, .day], from: currentDate)
         guard let days = try? engine.timeline(
             latitude: location.latitude, longitude: location.longitude,
-            startDate: todayComponents, days: 2, settings: settings, calendar: calendar
+            startDate: todayComponents, days: 2, settings: settings, calendar: cal
         ), days.count == 2 else { return }
         today = days[0]
         tomorrow = days[1]
         nextPrayer = PrayerEngine.nextPrayer(now: currentDate, today: days[0], tomorrow: days[1])
         hijri = HijriDate(from: currentDate, offsetDays: settings.hijriOffsetDays)
         if updateWidget {
-            writeWidgetSnapshot(location: location, from: todayComponents)
+            writeWidgetSnapshot(location: location, from: todayComponents, calendar: cal)
             syncLiveActivity()
         }
     }
@@ -210,7 +237,7 @@ public final class PrayerViewModel {
 
     /// Precomputes a 48h widget snapshot into the app-group store so widget
     /// processes render with zero network (docs/features/prayer.md).
-    private func writeWidgetSnapshot(location: UserLocation, from startComponents: DateComponents) {
+    private func writeWidgetSnapshot(location: UserLocation, from startComponents: DateComponents, calendar: Calendar) {
         guard let widgetStore else { return }
         let currentDate = now()
         guard let widgetTimeline = try? engine.timeline(
