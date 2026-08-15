@@ -140,9 +140,12 @@ public struct HijriDate: Equatable, Sendable {
     public let day: Int
     public let monthName: String
 
-    public init(from date: Date, offsetDays: Int, locale: Locale = Locale(identifier: "ar")) {
+    public init(
+        from date: Date, offsetDays: Int, locale: Locale = Locale(identifier: "ar"), timeZone: TimeZone? = nil
+    ) {
         var calendar = Calendar(identifier: .islamicUmmAlQura)
         calendar.locale = locale
+        if let timeZone { calendar.timeZone = timeZone }
         let adjusted = calendar.date(byAdding: .day, value: offsetDays, to: date) ?? date
         let components = calendar.dateComponents([.year, .month, .day], from: adjusted)
         self.year = components.year ?? 0
@@ -151,6 +154,7 @@ public struct HijriDate: Equatable, Sendable {
         let formatter = DateFormatter()
         formatter.calendar = calendar
         formatter.locale = locale
+        if let timeZone { formatter.timeZone = timeZone }
         formatter.dateFormat = "MMMM"
         self.monthName = formatter.string(from: adjusted)
     }

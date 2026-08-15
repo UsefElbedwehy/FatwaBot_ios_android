@@ -87,7 +87,7 @@ struct PrayerDaySheetView: View {
                         .foregroundStyle(brandPrimary)
                         .lineLimit(1)
                     Spacer(minLength: 0)
-                    Text(next.time, style: .time)
+                    Text(prayerTime: next.time, timeZone: snapshot.timeZone)
                         .font(.caption)
                         .foregroundStyle(brandMuted)
                 }
@@ -103,6 +103,7 @@ struct PrayerDaySheetView: View {
     /// the countdown above it correctly said الظهر.
     private func times(_ sheet: PrayerWidgetSnapshot.DaySheet) -> some View {
         let nextPrayer = entry.snapshot?.nextEntry(after: entry.date)?.prayer
+        let timeZone = entry.snapshot?.timeZone ?? .current
         let columns = Array(
             repeating: GridItem(.flexible(), spacing: 4), count: family == .systemLarge ? 3 : 6
         )
@@ -114,33 +115,35 @@ struct PrayerDaySheetView: View {
                     isNext: item.prayer == nextPrayer,
                     // Sunrise is not a prayer and must not read as one, at any
                     // size. Tinting it is the cheapest honest signal.
-                    isMuted: item.prayer == "sunrise"
+                    isMuted: item.prayer == "sunrise",
+                    timeZone: timeZone
                 )
             }
         }
     }
 
     private func nightRow(_ sheet: PrayerWidgetSnapshot.DaySheet) -> some View {
-        HStack {
+        let timeZone = entry.snapshot?.timeZone ?? .current
+        return HStack {
             if let midnight = sheet.midnight {
                 cell(title: NSLocalizedString("prayer.midnight", comment: ""),
-                     time: midnight, isNext: false, isMuted: true)
+                     time: midnight, isNext: false, isMuted: true, timeZone: timeZone)
             }
             if let lastThird = sheet.lastThird {
                 cell(title: NSLocalizedString("prayer.last_third", comment: ""),
-                     time: lastThird, isNext: false, isMuted: true)
+                     time: lastThird, isNext: false, isMuted: true, timeZone: timeZone)
             }
         }
     }
 
-    private func cell(title: String, time: Date, isNext: Bool, isMuted: Bool) -> some View {
+    private func cell(title: String, time: Date, isNext: Bool, isMuted: Bool, timeZone: TimeZone) -> some View {
         VStack(spacing: 1) {
             Text(title)
                 .font(.caption2)
                 .foregroundStyle(isNext ? brandPrimary : brandMuted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Text(time, style: .time)
+            Text(prayerTime: time, timeZone: timeZone)
                 .font(.caption.weight(isNext ? .bold : .regular))
                 .monospacedDigit()
                 .foregroundStyle(isNext ? brandPrimary : (isMuted ? brandMuted : brandInk))

@@ -18,6 +18,16 @@ let brandSurface = Color(red: 0xFA / 255, green: 0xF3 / 255, blue: 0xEC / 255)
 let brandInk = Color(red: 0x2A / 255, green: 0x21 / 255, blue: 0x18 / 255)
 let brandMuted = Color(red: 0x6B / 255, green: 0x5E / 255, blue: 0x52 / 255)
 
+extension Text {
+    /// A prayer time at a specific timezone. `Text(_:style:.time)` always
+    /// renders in the device's timezone with no way to override it — wrong
+    /// here, since a prayer time is local to the resolved location, not to
+    /// whatever timezone the device viewing the widget happens to be set to.
+    init(prayerTime date: Date, timeZone: TimeZone) {
+        self.init(date.formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: timeZone)))
+    }
+}
+
 extension View {
     /// The cream card every home-screen widget sits on, plus the ink default
     /// that must travel with it.
@@ -54,7 +64,7 @@ struct NextPrayerView: View {
     let entry: PrayerEntry
 
     var body: some View {
-        if let next = entry.snapshot?.nextEntry(after: entry.date) {
+        if let snapshot = entry.snapshot, let next = snapshot.nextEntry(after: entry.date) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("home.next_prayer")
                     .font(.caption2)
@@ -66,7 +76,7 @@ struct NextPrayerView: View {
                     .font(.headline.monospacedDigit())
                     .foregroundStyle(brandPrimary)
                 Spacer()
-                Text(next.time, style: .time)
+                Text(prayerTime: next.time, timeZone: snapshot.timeZone)
                     .font(.caption)
                     .foregroundStyle(brandMuted)
             }
@@ -98,7 +108,12 @@ struct PrayerTimelineView: View {
 
     private var todaysEntries: [PrayerWidgetSnapshot.Entry] {
         guard let snapshot = entry.snapshot else { return [] }
-        let calendar = Calendar.current
+        // The location's civil day in an explicitly Gregorian calendar — not
+        // the device's, whose *identifier* isn't guaranteed Gregorian (e.g.
+        // `ar_SA` defaults to Islamic Umm al-Qura), and not its timezone
+        // either, both of which can silently drop or duplicate rows.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = snapshot.timeZone
         return snapshot.upcoming.filter { calendar.isDate($0.time, inSameDayAs: entry.date) }
     }
 
@@ -128,7 +143,7 @@ struct PrayerTimelineView: View {
                                     .fontWeight(isNext ? .bold : .regular)
                                     .foregroundStyle(isNext ? brandPrimary : brandInk)
                                 Spacer()
-                                Text(item.time, style: .time)
+                                Text(prayerTime: item.time, timeZone: snapshot.timeZone)
                                     .font(.body.monospacedDigit())
                                     .fontWeight(isNext ? .bold : .regular)
                                     .foregroundStyle(isNext ? brandPrimary : brandMuted)
@@ -153,7 +168,7 @@ struct PrayerTimelineView: View {
                                 Text(PrayerWidgetSnapshot.title(for: item.prayer))
                                     .font(.caption2)
                                     .foregroundStyle(isNext ? brandPrimary : brandMuted)
-                                Text(item.time, style: .time)
+                                Text(prayerTime: item.time, timeZone: snapshot.timeZone)
                                     .font(.caption2.monospacedDigit())
                                     .fontWeight(isNext ? .bold : .regular)
                                     .foregroundStyle(isNext ? brandPrimary : brandMuted)
@@ -197,10 +212,11 @@ struct NextPrayerAccessoryView: View {
 
     var body: some View {
         let next = entry.snapshot?.nextEntry(after: entry.date)
+        let timeZone = entry.snapshot?.timeZone ?? .current
         switch family {
         case .accessoryInline:
             if let next {
-                Text("\(PrayerWidgetSnapshot.title(for: next.prayer)) • \(next.time, style: .time)")
+                Text("\(PrayerWidgetSnapshot.title(for: next.prayer)) • ") + Text(prayerTime: next.time, timeZone: timeZone)
             } else {
                 Text("home.next_prayer")
             }
@@ -214,7 +230,7 @@ struct NextPrayerAccessoryView: View {
                 } currentValueLabel: {
                     VStack(spacing: -1) {
                         Image(systemName: "moon.stars.fill").font(.system(size: 9))
-                        Text(next.time, style: .time)
+                        Text(prayerTime: next.time, timeZone: timeZone)
                             .font(.system(size: 11).monospacedDigit())
                     }
                 }
@@ -223,7 +239,7 @@ struct NextPrayerAccessoryView: View {
                 VStack(spacing: 1) {
                     Image(systemName: "moon.stars.fill").font(.caption2)
                     if let next {
-                        Text(next.time, style: .time).font(.caption2.monospacedDigit())
+                        Text(prayerTime: next.time, timeZone: timeZone).font(.caption2.monospacedDigit())
                     }
                 }
             }
@@ -240,7 +256,7 @@ struct NextPrayerAccessoryView: View {
                             .font(.headline)
                             .lineLimit(1)
                         Spacer(minLength: 2)
-                        Text(next.time, style: .time)
+                        Text(prayerTime: next.time, timeZone: timeZone)
                             .font(.subheadline.monospacedDigit())
                     }
                     .widgetAccentable()
@@ -296,9 +312,10 @@ struct AllPrayersSmallView: View {
 
     var body: some View {
         if let sheet = todaySheet, !sheet.times.isEmpty {
+            let timeZone = entry.snapshot?.timeZone ?? .current
             HStack(alignment: .top, spacing: 10) {
-                column(columns.0)
-                column(columns.1)
+                column(columns.0, timeZone: timeZone)
+                column(columns.1, timeZone: timeZone)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         } else {
@@ -306,7 +323,7 @@ struct AllPrayersSmallView: View {
         }
     }
 
-    private func column(_ items: [PrayerWidgetSnapshot.Entry]) -> some View {
+    private func column(_ items: [PrayerWidgetSnapshot.Entry], timeZone: TimeZone) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(items, id: \.time) { item in
                 let isCurrent = item.prayer == currentPrayer
@@ -315,7 +332,7 @@ struct AllPrayersSmallView: View {
                         .font(.system(size: 10, weight: isCurrent ? .bold : .regular))
                         .foregroundStyle(isCurrent ? brandPrimary : brandMuted)
                         .lineLimit(1)
-                    Text(item.time, style: .time)
+                    Text(prayerTime: item.time, timeZone: timeZone)
                         .font(.system(size: 11, weight: .semibold).monospacedDigit())
                         .foregroundStyle(isCurrent ? brandPrimary : brandInk)
                 }
@@ -355,6 +372,7 @@ struct AllPrayersAccessoryView: View {
 
     var body: some View {
         let items = [window.previous, window.next, window.afterNext].compactMap { $0 }
+        let timeZone = entry.snapshot?.timeZone ?? .current
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(items, id: \.time) { item in
@@ -366,7 +384,7 @@ struct AllPrayersAccessoryView: View {
                             .font(.system(size: 11))
                             .lineLimit(1)
                         Spacer(minLength: 4)
-                        Text(item.time, style: .time)
+                        Text(prayerTime: item.time, timeZone: timeZone)
                             .font(.system(size: 11).monospacedDigit())
                     }
                     .widgetAccentable(isNext)

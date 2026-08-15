@@ -99,22 +99,31 @@ public final class PrayerViewModel {
         return timeline.first?.times[name]
     }
 
-    /// A calendar anchored to the resolved location's timezone rather than the
-    /// device's, for resolving which civil day/hour "today"/"now" means. Falls
-    /// back to `calendar`'s own (device) timezone with no location, or if
-    /// reverse-geocoding didn't return one.
+    /// A **Gregorian** calendar anchored to the resolved location's timezone
+    /// rather than the device's, for resolving which civil day/hour
+    /// "today"/"now" means before handing it to `PrayerEngine`/Adhan.
     ///
-    /// Without this, a manually selected city (or GPS resolving faster than an
-    /// automatic-timezone device catches up) in a different timezone than the
-    /// device computed and *displayed* prayer times using the device's
-    /// timezone — correct in absolute UTC terms, but shown as, say, Fajr at
-    /// 3 PM local device time. Prayer times are inherently local-to-the-place;
-    /// nothing else about "next prayer" makes sense translated through a
-    /// timezone the location doesn't have.
+    /// Two independent things go wrong without this, and both were found live:
+    ///
+    /// 1. **Timezone.** A manually selected city (or GPS resolving faster than
+    ///    an automatic-timezone device catches up) in a different timezone
+    ///    than the device computed and *displayed* prayer times using the
+    ///    device's timezone — correct in absolute UTC terms, but shown as,
+    ///    say, Fajr at 3 PM local device time.
+    ///
+    /// 2. **Calendar identifier.** `calendar` (injected as device `.current`)
+    ///    is not guaranteed to be Gregorian — `ar_SA` and similar locales
+    ///    default `Calendar.current` to Islamic Umm al-Qura unless a user
+    ///    explicitly overrides it in Settings. Adhan has no concept of
+    ///    calendar systems; it treats whatever `year`/`month`/`day` it's
+    ///    given as Gregorian. Extracting "today" via an Islamic calendar and
+    ///    handing e.g. `(1448, 3, 1)` to Adhan computes real, valid prayer
+    ///    times — for Gregorian March 1st, year 1448 AD. Forcing `.gregorian`
+    ///    here, always, regardless of what identifier `calendar` itself has,
+    ///    is what Adhan's contract actually requires.
     private func locationCalendar(for location: UserLocation?) -> Calendar {
-        guard let zone = location?.timeZone else { return calendar }
-        var cal = calendar
-        cal.timeZone = zone
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = location?.timeZone ?? calendar.timeZone
         return cal
     }
 
@@ -216,7 +225,7 @@ public final class PrayerViewModel {
         today = days[0]
         tomorrow = days[1]
         nextPrayer = PrayerEngine.nextPrayer(now: currentDate, today: days[0], tomorrow: days[1])
-        hijri = HijriDate(from: currentDate, offsetDays: settings.hijriOffsetDays)
+        hijri = HijriDate(from: currentDate, offsetDays: settings.hijriOffsetDays, timeZone: location.timeZone)
         if updateWidget {
             writeWidgetSnapshot(location: location, from: todayComponents, calendar: cal)
             syncLiveActivity()
@@ -247,8 +256,9 @@ public final class PrayerViewModel {
         let snapshot = PrayerWidgetSnapshot.build(
             timeline: widgetTimeline,
             location: location.name,
-            hijri: HijriDate(from: currentDate, offsetDays: settings.hijriOffsetDays),
-            generatedAt: currentDate
+            hijri: HijriDate(from: currentDate, offsetDays: settings.hijriOffsetDays, timeZone: location.timeZone),
+            generatedAt: currentDate,
+            timeZoneIdentifier: location.timeZone?.identifier
         )
         widgetStore.write(snapshot)
         reloadWidgets?()

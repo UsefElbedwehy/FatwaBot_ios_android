@@ -51,6 +51,15 @@ public struct PrayerWidgetSnapshot: Codable, Equatable, Sendable {
     /// whole day rather than the next prayer.
     public let days: [DaySheet]
     public let generatedAt: Date
+    /// The resolved location's timezone — nil when it wasn't known (reverse-
+    /// geocoding gave no timezone) or when read from a snapshot an older app
+    /// build wrote before this field existed. See `timeZone`.
+    public let timeZoneIdentifier: String?
+
+    /// The location's timezone, falling back to the device's. Widgets display
+    /// a prayer's *local* time at that location, not a device-timezone
+    /// translation of it — same reasoning as `PrayerViewModel.displayTimeZone`.
+    public var timeZone: TimeZone { timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current }
 
     public init(
         locationName: String,
@@ -59,7 +68,8 @@ public struct PrayerWidgetSnapshot: Codable, Equatable, Sendable {
         hijriYear: Int,
         upcoming: [Entry],
         days: [DaySheet] = [],
-        generatedAt: Date
+        generatedAt: Date,
+        timeZoneIdentifier: String? = nil
     ) {
         self.locationName = locationName
         self.hijriMonthName = hijriMonthName
@@ -68,6 +78,7 @@ public struct PrayerWidgetSnapshot: Codable, Equatable, Sendable {
         self.upcoming = upcoming
         self.days = days
         self.generatedAt = generatedAt
+        self.timeZoneIdentifier = timeZoneIdentifier
     }
 
     // Hand-written so that `days` decodes as empty rather than failing outright.
@@ -78,7 +89,7 @@ public struct PrayerWidgetSnapshot: Codable, Equatable, Sendable {
     // opened the app. An empty day list degrades to "day sheet not ready"; a
     // failed decode takes the working widgets down with it.
     private enum CodingKeys: String, CodingKey {
-        case locationName, hijriMonthName, hijriDay, hijriYear, upcoming, days, generatedAt
+        case locationName, hijriMonthName, hijriDay, hijriYear, upcoming, days, generatedAt, timeZoneIdentifier
     }
 
     public init(from decoder: Decoder) throws {
@@ -90,6 +101,7 @@ public struct PrayerWidgetSnapshot: Codable, Equatable, Sendable {
         upcoming = try c.decode([Entry].self, forKey: .upcoming)
         days = try c.decodeIfPresent([DaySheet].self, forKey: .days) ?? []
         generatedAt = try c.decode(Date.self, forKey: .generatedAt)
+        timeZoneIdentifier = try c.decodeIfPresent(String.self, forKey: .timeZoneIdentifier)
     }
 
     /// The day sheet covering `date`.
@@ -115,7 +127,8 @@ public struct PrayerWidgetSnapshot: Codable, Equatable, Sendable {
         location: String,
         hijri: HijriDate,
         generatedAt: Date,
-        horizon: TimeInterval = 48 * 3600
+        horizon: TimeInterval = 48 * 3600,
+        timeZoneIdentifier: String? = nil
     ) -> PrayerWidgetSnapshot {
         let cutoff = generatedAt.addingTimeInterval(horizon)
         let entries = timeline
@@ -150,7 +163,8 @@ public struct PrayerWidgetSnapshot: Codable, Equatable, Sendable {
             hijriYear: hijri.year,
             upcoming: entries,
             days: sheets,
-            generatedAt: generatedAt
+            generatedAt: generatedAt,
+            timeZoneIdentifier: timeZoneIdentifier
         )
     }
 }

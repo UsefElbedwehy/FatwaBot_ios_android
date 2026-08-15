@@ -93,11 +93,17 @@ public struct PrayerScreen: View {
     }
 
     private var dayTitle: String {
-        var calendar = Calendar.current
+        // Explicitly Gregorian: `Calendar.current`'s *identifier* isn't
+        // guaranteed Gregorian (e.g. `ar_SA` defaults to Islamic Umm al-Qura
+        // unless overridden in Settings) — this label sits right next to the
+        // Hijri date above it and must not accidentally show the same
+        // calendar twice instead of one of each.
+        var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = viewModel.displayTimeZone
         let date = calendar.date(byAdding: .day, value: dayOffset, to: Date())!
         return date.formatted(
-            Date.FormatStyle(timeZone: viewModel.displayTimeZone).weekday(.wide).day().month(.wide)
+            Date.FormatStyle(calendar: calendar, timeZone: viewModel.displayTimeZone)
+                .weekday(.wide).day().month(.wide)
         )
     }
 

@@ -50,11 +50,19 @@ public struct HijriWeek: Equatable, Sendable {
     public static func containing(
         _ date: Date,
         offsetDays: Int = 0,
-        locale: Locale = Locale(identifier: "ar")
+        locale: Locale = Locale(identifier: "ar"),
+        timeZone: TimeZone? = nil
     ) -> HijriWeek {
         var hijri = Calendar(identifier: .islamicUmmAlQura)
         hijri.locale = locale
-        let gregorian = Calendar.current
+        // Explicitly Gregorian, matching the variable's name and intent —
+        // `Calendar.current`'s identifier isn't guaranteed Gregorian (e.g.
+        // `ar_SA` defaults to Islamic Umm al-Qura unless overridden).
+        var gregorian = Calendar(identifier: .gregorian)
+        if let timeZone {
+            hijri.timeZone = timeZone
+            gregorian.timeZone = timeZone
+        }
 
         let adjusted = gregorian.date(byAdding: .day, value: offsetDays, to: date) ?? date
         let today = gregorian.startOfDay(for: adjusted)
@@ -76,7 +84,7 @@ public struct HijriWeek: Equatable, Sendable {
             )
         }
 
-        let hijriToday = HijriDate(from: date, offsetDays: offsetDays, locale: locale)
+        let hijriToday = HijriDate(from: date, offsetDays: offsetDays, locale: locale, timeZone: timeZone)
         return HijriWeek(monthName: hijriToday.monthName, year: hijriToday.year, days: days)
     }
 

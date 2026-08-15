@@ -28,7 +28,7 @@ struct PrayerCalendarView: View {
     @Environment(\.widgetFamily) private var family
     let entry: PrayerEntry
 
-    private var week: HijriWeek { HijriWeek.containing(entry.date) }
+    private var week: HijriWeek { HijriWeek.containing(entry.date, timeZone: entry.snapshot?.timeZone) }
 
     var body: some View {
         if family == .systemSmall {
@@ -53,7 +53,7 @@ struct PrayerCalendarView: View {
                     .foregroundStyle(brandPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                Text(next.time, style: .time)
+                Text(prayerTime: next.time, timeZone: entry.snapshot?.timeZone ?? .current)
                     .font(.caption)
                     .foregroundStyle(brandMuted)
                 if let location = entry.snapshot?.locationName, !location.isEmpty {

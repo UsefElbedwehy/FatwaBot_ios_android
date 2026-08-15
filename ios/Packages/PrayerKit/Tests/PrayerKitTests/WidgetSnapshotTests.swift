@@ -135,6 +135,49 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertNil(snapshot.sheet(for: Date()))
     }
 
+    // MARK: - Timezone
+
+    /// Regression test: widgets used to render every time via `Text(_,
+    /// style: .time)`, which always uses the device's timezone — the same
+    /// bug fixed for the main Prayer screen, on a different surface. The
+    /// snapshot now carries the location's own timezone through `build(...)`.
+    func testTimeZoneReflectsBuiltIdentifier() throws {
+        let days = try timeline(days: 1)
+        let generatedAt = try XCTUnwrap(days.first).time(.fajr)
+        let snapshot = PrayerWidgetSnapshot.build(
+            timeline: days, location: "الرياض",
+            hijri: HijriDate(from: generatedAt, offsetDays: 0), generatedAt: generatedAt,
+            timeZoneIdentifier: "Asia/Riyadh"
+        )
+        XCTAssertEqual(snapshot.timeZone.identifier, "Asia/Riyadh")
+    }
+
+    func testTimeZoneFallsBackToDeviceCurrentWhenNotKnown() throws {
+        let days = try timeline(days: 1)
+        let generatedAt = try XCTUnwrap(days.first).time(.fajr)
+        let snapshot = PrayerWidgetSnapshot.build(
+            timeline: days, location: "x",
+            hijri: HijriDate(from: generatedAt, offsetDays: 0), generatedAt: generatedAt
+        )
+        XCTAssertEqual(snapshot.timeZone, .current)
+    }
+
+    /// Same reasoning as `testDecodesSnapshotWrittenBeforeDaySheetsExisted`:
+    /// a snapshot written by an app build before this field existed has no
+    /// `timeZoneIdentifier` key at all, and must still decode.
+    func testDecodesSnapshotWrittenBeforeTimeZoneExisted() throws {
+        let json = """
+        {"locationName":"الرياض","hijriMonthName":"صفر","hijriDay":25,"hijriYear":1448,
+         "upcoming":[{"prayer":"fajr","time":"2026-08-08T02:36:00Z"}],
+         "generatedAt":"2026-08-08T00:00:00Z"}
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let snapshot = try decoder.decode(PrayerWidgetSnapshot.self, from: Data(json.utf8))
+        XCTAssertNil(snapshot.timeZoneIdentifier)
+        XCTAssertEqual(snapshot.timeZone, .current)
+    }
+
     func testStoreRoundTrip() throws {
         let dir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent(UUID().uuidString)
