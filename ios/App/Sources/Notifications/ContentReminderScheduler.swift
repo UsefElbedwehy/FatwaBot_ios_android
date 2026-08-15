@@ -107,7 +107,7 @@ final class ContentReminderScheduler: ContentReminderScheduling, @unchecked Send
             category.items.compactMap { item -> ContentSnippet? in
                 guard let text = preferredText(arabic: item.arabicText, translation: item.translation, locale: locale)
                 else { return nil }
-                // `category.id`, not `.slug` — `AzkarBrowseScreen` selects by id.
+                // `category.id`, not `.slug` — `RemembranceScreen` selects by id.
                 return ContentSnippet(id: item.id, categorySlug: category.id, text: text)
             }
         }
