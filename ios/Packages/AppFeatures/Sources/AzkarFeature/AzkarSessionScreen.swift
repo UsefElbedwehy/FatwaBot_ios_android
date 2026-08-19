@@ -8,7 +8,6 @@ import SwiftUI
 /// game (ADR-0007 tone guidance).
 public struct AzkarSessionScreen: View {
     @State private var viewModel: AzkarViewModel
-    @State private var showTranslation = true
     @Environment(\.colorScheme) private var colorScheme
     private let category: AzkarCategory
 
@@ -65,7 +64,7 @@ public struct AzkarSessionScreen: View {
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: .infinity, alignment: .trailing)
 
-                        if showTranslation, let translation = item.translation {
+                        if let translation = item.translation {
                             Divider()
                                 .overlay(Color(hexToken: tokens.outline))
                             Text(translation)
@@ -94,17 +93,6 @@ public struct AzkarSessionScreen: View {
                     .padding(.top, 4)
             }
             .padding(20)
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showTranslation.toggle()
-                } label: {
-                    Image(systemName: showTranslation ? "text.bubble.fill" : "text.bubble")
-                        .foregroundStyle(Color(hexToken: tokens.primary))
-                }
-                .accessibilityLabel(Text("azkar.toggle_translation"))
-            }
         }
     }
 
