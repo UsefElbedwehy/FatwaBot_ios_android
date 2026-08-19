@@ -19,9 +19,17 @@ import type { LeaderboardRepo } from "./leaderboard_types.ts";
 import type { SearchHistoryRepo } from "./search_types.ts";
 import type { DeliveryLogRepo, NotificationPrefsRepo } from "./notification_types.ts";
 import type { PushSender } from "./fcm_sender.ts";
+import type { FatwaSearchRepo } from "./fatwa_types.ts";
+import type { AnswerProvider, EmbeddingProvider } from "./ai_search/providers.ts";
 import { handleSendCampaign } from "./handlers/send_campaign.ts";
+import { handleSearch } from "./handlers/search.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
-import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile, handleUpdatePushToken } from "./handlers/accounts.ts";
+import {
+  handleLinkProvider,
+  handleProviderSignIn,
+  handleUpdateProfile,
+  handleUpdatePushToken,
+} from "./handlers/accounts.ts";
 import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
 import { handleSubmitAnalyticsEvents } from "./handlers/analytics.ts";
 import {
@@ -96,6 +104,12 @@ export interface Deps {
   deliveryLog: DeliveryLogRepo;
   /** FCM sender — undefined until FCM_SERVICE_ACCOUNT is configured. */
   pushSender?: PushSender;
+  fatwaSearch: FatwaSearchRepo;
+  /** Both undefined until VOYAGE_API_KEY / ANTHROPIC_API_KEY are configured
+   *  — /v1/search 503s until then rather than answering from a meaningless
+   *  dev-stub embedding/echo in production. */
+  embeddingProvider?: EmbeddingProvider;
+  answerProvider?: AnswerProvider;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".
@@ -218,6 +232,8 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           return await handleSubmitAnalyticsEvents(ctx, deps, req, await readBody(req));
         case "/v1/search-history":
           return await handleRecordSearch(ctx, deps, req, await readBody(req));
+        case "/v1/search":
+          return await handleSearch(ctx, deps, req, await readBody(req));
       }
       if (leaderboardActionMatch) {
         const [, key, action] = leaderboardActionMatch;

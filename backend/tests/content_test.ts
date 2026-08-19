@@ -16,6 +16,7 @@ import { InMemoryAnalyticsRepo } from "./in_memory_analytics_repo.ts";
 import { InMemoryLeaderboardRepo } from "./in_memory_leaderboard_repo.ts";
 import { InMemorySearchHistoryRepo } from "./in_memory_search_repo.ts";
 import { InMemoryDeliveryLogRepo, InMemoryNotificationPrefsRepo } from "./in_memory_notification_repo.ts";
+import { InMemoryFatwaSearchRepo } from "./in_memory_fatwa_repo.ts";
 
 const BASE = "https://x.supabase.co/functions/v1/api";
 
@@ -37,6 +38,7 @@ function deps() {
     searchHistory: new InMemorySearchHistoryRepo(),
     notificationPrefs: new InMemoryNotificationPrefsRepo(),
     deliveryLog: new InMemoryDeliveryLogRepo(),
+    fatwaSearch: new InMemoryFatwaSearchRepo(),
   };
 }
 

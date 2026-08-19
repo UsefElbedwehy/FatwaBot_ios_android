@@ -19,6 +19,8 @@ import { SupabaseLeaderboardRepo } from "./supabase_leaderboard_repo.ts";
 import { SupabaseSearchHistoryRepo } from "./supabase_search_repo.ts";
 import { SupabaseDeliveryLogRepo, SupabaseNotificationPrefsRepo } from "./supabase_notification_repo.ts";
 import { FcmSender, parseServiceAccount } from "./fcm_sender.ts";
+import { SupabaseFatwaSearchRepo } from "./supabase_fatwa_repo.ts";
+import { ClaudeAnswerProvider, VoyageEmbeddingProvider } from "./ai_search/providers.ts";
 
 const client = supabaseClientFromEnv();
 const jwtSecret = Deno.env.get("API_JWT_SECRET");
@@ -27,9 +29,17 @@ if (!jwtSecret) throw new Error("API_JWT_SECRET not set");
 // Optional: the FCM sender only exists once the Firebase service account is
 // provisioned as a secret; campaign dispatch returns 503 until then.
 const fcmServiceAccount = Deno.env.get("FCM_SERVICE_ACCOUNT");
-const pushSender = fcmServiceAccount
-  ? new FcmSender(parseServiceAccount(fcmServiceAccount))
-  : undefined;
+const pushSender = fcmServiceAccount ? new FcmSender(parseServiceAccount(fcmServiceAccount)) : undefined;
+
+// Same optional-until-configured pattern as pushSender above: /v1/search
+// 503s (docs/features/ai-search-m5.0-spec.md §Answer contract) until both
+// VOYAGE_API_KEY and ANTHROPIC_API_KEY are provisioned as secrets — never
+// silently falls back to the meaningless dev-stub embedder/answerer in
+// production.
+const voyageApiKey = Deno.env.get("VOYAGE_API_KEY");
+const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
+const embeddingProvider = voyageApiKey ? new VoyageEmbeddingProvider(voyageApiKey) : undefined;
+const answerProvider = anthropicApiKey ? new ClaudeAnswerProvider(anthropicApiKey) : undefined;
 
 const deps = {
   repo: new SupabaseConfigRepo(client),
@@ -52,6 +62,9 @@ const deps = {
   notificationPrefs: new SupabaseNotificationPrefsRepo(client),
   deliveryLog: new SupabaseDeliveryLogRepo(client),
   pushSender,
+  fatwaSearch: new SupabaseFatwaSearchRepo(client),
+  embeddingProvider,
+  answerProvider,
 };
 
 Deno.serve((req) => route(req, deps));

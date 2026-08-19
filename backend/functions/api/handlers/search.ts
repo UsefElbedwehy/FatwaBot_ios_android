@@ -1,0 +1,112 @@
+// POST /v1/search (docs/features/ai-search-m5.0-spec.md §Answer contract).
+// question + mode → hybrid retrieve → AnswerProvider → citation-verify →
+// log to fatwa.answers_log + the existing per-user search history →
+// { answer, citations[], refused, mode }. A refusal is a normal 200
+// response (refused=true, localized message, empty citations), not an
+// error — the error path is reserved for the AI stack not being configured
+// at all (503) or a genuine failure.
+import { verifyAccessToken } from "../auth/jwt.ts";
+import { apiError, json } from "../http.ts";
+import { resolveRequired } from "../locale_resolve.ts";
+import type { AppContext } from "../types.ts";
+import type { FatwaMode, FatwaSearchRepo } from "../fatwa_types.ts";
+import type { AnswerProvider, EmbeddingProvider } from "../ai_search/providers.ts";
+import { hybridRetrieve } from "../ai_search/retrieval.ts";
+import { verifyCitations } from "../ai_search/citation_verify.ts";
+import type { SearchHistoryRepo, SearchSource } from "../search_types.ts";
+
+export interface SearchDeps {
+  fatwaSearch: FatwaSearchRepo;
+  /** Both undefined until VOYAGE_API_KEY / ANTHROPIC_API_KEY are configured
+   *  — mirrors the FCM sender's optional-until-configured pattern
+   *  (fcm_sender.ts), so this endpoint 503s rather than silently answering
+   *  from a meaningless dev-stub embedding/echo in production. */
+  embeddingProvider?: EmbeddingProvider;
+  answerProvider?: AnswerProvider;
+  searchHistory: SearchHistoryRepo;
+  jwtSecret: string;
+}
+
+const VALID_MODES: FatwaMode[] = ["fatwa", "hadith", "general"];
+
+function isValidMode(value: unknown): value is FatwaMode {
+  return typeof value === "string" && (VALID_MODES as string[]).includes(value);
+}
+
+const MODE_TO_HISTORY_SOURCE: Record<FatwaMode, SearchSource> = {
+  fatwa: "ai_fatwa",
+  hadith: "ai_hadith",
+  general: "ai_question",
+};
+
+const REFUSAL_MESSAGE: Record<string, string> = {
+  ar: "لم نجد في مصادرنا الموثوقة ما يجيب عن هذا السؤال.",
+  en: "We couldn't find a vetted source that answers this question.",
+};
+
+async function requireUser(req: Request, jwtSecret: string): Promise<string | Response> {
+  const header = req.headers.get("authorization");
+  if (!header?.startsWith("Bearer ")) return apiError(401, "unauthorized", "Valid bearer token required");
+  const claims = await verifyAccessToken(header.slice("Bearer ".length), jwtSecret);
+  if (!claims) return apiError(401, "unauthorized", "Valid bearer token required");
+  return claims.sub;
+}
+
+/** POST /v1/search */
+export async function handleSearch(
+  ctx: AppContext,
+  deps: SearchDeps,
+  req: Request,
+  body: unknown,
+): Promise<Response> {
+  const userOrError = await requireUser(req, deps.jwtSecret);
+  if (userOrError instanceof Response) return userOrError;
+  const userId = userOrError;
+
+  const b = (body as Record<string, unknown> | null) ?? {};
+  if (!isValidMode(b.mode)) {
+    return apiError(400, "invalid_mode", `mode must be one of ${VALID_MODES.join(", ")}`);
+  }
+  if (typeof b.question !== "string" || b.question.trim().length === 0) {
+    return apiError(400, "invalid_question", "question must be a non-empty string");
+  }
+  const mode = b.mode;
+  const question = b.question.trim();
+
+  if (!deps.embeddingProvider || !deps.answerProvider) {
+    return apiError(503, "ai_unavailable", "AI search is not configured yet");
+  }
+
+  const chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode);
+  const raw = await deps.answerProvider.answer(question, mode, chunks, ctx.locale);
+  const chunkTextById = new Map(chunks.map((c) => [c.chunkId, c.text]));
+  const verified = verifyCitations(raw, chunkTextById);
+
+  const answer = verified.refused ? resolveRequired(REFUSAL_MESSAGE, ctx.locale) : verified.answer;
+
+  await deps.fatwaSearch.logAnswer(ctx, {
+    userId,
+    mode,
+    question,
+    retrievedChunkIds: chunks.map((c) => c.chunkId),
+    citations: verified.citations,
+    answer,
+    refused: verified.refused,
+    model: verified.model,
+  });
+  await deps.searchHistory.record(ctx, userId, MODE_TO_HISTORY_SOURCE[mode], question, ctx.locale);
+
+  return json({
+    answer,
+    citations: verified.citations.map((c) => ({
+      chunk_id: c.chunkId,
+      scholar: c.scholar,
+      source_title: c.sourceTitle,
+      page_number: c.pageNumber ?? null,
+      video_timestamp: c.videoTimestamp ?? null,
+      quoted_text: c.quotedText,
+    })),
+    refused: verified.refused,
+    mode,
+  });
+}
