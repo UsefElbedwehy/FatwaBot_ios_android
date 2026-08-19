@@ -44,3 +44,9 @@ coverage/
 
 # XcodeGen output (regenerate: cd ios/App && xcodegen generate)
 ios/App/FatwaBot.xcodeproj/
+
+# Generated hadith/content import SQL (regenerate via scripts/hadith_import.ts)
+backend/supabase/imports/
+
+# Local signing config — per developer, never committed.
+ios/App/Local.env

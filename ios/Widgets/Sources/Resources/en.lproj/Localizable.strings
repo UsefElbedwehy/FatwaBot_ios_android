@@ -18,3 +18,45 @@
 "widget.streak.longest %lld" = "Best: %lld";
 "widget.daily_challenge.name" = "Daily Challenge";
 "widget.daily_challenge.desc" = "Today's mission progress";
+"widget.dua.name" = "Daily Du\'a";
+"widget.dua.desc" = "A rotating supplication";
+"widget.dua.title" = "Du\'a";
+
+"widget.hadith.name" = "Daily Hadith";
+"widget.hadith.desc" = "A short hadith, refreshed through the day.";
+"widget.hadith.title" = "Hadith";
+"streak.badge.accessibility %lld" = "Streak: %lld days";
+
+"prayer.midnight" = "Midnight";
+"prayer.last_third" = "Last third";
+"widget.day_sheet.name" = "Full day";
+"widget.day_sheet.desc" = "The day's full timetable with sunrise, midnight and the last third of the night.";
+
+"deed.azkar_morning" = "Morning adhkar";
+"deed.azkar_evening" = "Evening adhkar";
+"deed.done" = "Done";
+"deed.not_done" = "Not done";
+"widget.worship_tracker.name" = "Worship tracker";
+"widget.worship_tracker.desc" = "Log your prayers and adhkar with one tap from the home screen.";
+
+"widget.tasbih.name" = "Counter";
+"widget.tasbih.desc" = "Dhikr counter. Tap the widget to count.";
+"widget.tasbih.hint" = "Tap to count";
+"widget.tasbih.reset" = "Reset";
+
+"occasion.ramadan" = "Ramadan";
+"occasion.eid_al_fitr" = "Eid al-Fitr";
+"occasion.eid_al_adha" = "Eid al-Adha";
+"occasion.days" = "days";
+"widget.occasion.name" = "Ramadan & Eid";
+"widget.occasion.desc" = "Days remaining until Ramadan and the two Eids.";
+
+"widget.prayer_calendar.name" = "Prayer & calendar";
+"widget.prayer_calendar.desc" = "The next prayer alongside the Hijri calendar.";
+"widget.open_app" = "Open the app";
+
+"widget.all_prayers.name" = "All Prayers";
+"widget.all_prayers.desc" = "All of today's prayer times, two columns.";
+
+"widget.prayer_window.name" = "Nearby Prayers";
+"widget.prayer_window.desc" = "The previous, current, and next prayer on the Lock Screen.";

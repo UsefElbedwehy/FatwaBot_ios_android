@@ -9,11 +9,14 @@ import {
   InMemoryAdminUsersRepo,
   InMemoryAuditLogRepo,
 } from "./in_memory_admin_repo.ts";
+import { InMemoryAdminStringsRepo } from "./in_memory_admin_strings_repo.ts";
 import { DevIdentityProviderVerifier } from "../functions/api/auth/provider_verify.ts";
 import { InMemoryGamificationRepo } from "./in_memory_gamification_repo.ts";
+import { InMemoryAnalyticsRepo } from "./in_memory_analytics_repo.ts";
 import { InMemoryLeaderboardRepo } from "./in_memory_leaderboard_repo.ts";
 import { InMemorySearchHistoryRepo } from "./in_memory_search_repo.ts";
 import { InMemoryDeliveryLogRepo, InMemoryNotificationPrefsRepo } from "./in_memory_notification_repo.ts";
+import { InMemoryFatwaSearchRepo } from "./in_memory_fatwa_repo.ts";
 
 const BASE = "https://x.supabase.co/functions/v1/api";
 const SECRET = "test-secret";
@@ -27,14 +30,17 @@ function deps() {
     adminContent: new InMemoryAdminContentRepo(),
     adminUsers: new InMemoryAdminUsersRepo(),
     adminAuth: new InMemoryAdminAuthRepo(),
+    adminStrings: new InMemoryAdminStringsRepo(),
     auditLog: new InMemoryAuditLogRepo(),
     jwtSecret: SECRET,
     verifier: new DevIdentityProviderVerifier(),
     gamification: new InMemoryGamificationRepo(),
+    analytics: new InMemoryAnalyticsRepo(),
     leaderboard: new InMemoryLeaderboardRepo(),
     searchHistory: new InMemorySearchHistoryRepo(),
     notificationPrefs: new InMemoryNotificationPrefsRepo(),
     deliveryLog: new InMemoryDeliveryLogRepo(),
+    fatwaSearch: new InMemoryFatwaSearchRepo(),
   };
 }
 

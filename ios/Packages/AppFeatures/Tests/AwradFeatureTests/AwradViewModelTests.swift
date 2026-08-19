@@ -40,10 +40,14 @@ final class AwradViewModelTests: XCTestCase {
         store: WirdStoring = InMemoryStore(),
         haptics: HapticsProviding = NoopHaptics(),
         activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
+        nameResolver: @escaping FixedWirdSlots.NameResolver = FixedWirdSlots.defaultNames,
         now: Date? = nil
     ) -> AwradViewModel {
         let time = now ?? fixedNow
-        return AwradViewModel(store: store, haptics: haptics, activityEvents: activityEvents, now: { time }, calendar: utcCalendar)
+        return AwradViewModel(
+            store: store, haptics: haptics, activityEvents: activityEvents,
+            nameResolver: nameResolver, now: { time }, calendar: utcCalendar
+        )
     }
 
     private func template(name: String = "الصلاة على النبي", type: String = "salawat", target: Int = 100, unit: String = "times") -> WirdTemplate {
@@ -128,6 +132,42 @@ final class AwradViewModelTests: XCTestCase {
         XCTAssertEqual(events.recorded.map(\.eventType), ["wird_ticked"])
     }
 
+    // MARK: - Leaderboard currency
+    //
+    // Only the four fixed slots are ranked (owner decision, 2026-07). These two
+    // tests are the contract: if `fixed_wird_completed` ever stops firing, the
+    // leaderboard silently flatlines with no other symptom.
+
+    @MainActor
+    func testCrossingTargetOnAFixedSlotEmitsTheLeaderboardEvent() {
+        let events = SpyActivityEvents()
+        let viewModel = makeViewModel(activityEvents: events)
+        viewModel.addTodaysWird()
+
+        let quran = viewModel.wirds.first { $0.id == FixedWirdSlot.dailyQuran.wirdId }!
+        XCTAssertEqual(quran.target, 1)
+
+        viewModel.tick(wirdId: quran.id)
+        XCTAssertEqual(events.recorded.map(\.eventType), ["wird_ticked", "fixed_wird_completed"])
+        XCTAssertEqual(events.recorded.last?.metadata["wird_id"], quran.id)
+
+        // Ticking past target must not score again — otherwise the cap is the
+        // only thing standing between this and "who tapped the most".
+        viewModel.tick(wirdId: quran.id)
+        XCTAssertEqual(events.recorded.filter { $0.eventType == "fixed_wird_completed" }.count, 1)
+    }
+
+    @MainActor
+    func testCustomWirdsAreDeliberatelyNotRanked() {
+        let events = SpyActivityEvents()
+        let viewModel = makeViewModel(activityEvents: events)
+        viewModel.createWird(fromTemplate: template(target: 1))
+        viewModel.tick(wirdId: viewModel.wirds[0].id)
+
+        XCTAssertEqual(events.recorded.map(\.eventType), ["wird_ticked"])
+        XCTAssertFalse(events.recorded.contains { $0.eventType == "fixed_wird_completed" })
+    }
+
     @MainActor
     func testMarkDayCompleteRecordsAnActivityEventOnlyWhenItActuallyCompletes() {
         let events = SpyActivityEvents()
@@ -142,28 +182,101 @@ final class AwradViewModelTests: XCTestCase {
     }
 
     @MainActor
-    func testArchivingRemovesFromActiveBoardButKeepsHistoricalProgress() {
+    func testDeletingRemovesFromActiveBoardButKeepsHistoricalProgress() {
         let viewModel = makeViewModel()
         viewModel.createWird(fromTemplate: template(target: 5))
         let wirdId = viewModel.wirds[0].id
         viewModel.tick(wirdId: wirdId, amount: 5)
         XCTAssertEqual(viewModel.stats.salawatCount, 5)
 
-        viewModel.archiveWird(wirdId)
-        XCTAssertTrue(viewModel.activeWirds.isEmpty, "archived wird must not appear on the active board")
+        viewModel.deleteWird(wirdId)
+        XCTAssertTrue(viewModel.activeWirds.isEmpty, "deleted wird must not appear on the active board")
         XCTAssertEqual(viewModel.stats.salawatCount, 5, "historical progress must remain in stats")
     }
 
     @MainActor
-    func testDayCompletionExcludesArchivedWirds() {
+    func testDayCompletionExcludesDeletedWirds() {
         let viewModel = makeViewModel()
         viewModel.createWird(fromTemplate: template(name: "A", target: 1))
         viewModel.createWird(fromTemplate: template(name: "B", target: 1))
         let (a, b) = (viewModel.wirds[0].id, viewModel.wirds[1].id)
-        viewModel.archiveWird(b) // archived before ever being touched
+        viewModel.deleteWird(b) // deleted before ever being touched
 
         viewModel.tick(wirdId: a, amount: 1)
-        XCTAssertTrue(viewModel.markDayComplete(), "archived wird B must not block completion")
+        XCTAssertTrue(viewModel.markDayComplete(), "deleted wird B must not block completion")
+    }
+
+    // MARK: - Fixed-slot seeding and deletion (client decision, 2026-08-12)
+    //
+    // Nothing is seeded by default anymore; a user opts in with "أضف ورد
+    // اليوم", and once on the board the four fixed slots are ordinary wirds —
+    // including being deletable, which the old model explicitly refused.
+
+    @MainActor
+    func testFreshBoardHasNoWirdsUntilAddTodaysWirdIsCalled() {
+        let viewModel = makeViewModel()
+        XCTAssertTrue(viewModel.wirds.isEmpty)
+
+        viewModel.addTodaysWird()
+        XCTAssertEqual(viewModel.wirds.count, FixedWirdSlot.allCases.count)
+        XCTAssertTrue(viewModel.wirds.allSatisfy(\.isFixed))
+    }
+
+    @MainActor
+    func testAddTodaysWirdPersistsThroughTheStore() {
+        let store = InMemoryStore()
+        let viewModel = makeViewModel(store: store)
+        viewModel.addTodaysWird()
+
+        XCTAssertEqual(store.wirds.count, FixedWirdSlot.allCases.count)
+    }
+
+    @MainActor
+    func testAddTodaysWirdDoesNotDisturbExistingCustomWirds() {
+        let viewModel = makeViewModel()
+        viewModel.createCustomWird(name: "ورد خاص", type: "custom", target: 3, unit: "times", frequency: "daily")
+        let customId = viewModel.wirds[0].id
+
+        viewModel.addTodaysWird()
+        XCTAssertTrue(viewModel.wirds.contains { $0.id == customId })
+        XCTAssertEqual(viewModel.wirds.count, FixedWirdSlot.allCases.count + 1)
+    }
+
+    @MainActor
+    func testFixedSlotsCanBeDeletedUnlikeTheOldModel() {
+        let viewModel = makeViewModel()
+        viewModel.addTodaysWird()
+        let qiyamId = FixedWirdSlot.qiyamAlLayl.wirdId
+
+        XCTAssertTrue(viewModel.deleteWird(qiyamId))
+        XCTAssertFalse(viewModel.activeWirds.contains { $0.id == qiyamId })
+    }
+
+    @MainActor
+    func testAddTodaysWirdReAddsOnlyTheMissingSlots() {
+        let viewModel = makeViewModel()
+        viewModel.addTodaysWird()
+        viewModel.deleteWird(FixedWirdSlot.qiyamAlLayl.wirdId)
+        XCTAssertEqual(viewModel.activeWirds.count, FixedWirdSlot.allCases.count - 1)
+
+        viewModel.addTodaysWird()
+        XCTAssertEqual(viewModel.activeWirds.count, FixedWirdSlot.allCases.count)
+    }
+
+    /// Client report: a fixed slot seeded under one language stayed in that
+    /// language forever after switching the device's language — because
+    /// nothing re-seeds automatically anymore, and the old name was frozen at
+    /// creation. Loading the board (init or `reload()`) must self-heal this
+    /// without the user doing anything.
+    @MainActor
+    func testLoadingTheBoardRefreshesAStaleFixedSlotNameToTheCurrentLanguage() {
+        let store = InMemoryStore()
+        store.wirds = [FixedWirdSlots.wird(for: .qiyamAlLayl, name: { _ in "Night Prayer (Qiyam)" }, now: fixedNow)]
+
+        let viewModel = makeViewModel(store: store, nameResolver: { _ in "قيام الليل" })
+
+        XCTAssertEqual(viewModel.wirds.first?.name, "قيام الليل")
+        XCTAssertEqual(store.wirds.first?.name, "قيام الليل", "the refreshed name must be persisted, not just shown in memory")
     }
 
     @MainActor

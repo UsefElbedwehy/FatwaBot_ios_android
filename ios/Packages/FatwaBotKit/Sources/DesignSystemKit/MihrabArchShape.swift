@@ -61,3 +61,28 @@ public struct ArchIconBadge: View {
         .accessibilityHidden(true)
     }
 }
+
+
+/// The arch badge with the app's own mark inside it, for places that were
+/// standing in with a generic SF Symbol — the coming-soon sheet and the qibla
+/// fallback (owner request, 2026-08).
+public struct BrandLogoBadge: View {
+    private let tokens: ColorTokens
+    private let size: CGSize
+
+    public init(tokens: ColorTokens, size: CGSize = CGSize(width: 92, height: 104)) {
+        self.tokens = tokens
+        self.size = size
+    }
+
+    public var body: some View {
+        ZStack {
+            MihrabArchShape()
+                .fill(Color(hexToken: tokens.primaryContainer))
+            FatwaMark(color: Color(hexToken: tokens.primary))
+                .frame(height: size.height * 0.52)
+        }
+        .frame(width: size.width, height: size.height)
+        .accessibilityHidden(true)
+    }
+}

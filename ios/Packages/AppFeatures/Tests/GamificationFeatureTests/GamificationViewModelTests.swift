@@ -13,6 +13,9 @@ final class FakeAuthenticatedAPIClient: AuthenticatedAPIClientProtocol, @uncheck
     var getHandler: (@Sendable (String, [URLQueryItem]) throws -> Any)?
     var postHandler: (@Sendable (String, Any) throws -> Any)?
     private(set) var postCallCount = 0
+    /// Encoded request bodies, so a test can assert on what actually went over
+    /// the wire rather than on queue state that a successful flush has cleared.
+    private(set) var postedBodies: [String] = []
 
     func get<Response: Decodable & Sendable>(_ path: String, query: [URLQueryItem]) async throws -> Response {
         guard let result = try getHandler?(path, query) as? Response else {
@@ -23,6 +26,9 @@ final class FakeAuthenticatedAPIClient: AuthenticatedAPIClientProtocol, @uncheck
 
     func post<Body: Encodable & Sendable, Response: Decodable & Sendable>(_ path: String, body: Body) async throws -> Response {
         postCallCount += 1
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        postedBodies.append((try? encoder.encode(body)).flatMap { String(data: $0, encoding: .utf8) } ?? "")
         guard let result = try postHandler?(path, body) as? Response else {
             throw APIError.transport("no handler configured")
         }

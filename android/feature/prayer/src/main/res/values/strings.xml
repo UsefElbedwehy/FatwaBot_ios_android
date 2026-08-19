@@ -9,6 +9,10 @@
     <string name="prayer_pick_city">Choose your city</string>
     <string name="prayer_previous_day">Previous day</string>
     <string name="prayer_next_day">Next day</string>
+    <string name="qibla_compass_desc">Qibla compass</string>
+    <string name="qibla_calibrating">Calibrating… move your device in a figure 8</string>
+    <string name="qibla_magnetic_interference">Magnetic interference — move away from metal objects</string>
+    <string name="qibla_direction">Qibla direction: %1$d°</string>
     <string name="city_makkah">Makkah</string>
     <string name="city_madinah">Madinah</string>
     <string name="city_riyadh">Riyadh</string>

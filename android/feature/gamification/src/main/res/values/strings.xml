@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gamification_streaks">Streaks</string>
+    <string name="gamification_empty">Start your journey — complete an activity to see your progress here</string>
+    <string name="gamification_longest">Longest: %1$d</string>
+    <string name="gamification_grace_remaining">Grace remaining: %1$d</string>
+    <string name="gamification_badge_earned">%1$s, earned</string>
+    <string name="gamification_badge_not_earned">%1$s, not earned yet</string>
+    <string name="streak_badge_accessibility">Streak: %1$d days</string>
+</resources>

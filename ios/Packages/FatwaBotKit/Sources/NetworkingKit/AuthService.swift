@@ -42,6 +42,8 @@ public actor AuthService: AuthTokenProviding {
     private var cached: AuthTokens?
     /// Refresh proactively this many seconds before expiry.
     private let expiryBuffer: TimeInterval = 60
+    /// The in-flight refresh-or-sign-in, if any — see `refreshedTokens()`.
+    private var refreshTask: Task<AuthTokens, Error>?
 
     public init(baseURL: URL, context: ClientContext, store: AuthTokenStoring, session: URLSession = .shared) {
         self.baseURL = baseURL
@@ -55,20 +57,38 @@ public actor AuthService: AuthTokenProviding {
         if let cached, cached.expiresAt.timeIntervalSinceNow > expiryBuffer {
             return cached.accessToken
         }
-        if let cached {
-            if let refreshed = try? await refresh(using: cached.refreshToken) {
-                return refreshed.accessToken
-            }
-        }
-        return try await signInAnonymous().accessToken
+        return try await refreshedTokens().accessToken
     }
 
     public func invalidateAndRefresh() async throws -> String {
-        guard let cached else { return try await signInAnonymous().accessToken }
-        if let refreshed = try? await refresh(using: cached.refreshToken) {
-            return refreshed.accessToken
+        try await refreshedTokens().accessToken
+    }
+
+    /// Coalesces concurrent refresh/sign-in attempts into one in-flight call.
+    ///
+    /// `validAccessToken()` and `invalidateAndRefresh()` are both reachable
+    /// from several call sites racing at app launch or after a token expires
+    /// mid-session. Actors are reentrant at `await` points, so without this,
+    /// two callers arriving while the cached token is expired would each read
+    /// the same stale `cached` and independently call `refresh(using:)` with
+    /// the same refresh token. The backend's refresh tokens are single-use
+    /// with replay rejection (ADR-0004): one call wins, the other's `try?`
+    /// swallows the rejection and falls through to `signInAnonymous()` —
+    /// silently dropping a signed-in session back to a fresh anonymous one.
+    /// Storing the attempt as a `Task` and having later callers await the
+    /// same instance keeps every caller on one outcome.
+    private func refreshedTokens() async throws -> AuthTokens {
+        if let refreshTask { return try await refreshTask.value }
+        let refreshToken = cached?.refreshToken
+        let task = Task<AuthTokens, Error> {
+            if let refreshToken, let refreshed = try? await self.refresh(using: refreshToken) {
+                return refreshed
+            }
+            return try await self.signInAnonymous()
         }
-        return try await signInAnonymous().accessToken
+        refreshTask = task
+        defer { refreshTask = nil }
+        return try await task.value
     }
 
     private func signInAnonymous() async throws -> AuthTokens {

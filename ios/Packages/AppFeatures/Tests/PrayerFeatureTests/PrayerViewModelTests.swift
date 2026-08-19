@@ -225,6 +225,83 @@ final class PrayerViewModelTests: XCTestCase {
         XCTAssertGreaterThan(spy.startCount, callsAfterStart, "a timer-tick refresh must also sync the activity while enabled")
     }
 
+    /// Regression test for a real bug, live-reproduced: prayer times were
+    /// computed correctly in absolute terms but *displayed* via the device's
+    /// timezone rather than the resolved location's — a Riyadh location on a
+    /// device set to Pacific time showed Fajr shifted ~11 hours into the
+    /// afternoon. `displayTimeZone` must reflect the location, not the
+    /// injected device calendar.
+    @MainActor
+    func testDisplayTimeZoneUsesResolvedLocationNotDeviceCalendar() {
+        var deviceCalendar = Calendar(identifier: .gregorian)
+        deviceCalendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let riyadhWithZone = UserLocation(
+            latitude: 24.7136, longitude: 46.6753, name: "الرياض", countryCode: "SA", isManual: false,
+            timeZone: TimeZone(identifier: "Asia/Riyadh")
+        )
+        let viewModel = PrayerViewModel(
+            locationProvider: StubLocation(cachedLocation: riyadhWithZone, resolveResult: .resolved(riyadhWithZone)),
+            settings: PrayerSettings(method: "umm_al_qura"),
+            now: { [fixedNow] in fixedNow },
+            calendar: deviceCalendar
+        )
+        XCTAssertEqual(viewModel.displayTimeZone.identifier, "Asia/Riyadh")
+    }
+
+    /// Companion regression test for the same bug, at a day boundary: which
+    /// *civil day* "today" resolves to must also follow the location, not
+    /// the device. Picks an instant where Riyadh (UTC+3) has already crossed
+    /// into January 1st while Los Angeles (PST, UTC-8) is still on the 31st.
+    @MainActor
+    func testCivilDayFollowsLocationTimeZoneNotDeviceAcrossMidnight() {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        let crossoverNow = utc.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 1, minute: 0))!
+
+        var deviceCalendar = Calendar(identifier: .gregorian)
+        deviceCalendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let riyadhWithZone = UserLocation(
+            latitude: 24.7136, longitude: 46.6753, name: "الرياض", countryCode: "SA", isManual: false,
+            timeZone: TimeZone(identifier: "Asia/Riyadh")
+        )
+        let viewModel = PrayerViewModel(
+            locationProvider: StubLocation(cachedLocation: riyadhWithZone, resolveResult: .resolved(riyadhWithZone)),
+            settings: PrayerSettings(method: "umm_al_qura"),
+            now: { crossoverNow },
+            calendar: deviceCalendar
+        )
+        XCTAssertEqual(viewModel.today?.date.year, 2026)
+        XCTAssertEqual(viewModel.today?.date.month, 1)
+        XCTAssertEqual(viewModel.today?.date.day, 1, "Riyadh's civil day, not Dec 31 from the device's Pacific calendar")
+    }
+
+    /// Regression test for a second bug found while live-verifying the
+    /// timezone fix above: `ar_SA` and similar locales default
+    /// `Calendar.current`'s *identifier* to Islamic Umm al-Qura, not just its
+    /// timezone — a real device configuration, reproduced live on the
+    /// simulator used to test this app. Adhan has no concept of calendar
+    /// systems; it treats whatever year/month/day it's given as Gregorian.
+    /// Extracting "today" via an injected Islamic calendar and handing e.g.
+    /// (1448, 3, 20) to Adhan silently computed real prayer times for
+    /// Gregorian March 20th, year 1448 AD — centuries off, caught only by
+    /// checking the raw widget snapshot JSON, not by anything on screen.
+    @MainActor
+    func testGregorianDayIsUsedEvenWhenDeviceCalendarIsIslamic() {
+        var islamicDeviceCalendar = Calendar(identifier: .islamicUmmAlQura)
+        islamicDeviceCalendar.timeZone = TimeZone(identifier: "Asia/Riyadh")!
+        let viewModel = PrayerViewModel(
+            locationProvider: StubLocation(cachedLocation: riyadh, resolveResult: .resolved(riyadh)),
+            settings: PrayerSettings(method: "umm_al_qura"),
+            now: { [fixedNow] in fixedNow },
+            calendar: islamicDeviceCalendar
+        )
+        // fixedNow is 2026-03-20T09:46:40Z — must resolve to that real
+        // Gregorian day, not the Hijri year/month/day misread as Gregorian.
+        XCTAssertEqual(viewModel.today?.date.year, 2026)
+        XCTAssertEqual(viewModel.today?.date.month, 3)
+        XCTAssertEqual(viewModel.today?.date.day, 20)
+    }
+
     @MainActor
     func testDayOffsetNavigation() {
         let viewModel = PrayerViewModel(

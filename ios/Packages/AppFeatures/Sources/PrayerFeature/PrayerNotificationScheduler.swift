@@ -1,14 +1,27 @@
+import CoreKit
 import Foundation
 import PrayerKit
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
 
+/// Coarse enough to act on (show/hide a "notifications are off" banner)
+/// without leaking `UNAuthorizationStatus` past this file.
+public enum NotificationAuthorization: Sendable {
+    case authorized
+    case denied
+    case notDetermined
+}
+
 /// Registers the pure `NotificationPlanner` output with the OS. Reschedules on
 /// the triggers from docs/features/prayer.md (foreground, settings change,
 /// significant location change, daily background refresh).
 public protocol PrayerNotificationScheduling: Sendable {
     func requestAuthorization() async -> Bool
+    /// Current OS permission, without prompting — for surfacing a "notifications
+    /// are off" banner. `requestAuthorization()` only prompts once per install;
+    /// this is what notices a *later* revocation from iOS Settings.
+    func authorizationStatus() async -> NotificationAuthorization
     /// Replace all pending prayer notifications with a freshly built plan.
     func reschedule(
         timeline: [PrayerDay],
@@ -38,6 +51,15 @@ public final class PrayerNotificationScheduler: PrayerNotificationScheduling, @u
         (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
+    public func authorizationStatus() async -> NotificationAuthorization {
+        switch await center.notificationSettings().authorizationStatus {
+        case .authorized, .provisional, .ephemeral: .authorized
+        case .denied: .denied
+        case .notDetermined: .notDetermined
+        @unknown default: .notDetermined
+        }
+    }
+
     public func reschedule(
         timeline: [PrayerDay],
         preferences: PrayerNotificationPreferences,
@@ -55,11 +77,40 @@ public final class PrayerNotificationScheduler: PrayerNotificationScheduling, @u
             let content = UNMutableNotificationContent()
             content.title = stringProvider(item.titleKey)
             content.body = stringProvider(item.bodyKey)
-            content.sound = item.kind == .adhan ? .default : .default
+            // The adhan is the call itself and should carry more weight than the
+            // nudge that precedes it. `Sound.adhan` resolves to a bundled audio
+            // file when one is present and falls back to the system default, so
+            // this is correct today and improves the moment audio is added.
+            //
+            // Previously this read `item.kind == .adhan ? .default : .default` —
+            // a ternary whose branches were identical, so the intent was written
+            // down but never actually took effect.
+            content.sound = item.kind == .adhan ? NotificationSound.adhan : .default
             content.categoryIdentifier = Self.categoryPrefix + item.kind.rawValue
+            // Without this the tap handler has no route and the tap does nothing.
+            // Every prayer kind (adhan, pre-adhan, iqama, last-third) lands on
+            // the Prayer screen.
+            content.userInfo = [DeepLink.notificationUserInfoKey: DeepLink.prayer.rawValue]
 
+            // Time-sensitive, and not decoration: without this the adhan is an
+            // `.active` notification, which iOS is free to withhold for
+            // Scheduled Summary and to silence under any Focus. That is exactly
+            // the reported symptom — the call to prayer arriving minutes late,
+            // or on some days not arriving at all. A prayer time is the textbook
+            // case Apple documents this level for.
+            //
+            // Requires the com.apple.developer.usernotifications.time-sensitive
+            // entitlement; without it the level is ignored rather than rejected,
+            // so the entitlement and this line have to travel together.
+            if #available(iOS 15.0, *) {
+                content.interruptionLevel = .timeSensitive
+            }
+
+            // Seconds included. Truncating to the minute made every notification
+            // fire up to 59 seconds *before* the true prayer time — small, but
+            // wrong in the one direction that matters for Fajr and Maghrib.
             let components = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute], from: item.fireDate
+                [.year, .month, .day, .hour, .minute, .second], from: item.fireDate
             )
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             let request = UNNotificationRequest(identifier: item.id, content: content, trigger: trigger)

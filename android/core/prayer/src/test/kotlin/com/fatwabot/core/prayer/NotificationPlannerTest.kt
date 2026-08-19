@@ -52,17 +52,57 @@ class NotificationPlannerTest {
         assertTrue(plan.indexOf(pre) < plan.indexOf(adhan))
     }
 
+    /** Defaults are per prayer: Fajr waits 20 minutes, the rest 10. */
     @Test
-    fun `iqama reminder fires after adhan`() {
+    fun `iqama reminder uses the per prayer gap`() {
         val days = timeline(1)
         val plan = NotificationPlanner.plan(
             days,
-            PrayerNotificationPreferences(adhanEnabled = false, preAdhanEnabled = false, iqamaEnabled = true, iqamaOffsetMinutes = 20),
+            PrayerNotificationPreferences(adhanEnabled = false, preAdhanEnabled = false, iqamaEnabled = true),
             Instant.fromEpochSeconds(0),
         )
         assertTrue(plan.all { it.kind == PlannedNotification.Kind.IQAMA })
+
+        val fajr = plan.first { it.prayer == PrayerNameUi.FAJR }
+        assertEquals(1200L, fajr.fireEpochSeconds - days[0].times.getValue(PrayerNameUi.FAJR).epochSeconds)
         val asr = plan.first { it.prayer == PrayerNameUi.ASR }
-        assertEquals(1200L, asr.fireEpochSeconds - days[0].times.getValue(PrayerNameUi.ASR).epochSeconds)
+        assertEquals(600L, asr.fireEpochSeconds - days[0].times.getValue(PrayerNameUi.ASR).epochSeconds)
+
+        // Sunrise is not a prayer and never gets a congregation reminder.
+        assertFalse(plan.any { it.prayer == PrayerNameUi.SUNRISE })
+        assertEquals(
+            PrayerNameUi.entries.filter { it.isPrayer }.toSet(),
+            plan.mapNotNull { it.prayer }.toSet(),
+        )
+    }
+
+    @Test
+    fun `iqama reminder honours a customised gap`() {
+        val days = timeline(1)
+        val prefs = PrayerNotificationPreferences(adhanEnabled = false, preAdhanEnabled = false, iqamaEnabled = true)
+            .withIqamaOffset(PrayerNameUi.ASR, 25)
+        val plan = NotificationPlanner.plan(days, prefs, Instant.fromEpochSeconds(0))
+        val asr = plan.first { it.prayer == PrayerNameUi.ASR }
+        assertEquals(1500L, asr.fireEpochSeconds - days[0].times.getValue(PrayerNameUi.ASR).epochSeconds)
+        val isha = plan.first { it.prayer == PrayerNameUi.ISHA }
+        assertEquals(600L, isha.fireEpochSeconds - days[0].times.getValue(PrayerNameUi.ISHA).epochSeconds)
+    }
+
+    /** A partial map must never drop a prayer's reminder. */
+    @Test
+    fun `iqama falls back per prayer when a key is missing`() {
+        val days = timeline(1)
+        val prefs = PrayerNotificationPreferences(
+            adhanEnabled = false, preAdhanEnabled = false, iqamaEnabled = true,
+            iqamaOffsetsByPrayer = mapOf(PrayerNameUi.FAJR.key to 25),
+        )
+        val plan = NotificationPlanner.plan(days, prefs, Instant.fromEpochSeconds(0))
+        assertEquals(
+            PrayerNameUi.entries.filter { it.isPrayer }.toSet(),
+            plan.mapNotNull { it.prayer }.toSet(),
+        )
+        val isha = plan.first { it.prayer == PrayerNameUi.ISHA }
+        assertEquals(600L, isha.fireEpochSeconds - days[0].times.getValue(PrayerNameUi.ISHA).epochSeconds)
     }
 
     @Test

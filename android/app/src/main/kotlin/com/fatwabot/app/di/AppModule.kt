@@ -19,7 +19,17 @@ import com.fatwabot.core.network.AuthenticatedApiClientProtocol
 import com.fatwabot.core.network.ClientContext
 import com.fatwabot.core.network.DeviceInfo
 import com.fatwabot.core.network.EncryptedPrefsAuthTokenStore
+import com.fatwabot.app.analytics.AnalyticsPreferences
+import com.fatwabot.app.analytics.CompositeAnalyticsTracking
+import com.fatwabot.app.analytics.FirebaseAnalyticsTracker
 import com.fatwabot.core.common.ActivityEventRecording
+import com.fatwabot.core.common.AnalyticsEventQueueStoring
+import com.fatwabot.core.common.AnalyticsTracking
+import com.fatwabot.core.common.FileAnalyticsEventQueueStore
+import com.fatwabot.core.network.BackendAnalyticsRecorder
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.analytics
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.fatwabot.core.common.AuthTokenStoring
 import com.fatwabot.core.common.GamificationWidgetSnapshotStore
 import com.fatwabot.core.common.OnboardingCompletionStore
@@ -34,6 +44,8 @@ import androidx.glance.appwidget.updateAll
 import com.fatwabot.core.prayer.PrayerNotificationPreferences
 import com.fatwabot.core.prayer.WidgetSnapshotStore
 import com.fatwabot.feature.prayer.LocationProviding
+import com.fatwabot.feature.leaderboard.LeaderboardRegion
+import com.fatwabot.feature.leaderboard.RegionResolving
 import com.fatwabot.feature.prayer.PrayerNotificationScheduler
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.widget.DailyChallengeWidget
@@ -42,10 +54,17 @@ import com.fatwabot.widget.StreakWidget
 import com.fatwabot.app.tasbeeh.SystemHaptics
 import com.fatwabot.core.common.HapticsProviding
 import com.fatwabot.core.content.ContentFileStore
+import com.fatwabot.app.notifications.ContentReminderPreferenceStore
+import com.fatwabot.app.notifications.ContentReminderScheduler
+import com.fatwabot.app.notifications.WirdReminderPreferenceStore
+import com.fatwabot.app.notifications.WirdReminderScheduler
+import com.fatwabot.feature.awrad.WirdCompletionResponder
 import com.fatwabot.core.content.ContentService
 import com.fatwabot.feature.azkar.AzkarStoring
 import com.fatwabot.feature.azkar.FileAzkarStore
 import com.fatwabot.feature.awrad.FileWirdStore
+import com.fatwabot.feature.awrad.FixedWirdSlots
+import com.fatwabot.feature.awrad.fixedWirdNameResolver
 import com.fatwabot.feature.awrad.WirdStoring
 import com.fatwabot.feature.dua.DuaStoring
 import com.fatwabot.feature.dua.FileDuaStore
@@ -56,6 +75,7 @@ import com.fatwabot.feature.tasbeeh.FileTasbeehHistoryStore
 import com.fatwabot.feature.tasbeeh.TasbeehHistoryStoring
 import com.fatwabot.widget.HijriDateWidget
 import com.fatwabot.widget.NextPrayerWidget
+import com.fatwabot.widget.PrayerDayWidget
 import com.fatwabot.widget.WidgetSnapshotAccess
 import dagger.Binds
 import java.io.File
@@ -166,6 +186,56 @@ abstract class AppModule {
 
         @Provides
         @Singleton
+        fun provideAnalyticsPreferences(@ApplicationContext context: Context): AnalyticsPreferences =
+            AnalyticsPreferences(context)
+
+        @Provides
+        @Singleton
+        fun provideFirebaseAnalyticsTracker(
+            preferences: AnalyticsPreferences,
+        ): FirebaseAnalyticsTracker = FirebaseAnalyticsTracker(
+            analytics = Firebase.analytics,
+            crashlytics = FirebaseCrashlytics.getInstance(),
+            preferences = preferences,
+        )
+
+        @Provides
+        @Singleton
+        fun provideAnalyticsEventQueueStore(
+            @ApplicationContext context: Context,
+        ): AnalyticsEventQueueStoring =
+            FileAnalyticsEventQueueStore(File(context.filesDir, FileAnalyticsEventQueueStore.FILE_NAME))
+
+        /** Our own ingest, the half of the dual-send that iOS also feeds. Shares
+         * [AnalyticsPreferences] with the Firebase tracker so one Settings switch
+         * governs both, re-read per call so revoking takes effect immediately. */
+        @Provides
+        @Singleton
+        fun provideBackendAnalyticsRecorder(
+            queueStore: AnalyticsEventQueueStoring,
+            client: AuthenticatedApiClientProtocol,
+            preferences: AnalyticsPreferences,
+        ): BackendAnalyticsRecorder = BackendAnalyticsRecorder(
+            store = queueStore,
+            client = client,
+            appVersion = com.fatwabot.app.BuildConfig.VERSION_NAME,
+            isEnabled = { preferences.isEnabled },
+        )
+
+        // The interface binds to the composite, so every feature call-site
+        // dual-sends. The concrete FirebaseAnalyticsTracker and
+        // BackendAnalyticsRecorder stay bound as well, so MainActivity can call
+        // applyPersistedChoice()/flush() while features only ever see the
+        // interface (ADR-0010).
+        @Provides
+        @Singleton
+        fun provideAnalyticsTracking(
+            firebase: FirebaseAnalyticsTracker,
+            backend: BackendAnalyticsRecorder,
+        ): AnalyticsTracking = CompositeAnalyticsTracking(listOf(firebase, backend))
+
+        @Provides
+        @Singleton
         fun provideSearchHistoryRecorder(client: AuthenticatedApiClientProtocol): SearchHistoryRecorder =
             SearchHistoryRecorder(client)
 
@@ -216,6 +286,7 @@ abstract class AppModule {
             CoroutineScope(Dispatchers.Default).launch {
                 NextPrayerWidget().updateAll(context)
                 HijriDateWidget().updateAll(context)
+                PrayerDayWidget().updateAll(context)
             }
         }
 
@@ -226,6 +297,63 @@ abstract class AppModule {
         ): PrayerNotificationScheduler = PrayerNotificationScheduler(
             context = context,
             stringProvider = { key -> notificationString(context, key) },
+        )
+
+        /**
+         * Daily azkar/hadith reminders. Separate from [provideNotificationScheduler]
+         * because it owns a different alarm-id namespace, a different channel and a
+         * different budget slice — one scheduler cancelling the other's alarms is
+         * the bug this split avoids.
+         */
+        @Provides
+        @Singleton
+        fun provideContentReminderScheduler(
+            @ApplicationContext context: Context,
+            contentService: ContentService,
+        ): ContentReminderScheduler = ContentReminderScheduler(
+            context = context,
+            contentService = contentService,
+            stringProvider = { key -> notificationString(context, key) },
+        )
+
+        @Provides
+        @Singleton
+        fun provideContentReminderPreferenceStore(
+            @ApplicationContext context: Context,
+        ): ContentReminderPreferenceStore = ContentReminderPreferenceStore(context)
+
+        /**
+         * Daily "did you complete your wird?" reminders. A third alarm-id
+         * namespace, channel and budget slice, kept apart from prayer and content
+         * for the same reason those two are apart.
+         */
+        @Provides
+        @Singleton
+        fun provideWirdReminderScheduler(
+            @ApplicationContext context: Context,
+        ): WirdReminderScheduler = WirdReminderScheduler(
+            context = context,
+            stringProvider = { key -> notificationString(context, key) },
+        )
+
+        @Provides
+        @Singleton
+        fun provideWirdReminderPreferenceStore(
+            @ApplicationContext context: Context,
+        ): WirdReminderPreferenceStore = WirdReminderPreferenceStore(context)
+
+        /**
+         * Applies a notification "نعم" straight to the store. Injected into
+         * [com.fatwabot.app.notifications.WirdReminderActionReceiver], which runs
+         * with no UI alive — hence the store rather than a view model.
+         */
+        @Provides
+        fun provideWirdCompletionResponder(
+            store: WirdStoring,
+            activityEvents: ActivityEventRecording,
+        ): WirdCompletionResponder = WirdCompletionResponder(
+            store = store,
+            activityEvents = activityEvents,
         )
 
         @Provides
@@ -270,11 +398,39 @@ abstract class AppModule {
             @ApplicationContext context: Context,
         ): DuaStoring = FileDuaStore(File(context.filesDir, "dua-favorites.json"))
 
+        /**
+         * Reuses what prayer times already resolved: `UserLocation` carries the
+         * reverse-geocoded locality and country code, so joining a regional
+         * board costs no geocode, no network call, and no second permission
+         * prompt. Lives here rather than in :feature:leaderboard because that
+         * module must not depend on :feature:prayer (ADR-0010).
+         */
+        @Provides
+        @Singleton
+        fun provideRegionResolver(
+            location: LocationProviding,
+        ): RegionResolving = RegionResolving {
+            location.cached()?.let {
+                LeaderboardRegion(city = it.name, countryCode = it.countryCode?.uppercase())
+            } ?: LeaderboardRegion.Unknown
+        }
+
         @Provides
         @Singleton
         fun provideWirdStore(
             @ApplicationContext context: Context,
         ): WirdStoring = FileWirdStore(File(context.filesDir, "awrad"))
+
+        /**
+         * Resolves a [FixedWirdSlot]'s display name at the moment
+         * `AwradViewModel.addTodaysWird()` seeds it — frozen into the record
+         * then, exactly like a template-created wird's name.
+         */
+        @Provides
+        @Singleton
+        fun provideFixedWirdNameResolver(
+            @ApplicationContext context: Context,
+        ): FixedWirdSlots.NameResolver = fixedWirdNameResolver(context)
 
         @Provides
         @Singleton

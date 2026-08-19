@@ -18,6 +18,7 @@ public final class AwradViewModel {
     private let store: WirdStoring
     private let haptics: HapticsProviding
     private let activityEvents: ActivityEventRecording
+    private let nameResolver: FixedWirdSlots.NameResolver
     private let now: @Sendable () -> Date
     private let calendar: Calendar
 
@@ -26,6 +27,7 @@ public final class AwradViewModel {
         store: WirdStoring,
         haptics: HapticsProviding = NoopHaptics(),
         activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
+        nameResolver: @escaping FixedWirdSlots.NameResolver = FixedWirdSlots.defaultNames,
         now: @escaping @Sendable () -> Date = { Date() },
         calendar: Calendar = .current
     ) {
@@ -33,11 +35,32 @@ public final class AwradViewModel {
         self.store = store
         self.haptics = haptics
         self.activityEvents = activityEvents
+        self.nameResolver = nameResolver
         self.now = now
         self.calendar = calendar
-        self.wirds = store.loadWirds()
+        self.wirds = []
         self.progress = store.loadProgress()
         self.dayCompletions = store.loadDayCompletions()
+        reload()
+    }
+
+    /// Re-reads everything off the store. The view model is a singleton that
+    /// outlives a backgrounding, and `WirdCompletionResponder` writes to the same
+    /// files from a notification action while no UI is alive — without this the
+    /// board would still show the wird as outstanding after the user answered
+    /// "yes" from the lock screen.
+    ///
+    /// Also normalizes fixed-slot names to the current language on every call
+    /// (`FixedWirdSlots.normalized`) — passive, not "أضف ورد اليوم": it fixes a
+    /// name frozen under a language the user isn't in anymore, it never adds or
+    /// reactivates a slot, so it needs no button and no confirmation.
+    public func reload() {
+        let loaded = store.loadWirds()
+        let normalized = FixedWirdSlots.normalized(loaded, name: nameResolver)
+        if normalized != loaded { store.saveWirds(normalized) }
+        wirds = normalized
+        progress = store.loadProgress()
+        dayCompletions = store.loadDayCompletions()
     }
 
     public func loadTemplates(locale: String) async {
@@ -58,6 +81,17 @@ public final class AwradViewModel {
 
     public var isDayCompletedToday: Bool {
         dayCompletions.contains { $0.dateKey == todayKey }
+    }
+
+    /// "أضف ورد اليوم" — seeds whichever of the four fixed slots
+    /// (`FixedWirdSlot`) aren't already active on the board. A deliberate,
+    /// one-tap action rather than something that happens on every launch (see
+    /// `FixedWirdSlots.applied`'s doc comment for why that changed).
+    public func addTodaysWird() {
+        let updated = FixedWirdSlots.applied(to: wirds, name: nameResolver, now: now())
+        guard updated != wirds else { return }
+        wirds = updated
+        store.saveWirds(wirds)
     }
 
     public func createWird(fromTemplate template: WirdTemplate) {
@@ -86,13 +120,28 @@ public final class AwradViewModel {
             progress.append(WirdDailyProgress(wirdId: wirdId, dateKey: key, count: amount))
         }
         store.saveProgress(progress)
-        let target = wirds.first { $0.id == wirdId }?.target ?? 0
-        if countBefore < target, todayCount(for: wirdId) >= target {
+        let wird = wirds.first { $0.id == wirdId }
+        let target = wird?.target ?? 0
+        let justReachedTarget = countBefore < target && todayCount(for: wirdId) >= target
+        if justReachedTarget {
             haptics.targetReached()
         } else {
             haptics.tick()
         }
         activityEvents.record(eventType: "wird_ticked", metadata: ["wird_id": wirdId])
+        // Leaderboard currency (owner decision, 2026-07). The scoring engine
+        // filters on event type alone — it cannot look inside metadata — so
+        // "rank only the four fixed slots" needs its own event rather than a
+        // filter over `wird_ticked`.
+        //
+        // Ranking on `wird_day_completed` instead would be unfair in both
+        // directions: it is all-or-nothing over *every* active wird, so a user
+        // with one trivial custom wird earns it more easily than a user with
+        // ten. The fixed four are on every board by construction, which is what
+        // makes them comparable between users at all.
+        if justReachedTarget, wird?.isFixed == true {
+            activityEvents.record(eventType: "fixed_wird_completed", metadata: ["wird_id": wirdId])
+        }
     }
 
     /// Records today's completion only if every *active* wird has reached its
@@ -112,16 +161,35 @@ public final class AwradViewModel {
         return true
     }
 
-    /// Archives without deleting historical progress — stats remain accurate.
-    public func archiveWird(_ wirdId: String) {
-        guard let index = wirds.firstIndex(where: { $0.id == wirdId }) else { return }
+    /// Removes a wird from the active board — fixed or custom, no distinction
+    /// anymore (client decision, 2026-08-12). Archives rather than erases, so
+    /// historical progress/stats stay accurate and re-adding a fixed slot later
+    /// via `addTodaysWird()` restores its history under the same id instead of
+    /// starting a duplicate record.
+    @discardableResult
+    public func deleteWird(_ wirdId: String) -> Bool {
+        guard let index = wirds.firstIndex(where: { $0.id == wirdId }) else { return false }
         wirds[index].archivedAt = now()
+        store.saveWirds(wirds)
+        return true
+    }
+
+    /// Retargeting is allowed for every wird, fixed ones included — "ورد يومي من
+    /// القرآن" is a different number of pages for different people, and a slot the
+    /// user cannot size to their own routine is a slot they will ignore.
+    /// Renaming is not offered, for any wird, on either platform.
+    public func setTarget(wirdId: String, target: Int) {
+        guard let index = wirds.firstIndex(where: { $0.id == wirdId }) else { return }
+        wirds[index].target = max(1, target)
         store.saveWirds(wirds)
     }
 
     private var todayKey: String { Self.dateKey(for: now(), calendar: calendar) }
 
-    static func dateKey(for date: Date, calendar: Calendar) -> String {
+    /// `nonisolated` because `WirdCompletionResponder` derives the same key off
+    /// the main actor, from a notification action with no UI alive. It is pure
+    /// over its arguments, so there is nothing for the actor to protect.
+    nonisolated static func dateKey(for date: Date, calendar: Calendar) -> String {
         let components = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
     }

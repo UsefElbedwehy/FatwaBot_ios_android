@@ -11,20 +11,33 @@ import type { ConfigRepo } from "./types.ts";
 import type { IdentityRepo } from "./identity_types.ts";
 import type { ContentRepo } from "./content_types.ts";
 import type { AdminAuthRepo, AdminContentRepo, AdminUsersRepo, AuditLogRepo } from "./admin_types.ts";
+import type { AdminStringsRepo } from "./admin_strings_types.ts";
 import type { IdentityProviderVerifier, ProviderKind } from "./auth/provider_verify.ts";
 import type { GamificationRepo } from "./gamification_types.ts";
+import type { AnalyticsRepo } from "./analytics_types.ts";
 import type { LeaderboardRepo } from "./leaderboard_types.ts";
 import type { SearchHistoryRepo } from "./search_types.ts";
 import type { DeliveryLogRepo, NotificationPrefsRepo } from "./notification_types.ts";
 import type { PushSender } from "./fcm_sender.ts";
+import type { FatwaSearchRepo } from "./fatwa_types.ts";
+import type { AnswerProvider, EmbeddingProvider } from "./ai_search/providers.ts";
 import { handleSendCampaign } from "./handlers/send_campaign.ts";
+import { handleSearch } from "./handlers/search.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
-import { handleLinkProvider, handleProviderSignIn, handleUpdateProfile, handleUpdatePushToken } from "./handlers/accounts.ts";
-import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
 import {
+  handleLinkProvider,
+  handleProviderSignIn,
+  handleUpdateProfile,
+  handleUpdatePushToken,
+} from "./handlers/accounts.ts";
+import { handleGamificationProfile, handleSubmitEvents } from "./handlers/gamification.ts";
+import { handleSubmitAnalyticsEvents } from "./handlers/analytics.ts";
+import {
+  handleGetStandings,
   handleJoinLeaderboard,
   handleLeaveLeaderboard,
   handleListLeaderboards,
+  handleListStandingsPeriods,
   handleRecomputeSnapshot,
   handleUpdateMembership,
 } from "./handlers/leaderboard.ts";
@@ -63,6 +76,12 @@ import {
   handleUpdateContent,
 } from "./handlers/admin_content.ts";
 import { handleListUsers } from "./handlers/admin_users.ts";
+import {
+  handleCreateStringPackVersion,
+  handleGetStringPack,
+  handleListStringPacks,
+  handleSetStringPackPublished,
+} from "./handlers/admin_strings.ts";
 
 export interface Deps {
   repo: ConfigRepo;
@@ -71,16 +90,26 @@ export interface Deps {
   adminContent: AdminContentRepo;
   adminAuth: AdminAuthRepo;
   adminUsers: AdminUsersRepo;
+  /** config.string_packs editor — versioned inserts, not row edits (ADR-0011). */
+  adminStrings: AdminStringsRepo;
   auditLog: AuditLogRepo;
   jwtSecret: string;
   verifier: IdentityProviderVerifier;
   gamification: GamificationRepo;
+  /** Product analytics — own store, separate from `gamification` (migration 0023). */
+  analytics: AnalyticsRepo;
   leaderboard: LeaderboardRepo;
   searchHistory: SearchHistoryRepo;
   notificationPrefs: NotificationPrefsRepo;
   deliveryLog: DeliveryLogRepo;
   /** FCM sender — undefined until FCM_SERVICE_ACCOUNT is configured. */
   pushSender?: PushSender;
+  fatwaSearch: FatwaSearchRepo;
+  /** Both undefined until VOYAGE_API_KEY / ANTHROPIC_API_KEY are configured
+   *  — /v1/search 503s until then rather than answering from a meaningless
+   *  dev-stub embedding/echo in production. */
+  embeddingProvider?: EmbeddingProvider;
+  answerProvider?: AnswerProvider;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".
@@ -199,8 +228,12 @@ export async function route(req: Request, deps: Deps): Promise<Response> {
           return await handleLinkProvider(ctx, deps, req, await readBody(req));
         case "/v1/gamification/events":
           return await handleSubmitEvents(ctx, deps, req, await readBody(req));
+        case "/v1/analytics/events":
+          return await handleSubmitAnalyticsEvents(ctx, deps, req, await readBody(req));
         case "/v1/search-history":
           return await handleRecordSearch(ctx, deps, req, await readBody(req));
+        case "/v1/search":
+          return await handleSearch(ctx, deps, req, await readBody(req));
       }
       if (leaderboardActionMatch) {
         const [, key, action] = leaderboardActionMatch;
@@ -250,6 +283,8 @@ async function authenticate(req: Request, secret: string) {
 
 const COLLECTION_SEGMENT = "[A-Za-z0-9-]{1,40}";
 const ID_SEGMENT = "[A-Za-z0-9-]{1,64}";
+// Same shape as the public /v1/config/strings/{locale} route (bcp47-ish).
+const LOCALE_SEGMENT = "[A-Za-z0-9-]{2,20}";
 
 /** Admin surface (ADR-0009): every route except login requires a valid admin
  * bearer token. Kept as its own function since PATCH doesn't fit the mobile
@@ -281,6 +316,47 @@ async function routeAdmin(
       url.searchParams.get("query"),
       url.searchParams.get("limit"),
       url.searchParams.get("before"),
+    );
+  }
+
+  if (path === "/admin/v1/string-packs") {
+    if (method !== "GET") return methodNotAllowed();
+    return await handleListStringPacks(ctx, deps.adminStrings);
+  }
+
+  const stringPackMatch = path.match(new RegExp(`^/admin/v1/string-packs/(${LOCALE_SEGMENT})$`));
+  if (stringPackMatch) {
+    const locale = stringPackMatch[1];
+    if (method === "GET") {
+      return await handleGetStringPack(ctx, deps.adminStrings, locale, url.searchParams.get("version"));
+    }
+    if (method === "POST") {
+      return await handleCreateStringPackVersion(
+        ctx,
+        deps.adminStrings,
+        deps.auditLog,
+        adminId,
+        locale,
+        await readBody(req),
+      );
+    }
+    return methodNotAllowed();
+  }
+
+  const stringPackVersionMatch = path.match(
+    new RegExp(`^/admin/v1/string-packs/(${LOCALE_SEGMENT})/(\\d{1,9})$`),
+  );
+  if (stringPackVersionMatch) {
+    if (method !== "PATCH") return methodNotAllowed();
+    const [, locale, version] = stringPackVersionMatch;
+    return await handleSetStringPackPublished(
+      ctx,
+      deps.adminStrings,
+      deps.auditLog,
+      adminId,
+      locale,
+      Number(version),
+      await readBody(req),
     );
   }
 
@@ -337,6 +413,18 @@ async function routeAdmin(
   if (recomputeMatch) {
     if (method !== "POST") return methodNotAllowed();
     return await handleRecomputeSnapshot(ctx, deps, recomputeMatch[1]);
+  }
+
+  const standingsMatch = path.match(/^\/admin\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/standings$/);
+  if (standingsMatch) {
+    if (method !== "GET") return methodNotAllowed();
+    return await handleGetStandings(ctx, deps, standingsMatch[1], url.searchParams.get("period_key"));
+  }
+
+  const standingsPeriodsMatch = path.match(/^\/admin\/v1\/leaderboards\/([A-Za-z0-9_-]{1,60})\/periods$/);
+  if (standingsPeriodsMatch) {
+    if (method !== "GET") return methodNotAllowed();
+    return await handleListStandingsPeriods(ctx, deps, standingsPeriodsMatch[1]);
   }
 
   const sendCampaignMatch = path.match(/^\/admin\/v1\/campaigns\/([A-Za-z0-9_-]{1,60})\/send$/);

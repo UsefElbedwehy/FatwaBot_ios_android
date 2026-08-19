@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Fatwa Bot</string>
+    <string name="app_name">Fatwa</string>
     <string name="tab_home">Home</string>
     <string name="tab_worship">Worship</string>
     <string name="tab_journey">Journey</string>
@@ -18,4 +18,95 @@
     <string name="settings_account_sign_in_google">Continue with Google</string>
     <string name="settings_account_error_generic">Couldn\'t complete that. Please try again.</string>
     <string name="settings_account_error_already_linked">That account is already linked to another profile.</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notif_adhan_title">Adhan</string>
+    <string name="settings_notif_adhan_subtitle">A notification at the start of each prayer time.</string>
+    <string name="settings_notif_pre_adhan_title">Pre-adhan reminder</string>
+    <string name="settings_notif_pre_adhan_subtitle">A reminder a chosen number of minutes before the adhan.</string>
+    <string name="settings_notif_minutes_before">Minutes before adhan</string>
+    <string name="settings_notif_iqama_title">Iqama reminder</string>
+    <string name="settings_notif_iqama_subtitle">A reminder a chosen number of minutes after the adhan.</string>
+    <string name="settings_notif_minutes_after">Minutes after adhan</string>
+    <string name="settings_notif_iqama_notice">Mosques use a different gap for each prayer. These are common defaults — adjust any of them to match your mosque.</string>
+    <string name="settings_notif_last_third_title">Last third of the night</string>
+    <string name="settings_notif_last_third_subtitle">A reminder when the last third of the night begins.</string>
+    <string name="settings_stepper_decrease">Decrease</string>
+    <string name="settings_stepper_increase">Increase</string>
+    <string name="settings_minutes_value">%1$d min</string>
+    <string name="settings_notif_content_title">Daily azkar &amp; hadith</string>
+    <string name="settings_notif_content_subtitle">Reminders at random times between 9am and 9pm.</string>
+    <string name="settings_notif_content_per_day">Reminders per day</string>
+    <string name="settings_notif_content_count_value">%1$d a day</string>
+    <string name="notif_channel_content">Daily azkar &amp; hadith</string>
+    <string name="notif_content_azkar_title">A remembrance for you</string>
+    <string name="notif_content_hadith_title">A hadith for you</string>
+    <string name="settings_notif_wird_title">Daily wird reminder</string>
+    <string name="settings_notif_wird_subtitle">One reminder per wird — answer \"Yes\" without opening the app.</string>
+    <string name="settings_notif_wird_time">Reminder time</string>
+    <string name="notif_channel_wird">Daily wird reminder</string>
+    <!-- %1$s is the wird's name — the user has to know which one they are answering for. -->
+    <string name="notif_wird_title">Did you complete %1$s?</string>
+    <string name="notif_wird_body">Answer from here — no need to open the app.</string>
+    <string name="notif_wird_action_yes">Yes</string>
+    <string name="notif_wird_action_later">Later</string>
+    <string name="settings_guide_title">Features guide</string>
+    <string name="settings_guide_adhan_body">Sends a notification at the start of each of the five daily prayers, based on your location.</string>
+    <string name="settings_guide_pre_adhan_body">An early reminder a chosen number of minutes before the adhan so you can prepare.</string>
+    <string name="settings_guide_iqama_body">A reminder a chosen number of minutes after the adhan — around the time of iqama.</string>
+    <string name="settings_guide_last_third_body">Alerts you when the last third of the night begins (Maghrib to Fajr) — a beloved time for night prayer and supplication.</string>
+    <string name="settings_guide_streak_title">Streaks</string>
+    <string name="settings_guide_streak_body">Tracks the consecutive days you keep up each act of worship. Complete the activity daily to grow your streak.</string>
+    <string name="worship_prayer_times">Prayer times</string>
+    <string name="worship_qibla">Qibla</string>
+    <string name="worship_tasbeeh">Tasbeeh</string>
+    <!-- Bundled fallback for the server-driven Tasbeeh notice (key "tasbeeh.notice"). -->
+    <string name="tasbeeh_notice">This is a placeholder notice. It can be edited from the admin dashboard without releasing an app update.</string>
+    <string name="worship_azkar">Azkar</string>
+    <string name="worship_dua">Du\'a</string>
+    <!-- Title of the merged Azkar + Du'a screen (one Worship tile, two segments). -->
+    <string name="worship_remembrance">Azkar &amp; Du\'a</string>
+    <!-- Grid tile label — distinct from worship_wird_daily below, and from
+         feature/awrad's own awrad_my_awrad (that screen's internal header). -->
+    <string name="worship_wird_tile">Wird</string>
+    <string name="worship_wird_daily">Daily Wird</string>
+    <string name="worship_hadith">Hadith</string>
+    <string name="journey_leaderboards">Leaderboards</string>
+    <string name="journey_search_history">Search history</string>
+    <string name="journey_title">Your journey</string>
+    <string name="common_back">Back</string>
+    <string name="language_section">Language</string>
+    <string name="language_title">App language</string>
+    <string name="language_subtitle">Change the app’s language in System settings</string>
+    <string name="notification_channel_general">General notifications</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
+    <string name="home_card_question">General question</string>
+    <string name="home_card_hadith">Find hadith</string>
+    <string name="home_card_fatwa">Search a fatwa</string>
+    <string name="home_search_placeholder">Type your question here…</string>
+    <string name="home_tagline">Answers in light of the way of Ahl as-Sunnah wa al-Jama\'ah</string>
+    <string name="home_coming_soon_title">Coming soon, in shaa Allah</string>
+    <string name="home_coming_soon_body">Smart search for fatwas and hadith is on its way.</string>
+    <string name="common_ok">OK</string>
+    <string name="settings_diagnostics">Diagnostics</string>
+    <string name="settings_diagnostics_share">Share crash &amp; usage reports</string>
+    <string name="settings_diagnostics_note">Helps us fix problems. Never includes your searches, location, or name.</string>
+    <!-- Contact section. The addresses themselves are server-driven (ADR-0011 keys
+         contact.email / contact.whatsapp / contact.instagram / contact.x) — only
+         the labels are localized here. -->
+    <string name="settings_contact">Contact</string>
+    <string name="settings_contact_email">Email</string>
+    <string name="settings_contact_whatsapp">WhatsApp</string>
+    <string name="settings_contact_instagram">Instagram</string>
+    <string name="settings_contact_x">X</string>
+    <string name="language_system">System default</string>
+    <string name="language_arabic">العربية</string>
+    <string name="language_english">English</string>
+    <string name="language_selected">Selected</string>
+    <string name="settings_notif_wird_time_other">Your other wirds</string>
+    <string name="settings_notif_wird_follow_prayer">Follow %1$s time</string>
 </resources>

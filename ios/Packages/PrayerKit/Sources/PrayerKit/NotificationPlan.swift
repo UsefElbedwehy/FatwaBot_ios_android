@@ -36,30 +36,99 @@ public struct PrayerNotificationPreferences: Equatable, Sendable, Codable {
     public var preAdhanEnabled: Bool
     public var preAdhanOffsetMinutes: Int
     /// Iqama reminder a user-set number of minutes AFTER the adhan.
+    ///
+    /// The gap is **per prayer**, because mosques don't use one figure: Fajr
+    /// typically waits longer than the rest. Keyed by `PrayerName.rawValue` so
+    /// the persisted JSON is a readable `{"fajr": 20}` rather than the array of
+    /// alternating keys/values Swift emits for an enum-keyed dictionary.
     public var iqamaEnabled: Bool
-    public var iqamaOffsetMinutes: Int
+    public var iqamaOffsetsByPrayer: [String: Int]
     /// A single reminder at the start of the last third of the night.
     public var lastThirdEnabled: Bool
 
     public static let offsetRange = 1...60
+
+    /// Mosque convention: a longer gap before Fajr's congregation, shorter for
+    /// the rest. Sunrise is not a prayer and never gets an iqama.
+    public static let defaultIqamaOffsets: [String: Int] = [
+        PrayerName.fajr.rawValue: 20,
+        PrayerName.dhuhr.rawValue: 10,
+        PrayerName.asr.rawValue: 10,
+        PrayerName.maghrib.rawValue: 10,
+        PrayerName.isha.rawValue: 10,
+    ]
 
     public init(
         adhanEnabled: Bool = true,
         preAdhanEnabled: Bool = true,
         preAdhanOffsetMinutes: Int = 10,
         iqamaEnabled: Bool = false,
-        iqamaOffsetMinutes: Int = 20,
+        iqamaOffsetsByPrayer: [String: Int] = defaultIqamaOffsets,
         lastThirdEnabled: Bool = false
     ) {
         self.adhanEnabled = adhanEnabled
         self.preAdhanEnabled = preAdhanEnabled
         self.preAdhanOffsetMinutes = Self.clamp(preAdhanOffsetMinutes)
         self.iqamaEnabled = iqamaEnabled
-        self.iqamaOffsetMinutes = Self.clamp(iqamaOffsetMinutes)
+        self.iqamaOffsetsByPrayer = iqamaOffsetsByPrayer.mapValues(Self.clamp)
         self.lastThirdEnabled = lastThirdEnabled
     }
 
+    /// Gap for one prayer, falling back to the mosque default so a partially
+    /// populated dictionary can never silently drop a prayer's reminder.
+    public func iqamaOffset(for prayer: PrayerName) -> Int {
+        iqamaOffsetsByPrayer[prayer.rawValue]
+            ?? Self.defaultIqamaOffsets[prayer.rawValue]
+            ?? 10
+    }
+
     private static func clamp(_ m: Int) -> Int { max(offsetRange.lowerBound, min(offsetRange.upperBound, m)) }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey {
+        case adhanEnabled, preAdhanEnabled, preAdhanOffsetMinutes
+        case iqamaEnabled, iqamaOffsetsByPrayer, lastThirdEnabled
+        /// Pre-2026-07 shape: one gap shared by every prayer.
+        case iqamaOffsetMinutes
+    }
+
+    /// Hand-written so an upgrade doesn't wipe existing settings. The stored JSON
+    /// on an installed device still has the old scalar `iqamaOffsetMinutes`;
+    /// synthesized decoding would throw on the missing new key and the caller
+    /// would fall back to defaults, silently resetting whatever the user chose.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        adhanEnabled = try c.decodeIfPresent(Bool.self, forKey: .adhanEnabled) ?? true
+        preAdhanEnabled = try c.decodeIfPresent(Bool.self, forKey: .preAdhanEnabled) ?? true
+        preAdhanOffsetMinutes = Self.clamp(try c.decodeIfPresent(Int.self, forKey: .preAdhanOffsetMinutes) ?? 10)
+        iqamaEnabled = try c.decodeIfPresent(Bool.self, forKey: .iqamaEnabled) ?? false
+        lastThirdEnabled = try c.decodeIfPresent(Bool.self, forKey: .lastThirdEnabled) ?? false
+
+        if let perPrayer = try c.decodeIfPresent([String: Int].self, forKey: .iqamaOffsetsByPrayer) {
+            iqamaOffsetsByPrayer = perPrayer.mapValues(Self.clamp)
+        } else if let legacy = try c.decodeIfPresent(Int.self, forKey: .iqamaOffsetMinutes) {
+            // Carry the single old value onto every prayer, so a user who set 15
+            // keeps 15 everywhere instead of being reset to the 20/10 defaults.
+            let clamped = Self.clamp(legacy)
+            iqamaOffsetsByPrayer = Self.defaultIqamaOffsets.mapValues { _ in clamped }
+        } else {
+            iqamaOffsetsByPrayer = Self.defaultIqamaOffsets
+        }
+    }
+
+    /// Explicit because `CodingKeys` carries a legacy-only case, which blocks the
+    /// synthesized encoder. Deliberately writes ONLY the current shape — the old
+    /// scalar is read for migration and then never written again.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(adhanEnabled, forKey: .adhanEnabled)
+        try c.encode(preAdhanEnabled, forKey: .preAdhanEnabled)
+        try c.encode(preAdhanOffsetMinutes, forKey: .preAdhanOffsetMinutes)
+        try c.encode(iqamaEnabled, forKey: .iqamaEnabled)
+        try c.encode(iqamaOffsetsByPrayer, forKey: .iqamaOffsetsByPrayer)
+        try c.encode(lastThirdEnabled, forKey: .lastThirdEnabled)
+    }
 }
 
 /// Pure builder for the rolling local-notification schedule (docs/features/prayer.md).
@@ -107,7 +176,9 @@ public enum NotificationPlanner {
                 // Iqama reminder — a fixed number of minutes after the adhan.
                 // Sunrise is excluded above (isPrayer); Fajr..Isha all get one.
                 if preferences.iqamaEnabled {
-                    let fire = prayerTime.addingTimeInterval(TimeInterval(preferences.iqamaOffsetMinutes * 60))
+                    let fire = prayerTime.addingTimeInterval(
+                        TimeInterval(preferences.iqamaOffset(for: prayer) * 60)
+                    )
                     if fire > now {
                         planned.append(PlannedNotification(
                             id: "iqama-\(key)-\(prayer.rawValue)",
@@ -125,9 +196,8 @@ public enum NotificationPlanner {
             if preferences.lastThirdEnabled, index + 1 < timeline.count {
                 let maghrib = day.time(.maghrib)
                 let fajrNext = timeline[index + 1].time(.fajr)
-                if fajrNext > maghrib {
-                    let nightLength = fajrNext.timeIntervalSince(maghrib)
-                    let start = maghrib.addingTimeInterval(nightLength * 2.0 / 3.0)
+                if let night = NightTimes.between(maghrib: maghrib, nextFajr: fajrNext) {
+                    let start = night.lastThird
                     if start > now {
                         planned.append(PlannedNotification(
                             id: "lastthird-\(key)",
@@ -140,7 +210,71 @@ public enum NotificationPlanner {
             }
         }
 
-        return Array(planned.sorted { $0.fireDate < $1.fireDate }.prefix(budget))
+        return allocate(planned, budget: budget, now: now)
+    }
+
+    /// Ranking used when the schedule does not fit in `budget`. Lower comes first.
+    ///
+    /// The adhan is the only one a user cannot substitute for themselves — miss
+    /// it and they miss the prayer. Everything else is a convenience layered on
+    /// top of knowing the time.
+    private static func rank(_ kind: PlannedNotification.Kind) -> Int {
+        switch kind {
+        case .adhan: 0
+        case .preAdhan: 1
+        case .iqama: 2
+        case .lastThird: 3
+        }
+    }
+
+    /// Fits the plan into `budget` by **priority across the whole horizon**, not
+    /// by chronology.
+    ///
+    /// ## The bug this replaces
+    /// The previous implementation sorted by fire date and took the first
+    /// `budget` items. With every option enabled a single day emits up to 16
+    /// notifications (5 adhan + 5 pre-adhan + 5 iqama + 1 last third), so 48
+    /// slots bought **three days of everything and then total silence** — no
+    /// adhan at all on day four. A user who did not open the app over a weekend
+    /// simply stopped being called to prayer, with nothing indicating why.
+    ///
+    /// Allocating by priority instead means the same 48 slots cover roughly nine
+    /// days of adhan, with the softer reminders filling whatever is left near
+    /// term. The schedule degrades at the edges rather than falling off a cliff.
+    /// Days from `now` in which every enabled reminder type is kept.
+    ///
+    /// Beyond this the schedule degrades to adhan only. Two days is chosen so a
+    /// user always has their pre-adhan nudge for today and tomorrow — the window
+    /// where a soft reminder is actually useful — while the remaining budget
+    /// buys adhan coverage several days further out.
+    public static let fullFidelityDays = 2
+
+    static func allocate(
+        _ planned: [PlannedNotification], budget: Int, now: Date
+    ) -> [PlannedNotification] {
+        guard budget > 0 else { return [] }
+        guard planned.count > budget else {
+            return planned.sorted { $0.fireDate < $1.fireDate }
+        }
+
+        // The tension this resolves: iOS allows 64 pending requests, and with
+        // every type enabled a day emits up to 16. Allocating purely by priority
+        // buys ~9 days of adhan and strips the pre-adhan reminder entirely, which
+        // a user notices immediately. Allocating purely by chronology buys three
+        // days of everything and then silence, which is the reported bug.
+        //
+        // So: full fidelity near term, adhan only beyond it.
+        let cutoff = now.addingTimeInterval(TimeInterval(fullFidelityDays) * 86_400)
+        let near = planned.filter { $0.fireDate < cutoff }
+            .sorted { $0.fireDate < $1.fireDate }
+        let far = planned.filter { $0.fireDate >= cutoff && $0.kind == .adhan }
+            .sorted { $0.fireDate < $1.fireDate }
+
+        var result = Array(near.prefix(budget))
+        if result.count < budget {
+            result += far.prefix(budget - result.count)
+        }
+        return result.sorted { $0.fireDate < $1.fireDate }
     }
 
     private static func dayKey(_ components: DateComponents) -> String {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hadith_number">الحديث رقم %1$d</string>
+    <string name="hadith_benefit">الفائدة</string>
+    <string name="hadith_previous">السابق</string>
+    <string name="hadith_next">التالي</string>
+    <string name="hadith_empty">لا توجد مجموعات أحاديث متاحة حالياً. يرجى المحاولة لاحقاً.</string>
+    <string name="hadith_completed">مكتمل</string>
+    <string name="hadith_read_count">%1$d/%2$d مقروء</string>
+    <string name="hadith_under_review">قيد المراجعة العلمية — ستتوفر قريباً</string>
+</resources>

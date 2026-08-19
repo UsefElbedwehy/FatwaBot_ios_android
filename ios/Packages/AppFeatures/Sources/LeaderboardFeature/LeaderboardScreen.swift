@@ -26,6 +26,20 @@ public struct LeaderboardScreen: View {
                     .brandCard(tokens)
                 }
 
+                if !viewModel.boards.isEmpty {
+                    // Custom awrad are deliberately unranked (owner decision,
+                    // 2026-07). Saying so is the difference between a rule and
+                    // a user quietly concluding their effort doesn't register.
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(Color(hexToken: tokens.accent))
+                        Text("leaderboard.scoring_notice")
+                            .font(.footnote)
+                            .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                    }
+                    .brandCard(tokens)
+                }
+
                 ForEach(viewModel.boards) { board in
                     BoardCard(
                         board: board,
@@ -45,13 +59,14 @@ public struct LeaderboardScreen: View {
         .overlay {
             if viewModel.isLoading && viewModel.boards.isEmpty {
                 ProgressView().tint(Color(hexToken: tokens.primary))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .navigationTitle(Text("leaderboard.title"))
         .task { await viewModel.load() }
         .refreshable { await viewModel.load() }
         .sheet(item: $joinTarget) { board in
-            JoinSheet(board: board) { publishName, city in
+            JoinSheet(board: board, suggestedRegion: viewModel.suggestedRegion) { publishName, city in
                 joinTarget = nil
                 Task { await viewModel.join(key: board.key, publishName: publishName, city: city) }
             }
@@ -65,6 +80,19 @@ private struct BoardCard: View {
     let onJoin: () -> Void
     let onLeave: () -> Void
 
+    /// "Resets 1 Jan 2027" when the board has a known reset date, falling back
+    /// to the raw "scope · period" for `lifetime` (no reset at all) and for a
+    /// `seasonal`/`challenge` board an admin hasn't dated yet. The recurring
+    /// periods (`weekly`, `monthly`, `halfyearly`) always have one — see
+    /// `periodBoundsFor` on the backend — so in practice this only falls back
+    /// for the two admin-configured period types.
+    private var periodSummary: Text {
+        guard let endsAt = board.periodEndsAt else {
+            return Text("\(board.scope) · \(board.period)")
+        }
+        return Text("leaderboard.resets_on \(endsAt, format: .dateTime.day().month().year())")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
@@ -72,7 +100,7 @@ private struct BoardCard: View {
                     Text(board.name)
                         .font(.title3.weight(.bold))
                         .foregroundStyle(Color(hexToken: tokens.onSurface))
-                    Text("\(board.scope) · \(board.period)")
+                    periodSummary
                         .font(.caption)
                         .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
                 }
@@ -151,27 +179,65 @@ private struct EntryRow: View {
 
 private struct JoinSheet: View {
     let board: LeaderboardBoard
+    /// Derived from the prayer-times location. Not editable: the app already
+    /// knows where the user is, and asking them to type it invites typos that
+    /// silently fragment a city board — "Riyadh", "riyadh" and "الرياض" become
+    /// three leaderboards nobody is competing on. Client request, 2026-08-09.
+    let suggestedRegion: LeaderboardRegion
     let onJoin: (Bool, String?) -> Void
 
     @State private var publishName = false
-    @State private var city = ""
     @Environment(\.dismiss) private var dismiss
+
+    private var isCityScope: Bool { board.scope == "city" }
+    private var isCountryScope: Bool { board.scope == "country" }
+    /// A country board has nothing to ask the user for — it is derived — so the
+    /// only thing that can block it is not knowing the country at all.
+    private var missingCountry: Bool { isCountryScope && suggestedRegion.countryCode == nil }
+    /// A city board is equally underivable without a city.
+    private var missingCity: Bool { isCityScope && suggestedRegion.city == nil }
+    private var missingRegion: Bool { missingCountry || missingCity }
+
+    /// "مصر" rather than "EG". The code is an implementation detail of the API;
+    /// showing it to a user is showing them our plumbing.
+    private var countryName: String? {
+        suggestedRegion.countryCode.flatMap {
+            Locale.current.localizedString(forRegionCode: $0) ?? $0
+        }
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Toggle("leaderboard.publish_name", isOn: $publishName)
-                if board.scope == "city" {
-                    TextField("leaderboard.city_placeholder", text: $city)
+                if isCityScope, let city = suggestedRegion.city {
+                    LabeledContent("leaderboard.city", value: city)
+                }
+                if isCountryScope, let countryName {
+                    LabeledContent("leaderboard.country", value: countryName)
+                }
+                if missingRegion {
+                    // Previously this sheet let the user tap Join and the server
+                    // answered 400 country_required — an error they had no way
+                    // to act on. Say what is wrong and what fixes it instead.
+                    Text("leaderboard.region_unavailable")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle(Text("leaderboard.join_sheet_title"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("leaderboard.confirm_join") {
-                        onJoin(publishName, board.scope == "city" ? city : nil)
+                        // nil for both scopes now: the view model derives the
+                        // city from the same location, so passing a copy from
+                        // here would just be a second source of truth.
+                        onJoin(publishName, nil)
                     }
-                    .disabled(board.scope == "city" && city.trimmingCharacters(in: .whitespaces).isEmpty)
+                    // Blocked only when the region genuinely cannot be derived.
+                    // There is nothing for the user to fix by typing, so the
+                    // message below explains it instead of a disabled field.
+                    .disabled(missingRegion)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }

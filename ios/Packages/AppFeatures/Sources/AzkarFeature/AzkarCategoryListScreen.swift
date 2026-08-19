@@ -28,11 +28,9 @@ public struct AzkarCategoryListScreen: View {
                         emptyState
                     }
                 } else {
-                    BrandSectionHeader(
-                        "worship.azkar",
-                        systemImage: "book.closed.fill",
-                        tokens: tokens
-                    )
+                    // No section header: this list is now hosted under a segmented
+                    // control already labelled "الأذكار", so a header here just
+                    // repeated it (merged Azkar/Du'a screen, 2026-07-26).
                     VStack(spacing: 12) {
                         ForEach(viewModel.categories) { category in
                             NavigationLink {

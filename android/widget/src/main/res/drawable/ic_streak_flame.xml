@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The streak flame, as a vector drawable.
+
+  Glance widgets render into RemoteViews and cannot host a Compose `Canvas`, so
+  the in-app `streakFlamePath` cannot be reused directly here. The path data
+  below is that same curve evaluated on a 24x24 viewport — if one is ever
+  retuned, retune the other, or the widget and the Journey tab stop matching.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12.48,0
+            C16.8,4.8 23.52,8.16 23.52,14.88
+            C23.52,20.64 18.96,24 12,24
+            C5.04,24 0.48,20.4 0.72,14.4
+            C0.96,10.08 7.2,11.04 8.16,7.2
+            C9.12,3.84 10.56,2.4 12.48,0 Z" />
+</vector>

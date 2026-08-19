@@ -12,7 +12,7 @@ export interface NavDomain {
 
 export const NAV_DOMAINS: NavDomain[] = [
   { slug: "overview", title: "Overview", description: "Platform health & activity", milestone: "M0", implemented: true },
-  { slug: "configuration", title: "Configuration", description: "Remote config, flags, theme, strings, Home layout", milestone: "M2" },
+  { slug: "configuration", title: "Configuration", description: "Remote config, flags, theme, strings, Home layout", milestone: "M2", implemented: true },
   { slug: "content", title: "Content", description: "Azkar, duas, hadith collections, wird templates, CMS", milestone: "M2", implemented: true },
   { slug: "gamification", title: "Gamification", description: "Streak rules, missions, badges, leaderboards, rewards", milestone: "M3", implemented: true },
   { slug: "notifications", title: "Notifications", description: "Catalog, templates, campaigns, segments", milestone: "M3", implemented: true },

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,14 +19,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +37,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +69,7 @@ import com.fatwabot.core.designsystem.MotionTokens
 import com.fatwabot.core.designsystem.RingProgress
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.motionAnimationSpec
+import com.fatwabot.feature.awrad.R
 
 /** Daily checklist (docs/features/awrad.md screen 1) — mirror of iOS
  * AwradBoardScreen. */
@@ -72,9 +81,25 @@ fun AwradBoardScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     var showCreateSheet by remember { mutableStateOf(false) }
-    var showStats by remember { mutableStateOf(false) }
+    var showAddMenu by remember { mutableStateOf(false) }
+    var wirdPendingDelete by remember { mutableStateOf<Wird?>(null) }
+    val hasAllFixedSlots = FixedWirdSlot.entries.all { slot ->
+        state.activeWirds.any { it.id == slot.wirdId }
+    }
 
     LaunchedEffect(locale) { viewModel.loadTemplates(locale) }
+
+    // Picks up anything a notification "نعم" wrote while the app was in the
+    // background (see WirdCompletionResponder) — re-run on every resume, not just
+    // on first composition, because that is when the answer usually happened.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Box(modifier = Modifier.fillMaxSize().brandScreenBackground(tokens)) {
         Column(
@@ -89,27 +114,49 @@ fun AwradBoardScreen(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { showStats = true }) {
-                    Icon(Icons.Filled.BarChart, contentDescription = "إحصائياتي", tint = tokens.primary)
-                }
-                IconButton(onClick = { showCreateSheet = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = "إضافة ورد", tint = tokens.primary)
+                Box {
+                    IconButton(onClick = { showAddMenu = true }) {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.awrad_add_today), tint = tokens.primary)
+                    }
+                    DropdownMenu(expanded = showAddMenu, onDismissRequest = { showAddMenu = false }) {
+                        if (!hasAllFixedSlots) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.awrad_add_today)) },
+                                onClick = {
+                                    viewModel.addTodaysWird()
+                                    showAddMenu = false
+                                },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.awrad_create_custom_wird)) },
+                            onClick = {
+                                showCreateSheet = true
+                                showAddMenu = false
+                            },
+                        )
+                    }
                 }
             }
 
-            if (state.wirds.isEmpty()) {
-                EmptyBoard(tokens = tokens, onAddWird = { showCreateSheet = true })
+            if (state.activeWirds.isEmpty()) {
+                EmptyBoard(
+                    tokens = tokens,
+                    onAddToday = { viewModel.addTodaysWird() },
+                    onCreateCustom = { showCreateSheet = true },
+                )
             } else {
                 StatsGrid(stats = state.stats, tokens = tokens)
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("أورادي", icon = Icons.Filled.Spa, tokens = tokens)
+                    BrandSectionHeader(stringResource(R.string.awrad_my_awrad), icon = Icons.Filled.Spa, tokens = tokens)
                     state.activeWirds.forEach { wird ->
                         WirdCard(
                             wird = wird,
                             todayCount = viewModel.todayCount(wird.id),
                             tokens = tokens,
                             onTick = { viewModel.tick(wird.id) },
+                            onDelete = { wirdPendingDelete = wird },
                         )
                     }
                 }
@@ -129,8 +176,21 @@ fun AwradBoardScreen(
             onDismiss = { showCreateSheet = false },
         )
     }
-    if (showStats) {
-        AwradStatsDialog(stats = state.stats, onDismiss = { showStats = false })
+    wirdPendingDelete?.let { wird ->
+        AlertDialog(
+            onDismissRequest = { wirdPendingDelete = null },
+            title = { Text(stringResource(R.string.awrad_delete_confirm_title)) },
+            text = { Text(wird.name) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteWird(wird.id)
+                    wirdPendingDelete = null
+                }) { Text(stringResource(R.string.awrad_delete_confirm_action)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { wirdPendingDelete = null }) { Text(stringResource(R.string.awrad_cancel)) }
+            },
+        )
     }
 }
 
@@ -139,12 +199,12 @@ fun AwradBoardScreen(
 private fun StatsGrid(stats: WirdStats, tokens: ColorTokens) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("مجموع الأذكار", stats.totalDhikrCount, Icons.Filled.Spa, tokens, Modifier.weight(1f))
-            StatTile("أيام مكتملة", stats.completedDaysCount, Icons.Filled.Verified, tokens, Modifier.weight(1f))
+            StatTile(stringResource(R.string.awrad_stat_total_dhikr), stats.totalDhikrCount, Icons.Filled.Spa, tokens, Modifier.weight(1f))
+            StatTile(stringResource(R.string.awrad_stat_completed_days), stats.completedDaysCount, Icons.Filled.Verified, tokens, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("صفحات القرآن", stats.quranPagesCount, Icons.Filled.AutoStories, tokens, Modifier.weight(1f))
-            StatTile("الصلاة على النبي", stats.salawatCount, Icons.Filled.Favorite, tokens, Modifier.weight(1f))
+            StatTile(stringResource(R.string.awrad_stat_quran_pages), stats.quranPagesCount, Icons.Filled.AutoStories, tokens, Modifier.weight(1f))
+            StatTile(stringResource(R.string.awrad_stat_salawat), stats.salawatCount, Icons.Filled.Favorite, tokens, Modifier.weight(1f))
         }
     }
 }
@@ -182,7 +242,7 @@ private fun StatTile(
 }
 
 @Composable
-private fun EmptyBoard(tokens: ColorTokens, onAddWird: () -> Unit) {
+private fun EmptyBoard(tokens: ColorTokens, onAddToday: () -> Unit, onCreateCustom: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -195,23 +255,33 @@ private fun EmptyBoard(tokens: ColorTokens, onAddWird: () -> Unit) {
             modifier = Modifier.size(40.dp).semantics { invisibleToUser() },
         )
         Text(
-            "لا توجد أوراد بعد",
+            stringResource(R.string.awrad_empty_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = tokens.onSurface,
         )
         Text(
-            "أضف وردك الأول لتبدأ رحلتك اليومية",
+            stringResource(R.string.awrad_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = tokens.onSurfaceSecondary,
             textAlign = TextAlign.Center,
         )
-        Button(onClick = onAddWird) { Text("إضافة ورد") }
+        Column(
+            modifier = Modifier.width(280.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Button(onClick = onAddToday, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.awrad_add_today))
+            }
+            OutlinedButton(onClick = onCreateCustom, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.awrad_create_custom_wird))
+            }
+        }
     }
 }
 
 @Composable
-private fun WirdCard(wird: Wird, todayCount: Int, tokens: ColorTokens, onTick: () -> Unit) {
+private fun WirdCard(wird: Wird, todayCount: Int, tokens: ColorTokens, onTick: () -> Unit, onDelete: () -> Unit) {
     val reduceMotion = LocalReduceMotion.current
     val animatedCount by animateIntAsState(
         targetValue = todayCount,
@@ -253,6 +323,13 @@ private fun WirdCard(wird: Wird, todayCount: Int, tokens: ColorTokens, onTick: (
                     color = tokens.onSurfaceSecondary,
                 )
             }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.awrad_delete),
+                    tint = tokens.onSurfaceSecondary,
+                )
+            }
             IconButton(onClick = onTick) {
                 Icon(Icons.Filled.AddCircle, contentDescription = wird.name, tint = tokens.primary, modifier = Modifier.size(32.dp))
             }
@@ -287,7 +364,7 @@ private fun MarkDayCompleteCard(done: Boolean, tokens: ColorTokens, onComplete: 
                 tint = Color.White,
             )
             Text(
-                "أتممت وردي اليوم",
+                stringResource(R.string.awrad_mark_day_complete),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
@@ -296,48 +373,23 @@ private fun MarkDayCompleteCard(done: Boolean, tokens: ColorTokens, onComplete: 
     }
 }
 
-@Composable
-private fun AwradStatsDialog(stats: WirdStats, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("تم") } },
-        title = { Text("إحصائياتي") },
-        text = {
-            Column {
-                statRow("مجموع الأذكار", stats.totalDhikrCount)
-                statRow("أيام مكتملة", stats.completedDaysCount)
-                statRow("صفحات القرآن", stats.quranPagesCount)
-                statRow("الصلاة على النبي", stats.salawatCount)
-            }
-        },
-    )
-}
-
-@Composable
-private fun statRow(label: String, value: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(label)
-        Text("$value", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
+/** Guided creation (docs/features/awrad.md screen 2): templates first, custom
+ * wird as an explicit secondary path — mirror of iOS AwradCreateSheet. */
 @Composable
 private fun AwradCreateDialog(viewModel: AwradViewModel, onDismiss: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showCustomForm by remember { mutableStateOf(false) }
     var customName by remember { mutableStateOf("") }
+    val customWirdDefault = stringResource(R.string.awrad_custom_wird_default)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("ورد جديد") },
+        title = { Text(stringResource(R.string.awrad_new_wird)) },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.awrad_cancel)) } },
         text = {
             Column {
-                Text("اختر من القوالب", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.awrad_choose_template), style = MaterialTheme.typography.labelLarge)
                 state.templates.forEach { template ->
                     Surface(
                         onClick = {
@@ -360,13 +412,13 @@ private fun AwradCreateDialog(viewModel: AwradViewModel, onDismiss: () -> Unit) 
                     androidx.compose.material3.OutlinedTextField(
                         value = customName,
                         onValueChange = { customName = it },
-                        placeholder = { Text("اسم الورد") },
+                        placeholder = { Text(stringResource(R.string.awrad_wird_name)) },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
                     Button(
                         onClick = {
                             viewModel.createCustomWird(
-                                name = customName.ifEmpty { "ورد مخصص" },
+                                name = customName.ifEmpty { customWirdDefault },
                                 type = "custom",
                                 target = 1,
                                 unit = "times",
@@ -375,12 +427,12 @@ private fun AwradCreateDialog(viewModel: AwradViewModel, onDismiss: () -> Unit) 
                             onDismiss()
                         },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    ) { Text("حفظ الورد") }
+                    ) { Text(stringResource(R.string.awrad_save_wird)) }
                 } else {
                     OutlinedButton(
                         onClick = { showCustomForm = true },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    ) { Text("إنشاء ورد مخصص") }
+                    ) { Text(stringResource(R.string.awrad_create_custom_wird)) }
                 }
             }
         },

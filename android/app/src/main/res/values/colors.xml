@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#7A2A2A</color>
+    <color name="ic_launcher_background">#FAF3EC</color>
     <color name="brand_cream">#FAF3EC</color>
+
+    <!-- Splash window (Theme.FatwaBot.Splash / splash_background.xml). Mirrors
+         DesignTokens' light scheme — surface + primary. Overridden in
+         values-night for the dark scheme; the splash runs before Compose (and
+         ThemeModeController) exist, so it can only follow the system's night
+         qualifier, never an in-app appearance override. -->
+    <color name="splash_background">#FAF3EC</color>
+    <color name="splash_logo_tint">#7A2A2A</color>
 </resources>

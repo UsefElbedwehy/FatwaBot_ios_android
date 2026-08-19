@@ -18,3 +18,45 @@
 "widget.streak.longest %lld" = "الأفضل: %lld";
 "widget.daily_challenge.name" = "التحدي اليومي";
 "widget.daily_challenge.desc" = "تقدم مهمة اليوم";
+"widget.dua.name" = "دعاء اليوم";
+"widget.dua.desc" = "دعاء يتجدد على مدار اليوم";
+"widget.dua.title" = "دعاء";
+
+"widget.hadith.name" = "حديث اليوم";
+"widget.hadith.desc" = "حديث قصير يتجدد خلال اليوم.";
+"widget.hadith.title" = "حديث";
+"streak.badge.accessibility %lld" = "التتابع: %lld يوماً";
+
+"prayer.midnight" = "منتصف الليل";
+"prayer.last_third" = "الثلث الأخير";
+"widget.day_sheet.name" = "اليوم كاملاً";
+"widget.day_sheet.desc" = "مواقيت اليوم كاملة مع الشروق ومنتصف الليل والثلث الأخير.";
+
+"deed.azkar_morning" = "أذكار الصباح";
+"deed.azkar_evening" = "أذكار المساء";
+"deed.done" = "تم";
+"deed.not_done" = "لم يتم";
+"widget.worship_tracker.name" = "متابعة العبادات";
+"widget.worship_tracker.desc" = "سجّل صلواتك وأذكارك بنقرة واحدة من الشاشة الرئيسية.";
+
+"widget.tasbih.name" = "العداد";
+"widget.tasbih.desc" = "عدّاد الأذكار. اضغط على الويدجت لزيادة العد.";
+"widget.tasbih.hint" = "اضغط للعد";
+"widget.tasbih.reset" = "تصفير";
+
+"occasion.ramadan" = "رمضان";
+"occasion.eid_al_fitr" = "عيد الفطر";
+"occasion.eid_al_adha" = "عيد الأضحى";
+"occasion.days" = "يومًا";
+"widget.occasion.name" = "رمضان والعيد";
+"widget.occasion.desc" = "الأيام المتبقية لرمضان وعيدَي الفطر والأضحى.";
+
+"widget.prayer_calendar.name" = "الصلاة والتقويم";
+"widget.prayer_calendar.desc" = "الصلاة القادمة مع التقويم الهجري.";
+"widget.open_app" = "افتح التطبيق";
+
+"widget.all_prayers.name" = "كل الصلوات";
+"widget.all_prayers.desc" = "جميع مواقيت اليوم في عمودين.";
+
+"widget.prayer_window.name" = "الصلوات القريبة";
+"widget.prayer_window.desc" = "الصلاة السابقة والحالية والقادمة في الشاشة المقفلة.";

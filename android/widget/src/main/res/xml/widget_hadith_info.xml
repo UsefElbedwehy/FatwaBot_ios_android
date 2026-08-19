@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The hadith widget is placeable from 2x2 upwards: at 2x2 it renders the matn
+  and its attribution, and at 4x3 the translation as well. updatePeriodMillis
+  is 6h to match the pool's six-hour rotation — a hadith the user is part-way
+  through reading should still be there when they come back.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="21600000"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

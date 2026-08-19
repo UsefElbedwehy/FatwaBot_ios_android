@@ -2,7 +2,6 @@ package com.fatwabot.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
@@ -16,11 +15,10 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import com.fatwabot.core.common.GamificationWidgetSnapshot
-
-private val BrandPrimary = Color(0xFF7A2A2A)
+import com.fatwabot.core.common.DeepLink
 
 /** Daily Challenge Glance widget. Reads the app-written snapshot with zero
  * network (mirror of iOS DailyChallengeWidget). */
@@ -29,28 +27,32 @@ class DailyChallengeWidget : GlanceAppWidget() {
         val snapshot = GamificationWidgetSnapshotAccess.read(context)
         provideContent {
             GlanceTheme {
-                DailyChallengeContent(snapshot)
+                DailyChallengeContent(context, snapshot)
             }
         }
     }
 }
 
 @Composable
-private fun DailyChallengeContent(snapshot: GamificationWidgetSnapshot?) {
+private fun DailyChallengeContent(context: Context, snapshot: GamificationWidgetSnapshot?) {
     val challenge = snapshot?.dailyChallenge
     Column(
-        modifier = GlanceModifier.fillMaxSize().padding(12.dp),
+        modifier = GlanceModifier.fillMaxSize().brandSurface().opensApp(context, DeepLink.JOURNEY).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (challenge != null) {
-            Text(challenge.name, style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium))
+            Text(
+                challenge.name,
+                style = TextStyle(color = InkProvider, fontSize = 13.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
+                maxLines = 2,
+            )
             Text(
                 "${challenge.progress}/${challenge.target}",
-                style = TextStyle(color = ColorProvider(BrandPrimary), fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                style = TextStyle(color = MaroonProvider, fontSize = 28.sp, fontWeight = FontWeight.Bold),
             )
         } else {
-            Text("افتح التطبيق", style = TextStyle(color = ColorProvider(BrandPrimary)))
+            Text(context.getString(R.string.widget_open_app), style = TextStyle(color = MaroonProvider))
         }
     }
 }

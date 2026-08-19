@@ -35,6 +35,11 @@ public final class GamificationViewModel {
         self.now = now
     }
 
+    /// Refreshes the profile. The existing profile stays visible while the
+    /// fetch is in flight (the screen's spinner only shows when the profile is
+    /// still empty), so a revisit never flashes blank — the perceived lag came
+    /// from the view model being recreated per tab switch, now fixed by
+    /// hoisting it in RootTabView.
     public func load() async {
         isLoading = true
         error = nil

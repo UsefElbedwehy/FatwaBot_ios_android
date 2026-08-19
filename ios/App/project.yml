@@ -27,7 +27,7 @@ targets:
       - package: PrayerKit
         products: [PrayerKit]
       - package: AppFeatures
-        products: [PrayerFeature, HomeFeature, TasbeehFeature, AzkarFeature, DuaFeature, AwradFeature, HadithFeature, GamificationFeature, LeaderboardFeature, SearchHistoryFeature, OnboardingFeature]
+        products: [PrayerFeature, TasbeehFeature, AzkarFeature, DuaFeature, AwradFeature, HadithFeature, GamificationFeature, LeaderboardFeature, SearchHistoryFeature, OnboardingFeature]
       - target: FatwaBotWidgets
       - target: FatwaBotLiveActivity
       - package: GoogleSignIn
@@ -41,8 +41,15 @@ targets:
         UILaunchStoryboardName: LaunchScreen
         NSLocationWhenInUseUsageDescription: "لعرض أوقات الصلاة واتجاه القبلة لموقعك"
         NSSupportsLiveActivities: true
-        CFBundleDisplayName: "Fatwa Bot"
+        CFBundleDisplayName: "Fatwa"
+        # Declared so iOS shows the per-app Language picker in Settings (arabic-first).
+        CFBundleLocalizations: [ar, en]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # Background refresh keeps the prayer schedule's horizon moving without
+        # the user opening the app. Without the identifier declared here,
+        # BGTaskScheduler.register throws at launch.
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.fatwabot.app.prayer-refresh]
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
@@ -52,6 +59,11 @@ targets:
           - CFBundleTypeRole: Editor
             CFBundleURLSchemes:
               - com.googleusercontent.apps.665767164439-gbe98ql9lddnddflkmev7vaira6mako3
+          # Widget / Live Activity deep links — keep in sync with CoreKit.DeepLink.scheme
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.fatwabot.app.deeplink
+            CFBundleURLSchemes:
+              - fatwabot
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app
@@ -59,9 +71,16 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.10"
         TARGETED_DEVICE_FAMILY: "1,2"
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: Support/FatwaBot.entitlements
+      configs:
+        # iOS crash reporting goes through TestFlight / Xcode Organizer rather
+        # than a third-party SDK (docs/features/analytics-and-crash-reporting.md).
+        # That only yields readable stack traces if the archive carries dSYMs, so
+        # pin it here instead of relying on the Xcode default staying put.
+        Release:
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
   FatwaBotWidgets:
     type: app-extension
     platform: iOS
@@ -70,7 +89,7 @@ targets:
       - package: PrayerKit
         products: [PrayerKit]
       - package: FatwaBotKit
-        products: [CoreKit]
+        products: [CoreKit, DesignSystemKit]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app.widgets
@@ -80,7 +99,7 @@ targets:
         INFOPLIST_FILE: ../Widgets/Support/Info.plist
         SWIFT_VERSION: "5.10"
         TARGETED_DEVICE_FAMILY: "1,2"
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: ../Widgets/Support/FatwaBotWidgets.entitlements
   FatwaBotLiveActivity:
@@ -90,6 +109,10 @@ targets:
     dependencies:
       - package: PrayerKit
         products: [PrayerKit]
+      # For CoreKit.DeepLink — so the activity's tap target uses the same
+      # canonical route definition as the app and the widgets.
+      - package: FatwaBotKit
+        products: [CoreKit]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app.liveactivity
@@ -99,9 +122,30 @@ targets:
         INFOPLIST_FILE: ../LiveActivity/Support/Info.plist
         SWIFT_VERSION: "5.10"
         TARGETED_DEVICE_FAMILY: "1,2"
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: ../LiveActivity/Support/FatwaBotLiveActivity.entitlements
+  # UI tests drive the app through the accessibility layer rather than by
+  # injecting synthetic taps at the window server. That distinction is the whole
+  # reason this target exists: simctl-style tap injection has repeatedly failed
+  # to reach this app's windows, which left every screen verified only by
+  # "it compiled".
+  FatwaBotUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [../UITests/Sources]
+    dependencies:
+      - target: FatwaBot
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fatwabot.app.uitests
+        SWIFT_VERSION: "5.10"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: FatwaBot
+
 schemes:
   FatwaBot:
     build:
@@ -111,6 +155,8 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - FatwaBotUITests
     profile:
       config: Release
     analyze:

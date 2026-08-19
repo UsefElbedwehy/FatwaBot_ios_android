@@ -57,6 +57,21 @@ extension Container {
         self { SystemLocationProvider() }.singleton
     }
 
+    /// Product analytics through our OWN ingest — no third-party SDK on iOS
+    /// (docs/features/analytics-and-crash-reporting.md). Batched + disk-queued,
+    /// and gated on the user's Settings choice, read fresh on every call so
+    /// revoking consent takes effect immediately.
+    var analyticsTracking: Factory<AnalyticsTracking> {
+        self {
+            BackendAnalyticsRecorder(
+                store: FileAnalyticsEventQueueStore(directory: AppEnvironment.sharedContainerURL),
+                client: self.authenticatedClient(),
+                appVersion: AppEnvironment.appVersion,
+                isEnabled: { AnalyticsPreferences.isEnabled() }
+            )
+        }.singleton
+    }
+
     var onboardingCompletionStore: Factory<OnboardingCompletionStore> {
         self { OnboardingCompletionStore(directory: AppEnvironment.sharedContainerURL) }
     }
@@ -141,11 +156,80 @@ extension Container {
         .singleton
     }
 
+    /// Daily azkar/hadith reminders. Separate from `notificationScheduler`
+    /// because it owns a different id namespace and a different budget slice —
+    /// one scheduler clearing the other's pending requests is the bug this split
+    /// avoids.
+    var contentReminderScheduler: Factory<ContentReminderScheduling> {
+        self {
+            ContentReminderScheduler(
+                contentService: self.contentService(),
+                stringProvider: { key in NSLocalizedString(key, comment: "") }
+            )
+        }
+        .singleton
+    }
+
+    var contentReminderPreferenceStore: Factory<ContentReminderPreferenceStoring> {
+        self { UserDefaultsContentReminderPreferenceStore() }.singleton
+    }
+
+    /// The wird store, hoisted out of `awradViewModel` so the notification
+    /// action path and the UI path write through the SAME object. A second
+    /// `FileWirdStore` over the same directory would work too, but sharing one
+    /// makes the "one source of truth" explicit.
+    var wirdStore: Factory<WirdStoring> {
+        self { FileWirdStore(directory: AppEnvironment.sharedContainerURL) }
+            .singleton
+    }
+
+    /// Resolves a `FixedWirdSlot`'s display name at the moment
+    /// `AwradViewModel.addTodaysWird()` seeds it — frozen into the record then,
+    /// exactly like a template-created wird's name.
+    var fixedWirdNameResolver: Factory<FixedWirdSlots.NameResolver> {
+        self { { slot in NSLocalizedString(slot.nameKey, comment: "") } }
+    }
+
+    /// Applies a notification "نعم" straight to the store. Resolvable off the
+    /// main actor: it is what runs when the app is backgrounded or not running,
+    /// where no `AwradViewModel` exists.
+    var wirdCompletionResponder: Factory<WirdCompletionResponder> {
+        self {
+            WirdCompletionResponder(
+                store: self.wirdStore(),
+                activityEvents: self.activityEventRecording()
+            )
+        }
+    }
+
+    /// Daily "did you complete your wird?" reminders. A third id namespace and a
+    /// third budget slice, kept apart from prayer and content for the same reason
+    /// those two are apart — one scheduler clearing another's pending requests.
+    var wirdReminderScheduler: Factory<WirdReminderScheduling> {
+        self {
+            WirdReminderScheduler(stringProvider: { key in NSLocalizedString(key, comment: "") })
+        }
+        .singleton
+    }
+
+    var wirdReminderPreferenceStore: Factory<WirdReminderPreferenceStoring> {
+        self { UserDefaultsWirdReminderPreferenceStore() }.singleton
+    }
+
     var widgetStore: Factory<WidgetSnapshotStore?> {
         self {
             FileManager.default
                 .containerURL(forSecurityApplicationGroupIdentifier: "group.com.fatwabot.app")
                 .map { WidgetSnapshotStore(appGroupContainer: $0) }
+        }
+    }
+
+    /// Where the متابعة العبادات widget deposits taps for the app to upload.
+    var worshipInbox: Factory<WorshipInbox?> {
+        self {
+            FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: "group.com.fatwabot.app")
+                .map { WorshipInbox(appGroupContainer: $0) }
         }
     }
 
@@ -223,9 +307,10 @@ extension Container {
         self { @MainActor in
             AwradViewModel(
                 contentService: self.contentService(),
-                store: FileWirdStore(directory: AppEnvironment.sharedContainerURL),
+                store: self.wirdStore(),
                 haptics: SystemHaptics(),
-                activityEvents: self.activityEventRecording()
+                activityEvents: self.activityEventRecording(),
+                nameResolver: self.fixedWirdNameResolver()
             )
         }
         .singleton
@@ -259,7 +344,23 @@ extension Container {
 
     @MainActor
     var leaderboardViewModel: Factory<LeaderboardViewModel> {
-        self { @MainActor in LeaderboardViewModel(client: self.authenticatedClient(), haptics: SystemHaptics()) }
+        self { @MainActor in
+            LeaderboardViewModel(
+                client: self.authenticatedClient(),
+                haptics: SystemHaptics(),
+                // Reuses what prayer times already resolved: `UserLocation`
+                // carries the reverse-geocoded locality and country code, so
+                // joining a regional board costs no geocode, no network call,
+                // and no second permission prompt.
+                region: ClosureRegionResolver { [provider = self.locationProvider()] in
+                    guard let cached = provider.cached() else { return .unknown }
+                    return LeaderboardRegion(
+                        city: cached.name,
+                        countryCode: cached.countryCode?.uppercased()
+                    )
+                }
+            )
+        }
     }
 
     /// The CoreKit boundary Dua (and any future searchable feature) is

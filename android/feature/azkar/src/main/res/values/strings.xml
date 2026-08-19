@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="azkar_loading">Loading…</string>
+    <string name="azkar_empty_message">No azkar available right now. Please try again later.</string>
+    <string name="azkar_title">Azkar</string>
+    <string name="azkar_done_today">Completed today</string>
+    <string name="azkar_virtue">Virtue</string>
+    <string name="azkar_tap_to_count">Tap to count</string>
+    <string name="azkar_tap_to_count_cd">Tap to count, %1$d of %2$d</string>
+    <string name="azkar_completed_title">You completed the azkar</string>
+    <string name="azkar_completed_subtitle">May Allah accept it from you</string>
+    <string name="azkar_search_placeholder">Search adhkar and du\'a…</string>
+    <string name="azkar_search_clear">Clear search</string>
+    <string name="azkar_search_empty">No matching results</string>
+    <string name="azkar_start_session">Start session</string>
+    <string name="azkar_copy">Copy</string>
+</resources>

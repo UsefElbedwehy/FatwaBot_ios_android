@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Strings owned by the design system itself, for controls that live inside
+  shared components rather than in any one feature.
+
+  These have to be declared *here*, in the module that uses them. The project
+  builds with non-transitive R classes, so a resource declared in :feature:azkar
+  is not visible from :core:designsystem — referencing R.string.azkar_copy from
+  the shared card would simply not compile, and pulling the feature module in as
+  a dependency to make it compile would invert the dependency direction.
+-->
+<resources>
+    <string name="content_copy">Copy</string>
+</resources>

@@ -152,11 +152,18 @@ public struct QiblaScreen: View {
                     .offset(y: -145)
                     .rotationEffect(.degrees(Double(index) * 90 - heading))
             }
-            Image(systemName: "location.north.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(Color(hexToken: isAligned ? tokens.accent : tokens.primary))
+            // The app's own mark is the pointer (owner request, 2026-08). It works
+            // as one because the arch is directional — its apex is unambiguously
+            // "this way" — which a symmetric logo could not have been.
+            //
+            // Kept taller than the SF Symbol it replaced: the arch reads as a
+            // direction through its silhouette rather than a single sharp tip, so
+            // it needs the extra height to stay legible while rotating.
+            FatwaMark(color: Color(hexToken: isAligned ? tokens.accent : tokens.primary))
+                .frame(height: 76)
                 .rotationEffect(.degrees(needleAngle))
                 .shadow(radius: isAligned ? 8 : 0)
+                .animation(.easeOut(duration: MotionTokens.quickDuration), value: isAligned)
         }
         .sensoryFeedback(.success, trigger: isAligned) { !$0 && $1 }
         .accessibilityLabel(Text("qibla.compass_a11y"))
@@ -203,7 +210,7 @@ public struct QiblaScreen: View {
 
     private var staticFallback: some View {
         VStack(spacing: 18) {
-            ArchIconBadge(systemImage: "safari", tokens: tokens)
+            BrandLogoBadge(tokens: tokens)
             Text("qibla.static_bearing \(Int(bearing))")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Color(hexToken: tokens.onSurface))

@@ -37,7 +37,7 @@ final class DesignTokensTests: XCTestCase {
         )
         let resolved = DesignTokens.bundledDefault.applying(serverTheme: server)
         XCTAssertEqual(resolved.light.primary, DesignTokens.bundledDefault.light.primary)
-        XCTAssertEqual(resolved.productName, "Fatwa Bot")
+        XCTAssertEqual(resolved.productName, "Fatwa")
     }
 
     func testBundledPaletteIsWellFormed() {

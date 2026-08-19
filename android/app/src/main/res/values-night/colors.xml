@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark-scheme splash colors — mirrors DesignTokens' dark ("True Night")
+         surface + primary. Nothing else needs a night override here; only the
+         splash window used these two names before Compose existed to read the
+         real token set. -->
+    <color name="splash_background">#000000</color>
+    <color name="splash_logo_tint">#C4564B</color>
+</resources>

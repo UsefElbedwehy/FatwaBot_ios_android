@@ -34,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fatwabot.core.designsystem.ArchIconBadge
 import com.fatwabot.core.network.AccountProvider
+import com.fatwabot.feature.onboarding.R
 import kotlinx.coroutines.launch
 
 /** Value-first onboarding flow — mirror of iOS OnboardingScreen
@@ -68,15 +70,15 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel(), onFinishe
             OnboardingStep.HIGHLIGHTS -> HighlightsStep(onContinue = viewModel::advance)
             OnboardingStep.LOCATION_PRIMING -> PrimingStep(
                 icon = Icons.Filled.Schedule,
-                title = "أوقات صلاة دقيقة",
-                body = "نستخدم موقعك لحساب أوقات الصلاة واتجاه القبلة بدقة حيث أنت.",
+                title = stringResource(R.string.onboarding_location_title),
+                body = stringResource(R.string.onboarding_location_body),
                 onAllow = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) },
                 onSkip = viewModel::skip,
             )
             OnboardingStep.NOTIFICATION_PRIMING -> PrimingStep(
                 icon = Icons.Filled.Book,
-                title = "لا تفوّت صلاة أبداً",
-                body = "احصل على تذكيرات لطيفة للأذان وأذكارك اليومية — قابلة للتخصيص بالكامل من الإعدادات.",
+                title = stringResource(R.string.onboarding_notification_title),
+                body = stringResource(R.string.onboarding_notification_body),
                 onAllow = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -113,14 +115,14 @@ private fun SignInStep(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            "احفظ تقدّمك",
+            stringResource(R.string.onboarding_sign_in_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            "سجّل الدخول للحفاظ على سلاسلك ومفضّلاتك ومزامنتها بين أجهزتك. يمكنك فعل ذلك لاحقاً في أي وقت.",
+            stringResource(R.string.onboarding_sign_in_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -129,7 +131,7 @@ private fun SignInStep(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
 
         if (failed) {
             Text(
-                "لم تكتمل العملية. يمكنك المحاولة مرة أخرى أو المتابعة كضيف.",
+                stringResource(R.string.onboarding_sign_in_failed),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
@@ -144,11 +146,12 @@ private fun SignInStep(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
                 },
                 enabled = !isSigningIn,
                 modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 16.dp),
             ) {
                 Text(
                     when (provider) {
-                        AccountProvider.APPLE -> "تسجيل الدخول عبر Apple"
-                        else -> "المتابعة عبر Google"
+                        AccountProvider.APPLE -> stringResource(R.string.onboarding_sign_in_apple)
+                        else -> stringResource(R.string.onboarding_sign_in_google)
                     },
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -163,7 +166,7 @@ private fun SignInStep(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
             },
             enabled = !isSigningIn,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("المتابعة كضيف") }
+        ) { Text(stringResource(R.string.onboarding_continue_as_guest)) }
     }
 }
 
@@ -177,13 +180,13 @@ private fun WelcomeStep(onContinue: () -> Unit) {
         ArchIconBadge(icon = Icons.Filled.LocalFireDepartment, size = 88.dp)
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            "مرحباً بك في Fatwa Bot",
+            stringResource(R.string.onboarding_welcome_title),
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.semantics { heading() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "رفيقك اليومي للصلاة والعبادة والعادات الثابتة.",
+            stringResource(R.string.onboarding_welcome_body),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -192,7 +195,7 @@ private fun WelcomeStep(onContinue: () -> Unit) {
             onClick = onContinue,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(vertical = 16.dp),
-        ) { Text("ابدأ الآن") }
+        ) { Text(stringResource(R.string.onboarding_get_started)) }
     }
 }
 
@@ -200,18 +203,21 @@ private data class Highlight(val icon: ImageVector, val title: String)
 
 @Composable
 private fun HighlightsStep(onContinue: () -> Unit) {
-    val highlights = remember {
+    val prayerTitle = stringResource(R.string.onboarding_highlight_prayer)
+    val azkarTitle = stringResource(R.string.onboarding_highlight_azkar)
+    val streakTitle = stringResource(R.string.onboarding_highlight_streak)
+    val highlights = remember(prayerTitle, azkarTitle, streakTitle) {
         listOf(
-            Highlight(Icons.Filled.Schedule, "أوقات الصلاة والقبلة"),
-            Highlight(Icons.Filled.Book, "الأذكار والتسبيح والأوراد والأحاديث"),
-            Highlight(Icons.Filled.LocalFireDepartment, "تتبع تتابعك"),
+            Highlight(Icons.Filled.Schedule, prayerTitle),
+            Highlight(Icons.Filled.Book, azkarTitle),
+            Highlight(Icons.Filled.LocalFireDepartment, streakTitle),
         )
     }
     val pagerState = rememberPagerState { highlights.size }
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text(
-            "ماذا ستجد",
+            stringResource(R.string.onboarding_highlights_title),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.fillMaxWidth().semantics { heading() },
             textAlign = TextAlign.Center,
@@ -237,7 +243,7 @@ private fun HighlightsStep(onContinue: () -> Unit) {
             onClick = onContinue,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(vertical = 16.dp),
-        ) { Text("متابعة") }
+        ) { Text(stringResource(R.string.onboarding_continue)) }
     }
 }
 
@@ -274,10 +280,10 @@ private fun PrimingStep(
             onClick = onAllow,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(vertical = 16.dp),
-        ) { Text("السماح") }
+        ) { Text(stringResource(R.string.onboarding_allow)) }
         TextButton(
             onClick = onSkip,
             contentPadding = ButtonDefaults.TextButtonContentPadding,
-        ) { Text("ليس الآن") }
+        ) { Text(stringResource(R.string.onboarding_not_now)) }
     }
 }

@@ -29,6 +29,7 @@ class AwradViewModel @Inject constructor(
     private val clock: Clock,
     private val haptics: HapticsProviding,
     private val activityEvents: ActivityEventRecording = NoopActivityEventRecording(),
+    private val nameResolver: FixedWirdSlots.NameResolver = FixedWirdSlots.defaultNames,
 ) : ViewModel() {
 
     data class UiState(
@@ -41,14 +42,36 @@ class AwradViewModel @Inject constructor(
         val stats: WirdStats get() = WirdStats.compute(wirds, progress, dayCompletions)
     }
 
-    private val _state = MutableStateFlow(
-        UiState(
-            wirds = store.loadWirds(),
-            progress = store.loadProgress(),
-            dayCompletions = store.loadDayCompletions(),
-        ),
-    )
+    private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
+
+    init {
+        refresh()
+    }
+
+    /**
+     * Re-reads everything off the store. The view model outlives a backgrounding,
+     * and [WirdCompletionResponder] writes to the same files from a notification
+     * action while no UI is alive — without this the board would still show the
+     * wird as outstanding after the user answered "yes" from the shade.
+     *
+     * Also normalizes fixed-slot names to the current language on every call
+     * ([FixedWirdSlots.normalized]) — passive, not "أضف ورد اليوم": it fixes a
+     * name frozen under a language the user isn't in anymore, it never adds or
+     * reactivates a slot, so it needs no button and no confirmation.
+     */
+    fun refresh() {
+        val loadedWirds = store.loadWirds()
+        val normalizedWirds = FixedWirdSlots.normalized(loadedWirds, nameResolver)
+        if (normalizedWirds != loadedWirds) store.saveWirds(normalizedWirds)
+        _state.update {
+            it.copy(
+                wirds = normalizedWirds,
+                progress = store.loadProgress(),
+                dayCompletions = store.loadDayCompletions(),
+            )
+        }
+    }
 
     fun loadTemplates(locale: String) {
         _state.update { it.copy(templates = contentService?.wirdTemplates(locale)?.templates.orEmpty()) }
@@ -59,6 +82,19 @@ class AwradViewModel @Inject constructor(
         _state.value.progress.firstOrNull { it.wirdId == wirdId && it.dateKey == todayKey() }?.count ?: 0
 
     fun isDayCompletedToday(): Boolean = _state.value.dayCompletions.any { it.dateKey == todayKey() }
+
+    /**
+     * "أضف ورد اليوم" — seeds whichever of the four fixed slots
+     * ([FixedWirdSlot]) aren't already active on the board. A deliberate,
+     * one-tap action rather than something that happens on every launch (see
+     * [FixedWirdSlots.applied]'s doc comment for why that changed).
+     */
+    fun addTodaysWird() {
+        val updated = FixedWirdSlots.applied(_state.value.wirds, nameResolver, clock.now().epochSeconds)
+        if (updated == _state.value.wirds) return
+        store.saveWirds(updated)
+        _state.update { it.copy(wirds = updated) }
+    }
 
     fun createWird(template: WirdTemplate) {
         appendWird(
@@ -105,14 +141,32 @@ class AwradViewModel @Inject constructor(
         }
         store.saveProgress(updated)
         _state.update { it.copy(progress = updated) }
-        activityEvents.record(eventType = "wird_ticked")
+        // `wird_id` matches what iOS has always sent. Without it the same user
+        // action produces a different event on each platform, and any per-wird
+        // gamification rule would silently only work for iOS.
+        activityEvents.record(eventType = "wird_ticked", metadata = mapOf("wird_id" to wirdId))
 
-        val target = _state.value.wirds.firstOrNull { it.id == wirdId }?.target
+        val wird = _state.value.wirds.firstOrNull { it.id == wirdId }
+        val target = wird?.target
         val countAfter = countBefore + amount
-        if (target != null && countBefore < target && countAfter >= target) {
+        val justReachedTarget = target != null && countBefore < target && countAfter >= target
+        if (justReachedTarget) {
             haptics.targetReached()
         } else {
             haptics.tick()
+        }
+        // Leaderboard currency (owner decision, 2026-07). The scoring engine
+        // filters on event type alone — it cannot look inside metadata — so
+        // "rank only the four fixed slots" needs its own event rather than a
+        // filter over `wird_ticked`.
+        //
+        // Ranking on `wird_day_completed` instead would be unfair in both
+        // directions: it is all-or-nothing over *every* active wird, so a user
+        // with one trivial custom wird earns it more easily than a user with
+        // ten. The fixed four are on every board by construction, which is what
+        // makes them comparable between users at all.
+        if (justReachedTarget && wird?.isFixed == true) {
+            activityEvents.record(eventType = "fixed_wird_completed", metadata = mapOf("wird_id" to wirdId))
         }
     }
 
@@ -132,13 +186,22 @@ class AwradViewModel @Inject constructor(
         return true
     }
 
-    /** Archives without deleting historical progress — stats remain accurate. */
-    fun archiveWird(wirdId: String) {
-        val updated = _state.value.wirds.map {
-            if (it.id == wirdId) it.copy(archivedAtEpochSeconds = clock.now().epochSeconds) else it
+    /**
+     * Removes a wird from the active board — fixed or custom, no distinction
+     * anymore (client decision, 2026-08-12). Archives rather than erases, so
+     * historical progress/stats stay accurate and re-adding a fixed slot later
+     * via [addTodaysWird] restores its history under the same id instead of
+     * starting a duplicate record.
+     */
+    fun deleteWird(wirdId: String): Boolean {
+        val index = _state.value.wirds.indexOfFirst { it.id == wirdId }
+        if (index < 0) return false
+        val updated = _state.value.wirds.toMutableList().apply {
+            this[index] = this[index].copy(archivedAtEpochSeconds = clock.now().epochSeconds)
         }
         store.saveWirds(updated)
         _state.update { it.copy(wirds = updated) }
+        return true
     }
 
     private fun todayKey(): String = dateKey(clock.now().epochSeconds)

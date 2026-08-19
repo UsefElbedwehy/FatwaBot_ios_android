@@ -12,7 +12,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.fatwabot.app.R
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,9 +28,9 @@ import com.fatwabot.feature.searchhistory.SearchHistoryScreen
 
 /** Journey tab: My Progress (Gamification) plus toolbar entry points into
  * Leaderboards and Search History — mirrors iOS RootTabView's Journey toolbar. */
-private enum class JourneyDestination(val title: String) {
-    LEADERBOARD("لوحات المتصدرين"),
-    SEARCH_HISTORY("سجل البحث"),
+private enum class JourneyDestination(@StringRes val titleRes: Int) {
+    LEADERBOARD(R.string.journey_leaderboards),
+    SEARCH_HISTORY(R.string.journey_search_history),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,13 +42,13 @@ fun JourneyTab() {
         null -> Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("مسيرتك") },
+                    title = { Text(stringResource(R.string.journey_title)) },
                     actions = {
                         IconButton(onClick = { destination = JourneyDestination.LEADERBOARD }) {
-                            Icon(Icons.Filled.EmojiEvents, contentDescription = "لوحات المتصدرين")
+                            Icon(Icons.Filled.EmojiEvents, contentDescription = stringResource(R.string.journey_leaderboards))
                         }
                         IconButton(onClick = { destination = JourneyDestination.SEARCH_HISTORY }) {
-                            Icon(Icons.Filled.History, contentDescription = "سجل البحث")
+                            Icon(Icons.Filled.History, contentDescription = stringResource(R.string.journey_search_history))
                         }
                     },
                 )
@@ -54,11 +57,11 @@ fun JourneyTab() {
             Box(modifier = Modifier.padding(padding)) { GamificationScreen(viewModel = hiltViewModel()) }
         }
         JourneyDestination.LEADERBOARD -> JourneyDetailScaffold(
-            title = JourneyDestination.LEADERBOARD.title,
+            title = stringResource(JourneyDestination.LEADERBOARD.titleRes),
             onBack = { destination = null },
         ) { LeaderboardScreen(viewModel = hiltViewModel()) }
         JourneyDestination.SEARCH_HISTORY -> JourneyDetailScaffold(
-            title = JourneyDestination.SEARCH_HISTORY.title,
+            title = stringResource(JourneyDestination.SEARCH_HISTORY.titleRes),
             onBack = { destination = null },
         ) { SearchHistoryScreen(viewModel = hiltViewModel()) }
     }
@@ -73,7 +76,7 @@ private fun JourneyDetailScaffold(title: String, onBack: () -> Unit, content: @C
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
                 },
             )

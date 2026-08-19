@@ -396,6 +396,44 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/GamificationProfile" }
         "401": { $ref: "#/components/responses/ApiError" }
+  /v1/analytics/events:
+    post:
+      summary: >-
+        Batched, idempotent product-analytics ingest. Stored separately from
+        gamification events (migration 0023). Screen names, stable keys and
+        counts only — the server rejects events whose params carry a forbidden
+        key (query/search/text/lat/lng/email/token/user_id/…).
+      operationId: submitAnalyticsEvents
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { $ref: "#/components/schemas/AnalyticsEventInput" }
+      responses:
+        "200":
+          description: >-
+            Ingest result. Individually-invalid or privacy-violating events are
+            counted in `rejected` and skipped — they never fail the batch.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, duplicates, rejected]
+                properties:
+                  accepted: { type: integer }
+                  duplicates: { type: integer }
+                  rejected: { type: integer }
+        "400": { $ref: "#/components/responses/ApiError" }
+        "401": { $ref: "#/components/responses/ApiError" }
   /v1/leaderboards:
     get:
       summary: Published, enabled boards with my_rank + ranked entries (docs/features/leaderboard.md)
@@ -850,6 +888,26 @@ components:
         occurred_at: { type: string, format: date-time }
         timezone: { type: string, description: "IANA timezone" }
         metadata: { type: object, additionalProperties: true }
+    AnalyticsEventInput:
+      type: object
+      required: [client_event_id, name, occurred_at]
+      properties:
+        client_event_id: { type: string, description: "Client-generated UUID; resubmitting is a no-op" }
+        name: { type: string, maxLength: 64, description: "e.g. screen_view, app_open" }
+        occurred_at: { type: string, format: date-time }
+        platform: { type: string, enum: [ios, android] }
+        app_version: { type: string, maxLength: 32 }
+        params:
+          type: object
+          maxProperties: 10
+          additionalProperties: { type: string, maxLength: 100 }
+          description: >-
+            Stable keys and counts only (values are coerced to strings and
+            truncated to 100 chars). Forbidden keys — query, q, search,
+            search_query, text, body, content, lat, latitude, lng, longitude,
+            location, city, coords, name, display_name, email, phone, token,
+            push_token, user_id (case-insensitive) — cause the event to be
+            rejected server-side.
     GamificationProfile:
       type: object
       required: [streaks, missions, badges]

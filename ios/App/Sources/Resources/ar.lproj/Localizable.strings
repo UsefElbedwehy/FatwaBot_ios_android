@@ -7,6 +7,13 @@
 "tabs.settings" = "الإعدادات";
 "common.coming_soon" = "قريباً إن شاء الله";
 "settings.prayer_section" = "الصلاة";
+"settings.appearance_section" = "المظهر";
+"settings.appearance.system" = "النظام";
+"settings.appearance.light" = "فاتح";
+"settings.appearance.dark" = "داكن";
+"settings.language_section" = "اللغة";
+"settings.language.title" = "لغة التطبيق";
+"settings.language.subtitle" = "غيّر لغة التطبيق من إعدادات النظام";
 "settings.live_activity.title" = "عداد الصلاة على شاشة القفل";
 "settings.live_activity.subtitle" = "يعرض الوقت المتبقي للصلاة القادمة على شاشة القفل والجزيرة الديناميكية.";
 "settings.profile.guest_name" = "ضيف";
@@ -100,7 +107,6 @@
 "azkar.virtue_note_label" = "الفائدة";
 "azkar.session_complete" = "أتممت الأذكار";
 "azkar.session_complete_subtitle" = "تقبّل الله منك";
-"azkar.toggle_translation" = "إظهار/إخفاء الترجمة";
 "dua.favorites" = "المفضلة";
 "dua.search_placeholder" = "ابحث في الأدعية…";
 "dua.search_results" = "نتائج البحث";
@@ -109,22 +115,29 @@
 "dua.favorite" = "إضافة إلى المفضلة";
 "dua.unfavorite" = "إزالة من المفضلة";
 "dua.toggle_transliteration" = "إظهار/إخفاء اللفظ";
-"worship.awrad" = "أثرك";
+"worship.awrad" = "وردك اليوم";
+// Grid tile label — kept distinct from the screen title below, and from
+// "worship.awrad" above (which stays the in-screen section header).
+"worship.wird_tile" = "ورد";
+"worship.wird_daily" = "الورد اليومي";
 "awrad.mark_day_complete" = "أتممت وردي اليوم";
 "awrad.empty_title" = "لا توجد أوراد بعد";
 "awrad.empty_subtitle" = "أضف وردك الأول لتبدأ رحلتك اليومية";
-"awrad.add_first_wird" = "إضافة ورد";
-"awrad.stats_title" = "إحصائياتي";
-"awrad.stats.total_dhikr" = "مجموع الأذكار";
-"awrad.stats.completed_days" = "أيام مكتملة";
-"awrad.stats.quran_pages" = "صفحات القرآن";
-"awrad.stats.salawat" = "الصلاة على النبي";
+"awrad.add_today" = "أضف ورد اليوم";
 "awrad.templates_section" = "اختر من القوالب";
 "awrad.create_custom" = "إنشاء ورد مخصص";
 "awrad.custom_name_placeholder" = "اسم الورد";
 "awrad.custom_target_placeholder" = "الهدف اليومي";
 "awrad.save_custom" = "حفظ الورد";
 "awrad.create_title" = "ورد جديد";
+"awrad.edit_target" = "تعديل الهدف";
+"awrad.delete" = "حذف";
+"awrad.delete_confirm_title" = "حذف الورد؟";
+"awrad.delete_confirm_action" = "حذف";
+"awrad.fixed.qiyam_al_layl" = "قيام الليل";
+"awrad.fixed.daily_quran" = "ورد يومي من القرآن";
+"awrad.fixed.morning_azkar" = "أذكار الصباح";
+"awrad.fixed.evening_azkar" = "أذكار المساء";
 "common.cancel" = "إلغاء";
 "worship.hadith" = "الأحاديث";
 "hadith.progress_read %lld %lld" = "%1$lld/%2$lld مقروء";
@@ -135,8 +148,6 @@
 "hadith.next" = "التالي";
 "gamification.title" = "مسيرتك";
 "gamification.streaks_section" = "التتابع";
-"gamification.missions_section" = "المهام";
-"gamification.badges_section" = "الشارات";
 "gamification.empty_state" = "أكمل جلسات الأذكار أو التسبيح أو الأوراد أو قراءة الأحاديث لتبدأ مسيرتك.";
 "gamification.grace_remaining %lld" = "متبقٍ %lld يوم رحمة";
 "gamification.longest %lld" = "الأفضل: %lld";
@@ -147,6 +158,7 @@
 "leaderboard.join" = "انضمام";
 "leaderboard.leave" = "مغادرة اللوحة";
 "leaderboard.my_rank %lld" = "ترتيبي: #%lld";
+"leaderboard.resets_on %@" = "يتجدد في %@";
 "leaderboard.empty_state" = "لا توجد لوحات متصدرين متاحة بعد.";
 "leaderboard.publish_name" = "نشر اسمي بدلاً من اسم مستعار";
 "leaderboard.city_placeholder" = "مدينتك";
@@ -157,7 +169,7 @@
 "search_history.empty_state" = "سيظهر سجل بحثك هنا.";
 "search_history.clear_all" = "مسح الكل";
 "search_history.clear_all_confirm_title" = "مسح كل سجل البحث؟";
-"onboarding.welcome.title" = "مرحباً بك في Fatwa Bot";
+"onboarding.welcome.title" = "مرحباً بك في Fatwa";
 "onboarding.welcome.subtitle" = "رفيقك اليومي للصلاة والعبادة والعادات الثابتة.";
 "onboarding.get_started" = "ابدأ الآن";
 "onboarding.highlights.title" = "ماذا ستجد";
@@ -183,7 +195,16 @@
 "notif.iqama.body" = "اقتربت إقامة الصلاة";
 "notif.last_third.title" = "الثلث الأخير من الليل";
 "notif.last_third.body" = "وقت مبارك للتهجد والدعاء";
+"notif.content.azkar.title" = "ذكر لك";
+"notif.content.hadith.title" = "حديث لك";
+/* %@ هو اسم الورد — لا بد أن يعرف المستخدم عن أي ورد يُسأل. */
+"notif.wird.title" = "هل أكملت %@؟";
+"notif.wird.body" = "أجب من هنا دون فتح التطبيق.";
+"notif.wird.action.yes" = "نعم";
+"notif.wird.action.later" = "لاحقاً";
 "settings.notifications_section" = "الإشعارات";
+"settings.notif.disabled_banner" = "الإشعارات مُعطّلة لتطبيق فتوى من إعدادات آيفون، فلن تصلك تنبيهات الصلاة أو الورد أو التذكيرات مهما كانت الخيارات أدناه.";
+"settings.notif.disabled_banner_action" = "فتح الإعدادات";
 "settings.notif.adhan.title" = "الأذان";
 "settings.notif.adhan.subtitle" = "إشعار عند دخول وقت كل صلاة.";
 "settings.notif.pre_adhan.title" = "تنبيه قبل الأذان";
@@ -195,6 +216,13 @@
 "settings.notif.minutes_before" = "دقائق قبل الأذان";
 "settings.notif.minutes_after" = "دقائق بعد الأذان";
 "settings.notif.minutes_value %lld" = "%lld دقيقة";
+"settings.notif.content.title" = "أذكار وأحاديث يومية";
+"settings.notif.content.subtitle" = "تذكيرات في أوقات عشوائية بين ٩ صباحًا و٩ مساءً.";
+"settings.notif.content.per_day" = "عدد التذكيرات يوميًا";
+"settings.notif.content.count_value %lld" = "%lld يوميًا";
+"settings.notif.wird.title" = "تذكير الورد اليومي";
+"settings.notif.wird.subtitle" = "تذكير لكل ورد، تجيب عليه بـ«نعم» دون فتح التطبيق.";
+"settings.notif.wird.time" = "وقت التذكير";
 "settings.guide_section" = "دليل الميزات";
 "settings.guide.adhan" = "يرسل إشعارًا عند دخول وقت كل صلاة من الصلوات الخمس حسب موقعك.";
 "settings.guide.pre_adhan" = "تنبيه مبكر قبل الأذان بعدد الدقائق الذي تحدده لتستعد للصلاة.";
@@ -202,3 +230,66 @@
 "settings.guide.last_third" = "ينبهك عند بدء الثلث الأخير من الليل (من المغرب إلى الفجر) — وهو وقت محبوب للتهجد والدعاء.";
 "settings.guide.live_activity" = "يعرض عدًّا تنازليًا للصلاة القادمة على شاشة القفل والجزيرة الديناميكية.";
 "settings.guide.streaks" = "يتتبع عدد الأيام المتتالية التي تحافظ فيها على كل عبادة. أكمل النشاط يوميًا ليكبر تتابعك.";
+"home.card.question" = "سؤال ديني عام";
+"home.card.hadith" = "استخراج الأحاديث";
+"home.card.fatwa" = "ابحث عن فتوى";
+"home.search_placeholder" = "اكتب سؤالك هنا...";
+"home.tagline" = "البحث عن الإجابة على ضوء منهج أهل السنة والجماعة";
+"home.coming_soon.title" = "قريباً بإذن الله";
+"home.coming_soon.body" = "البحث الذكي عن الفتاوى والأحاديث قيد الإعداد، وسيصلك قريباً.";
+
+"settings.diagnostics_section" = "التشخيص";
+"settings.diagnostics.title" = "مشاركة تقارير الاستخدام";
+"settings.diagnostics.subtitle" = "تساعدنا في إصلاح المشكلات. لا تتضمن بحثك أو موقعك أو اسمك أبداً.";
+
+"worship.remembrance" = "الأذكار والأدعية";
+
+"tasbeeh.notice" = "This is notice and can be changed later when updated...";
+
+"settings.notif.iqama.notice" = "تختلف مدة الإقامة بين الصلوات من مسجد لآخر. هذه قيم افتراضية شائعة، ويمكنك تعديل أي منها لتوافق مسجدك.";
+
+/* Contact section. The addresses themselves are server-driven (ADR-0011 keys
+   contact.email / contact.whatsapp / contact.instagram / contact.x) — only the
+   labels are localized here. */
+"settings.contact_section" = "التواصل";
+"settings.contact.email" = "البريد الإلكتروني";
+"settings.contact.whatsapp" = "واتساب";
+"settings.contact.instagram" = "إنستغرام";
+"settings.contact.x" = "إكس";
+
+"streak.badge.accessibility %lld" = "التتابع: %lld يوماً";
+
+"leaderboard.country" = "الدولة";
+"leaderboard.country_unavailable" = "تعذّر تحديد دولتك. اضبط موقعك في إعدادات الصلاة ثم أعد المحاولة.";
+
+"leaderboard.scoring_notice" = "يُحتسب في الترتيب أورادك الثابتة الأربعة والأذكار والأحاديث والتسبيح، ولكلٍّ حدٌّ أسبوعي، فالمداومة هي المعتبرة لا الكثرة. أما الأوراد المخصصة فتبقى خاصة بك ولا تدخل في الترتيب.";
+
+"hadith.under_review" = "قيد المراجعة العلمية — ستتوفر قريباً";
+
+"hadith.collection_empty" = "لا توجد أحاديث بعد — هذه المجموعة قيد المراجعة.";
+
+"settings.sync_section" = "مزامنة المحتوى";
+"settings.sync.never" = "لم تتم المزامنة بعد";
+"settings.sync.never_detail" = "يُعرض المحتوى المضمّن حتى تكتمل أول مزامنة.";
+"settings.sync.in_progress" = "جارٍ المزامنة…";
+"settings.sync.in_progress_detail" = "يتم البحث عن محتوى جديد.";
+"settings.sync.up_to_date" = "محدّث";
+"settings.sync.checked_at %@" = "تم التحقق %@ — لا جديد.";
+"settings.sync.updated_at %lld %@" = "تم تحديث %lld عنصراً في %@.";
+"settings.sync.failed" = "تعذّرت مزامنة بعض المحتوى";
+"settings.sync.failed_detail %lld %@" = "أخفق %lld عنصراً في %@. لا يزال التطبيق يستخدم النسخة المحفوظة.";
+
+"azkar.search_placeholder" = "ابحث عن ذكر أو دعاء…";
+"azkar.search_clear" = "مسح البحث";
+"azkar.search_empty" = "لا نتائج مطابقة";
+"azkar.start_session" = "ابدأ الورد";
+"azkar.copy" = "نسخ";
+"content.copy" = "نسخ";
+"azkar.repeat_a11y %lld" = "تُقال %lld مرات";
+
+"settings.notif.wird.time_other" = "بقية الأوراد";
+
+"settings.notif.wird.follow_prayer" = "اتبع وقت %@";
+
+"leaderboard.city" = "المدينة";
+"leaderboard.region_unavailable" = "لم نتمكن من تحديد موقعك بعد. افتح شاشة الصلاة مرة واحدة ثم عد إلى هنا.";

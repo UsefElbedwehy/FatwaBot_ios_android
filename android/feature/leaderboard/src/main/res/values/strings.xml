@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="leaderboard_empty">No leaderboards available yet.</string>
+    <string name="leaderboard_my_rank">My rank: #%1$d</string>
+    <string name="leaderboard_resets_on">Resets %1$s</string>
+    <string name="leaderboard_leave">Leave board</string>
+    <string name="leaderboard_join">Join</string>
+    <string name="leaderboard_entry_cd">Rank %1$d, %2$s, %3$d</string>
+    <string name="leaderboard_join_title">Join the board</string>
+    <string name="leaderboard_publish_name">Publish my name instead of an alias</string>
+    <string name="leaderboard_city_placeholder">Your city</string>
+    <string name="leaderboard_cancel">Cancel</string>
+    <string name="leaderboard_country">Country: %1$s</string>
+    <string name="leaderboard_country_unavailable">Your country isn\'t available yet. Set your location in prayer settings, then try again.</string>
+    <string name="leaderboard_scoring_notice">Ranking counts your four fixed awrad, azkar, hadith and tasbeeh — each capped per week, so consistency wins, not volume. Custom awrad stay personal and aren\'t ranked.</string>
+    <string name="leaderboard_city">City: %1$s</string>
+    <string name="leaderboard_region_unavailable">We could not determine your location yet. Open the Prayer screen once, then come back.</string>
+</resources>

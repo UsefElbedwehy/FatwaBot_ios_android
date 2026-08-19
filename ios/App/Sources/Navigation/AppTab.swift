@@ -2,9 +2,8 @@ import SwiftUI
 
 /// The four top-level destinations (design direction §3).
 enum AppTab: String, CaseIterable, Identifiable {
-    case home
     case worship
-    case journey
+    case home
     case settings
 
     var id: String { rawValue }
@@ -13,7 +12,6 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .home: "tabs.home"
         case .worship: "tabs.worship"
-        case .journey: "tabs.journey"
         case .settings: "tabs.settings"
         }
     }
@@ -21,8 +19,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .home: "house.fill"
-        case .worship: "hands.and.sparkles.fill"
-        case .journey: "chart.line.uptrend.xyaxis"
+        case .worship: "square.grid.2x2.fill"
         case .settings: "gearshape.fill"
         }
     }

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -29,8 +31,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,7 +51,7 @@ private fun brandTokens(): ColorTokens = if (isSystemInDarkTheme()) DarkTokens e
 // MARK: Screen background
 
 /**
- * Warm cream wash + a faint mihrab-arch watermark in the top-end corner.
+ * Warm cream wash + a soft brand glow in the top-end corner.
  * Apply to the root container of a scrollable screen.
  */
 fun Modifier.brandScreenBackground(tokens: ColorTokens): Modifier =
@@ -62,19 +62,21 @@ fun Modifier.brandScreenBackground(tokens: ColorTokens): Modifier =
             ),
         )
         .drawBehind {
-            // Faint mihrab-arch watermark hanging from the top-trailing corner.
-            // Rotated 180° so the *curve* bleeds into view; otherwise the arch's
-            // straight jambs + flat base read as a stray square in the corner.
-            val w = size.width * 0.82f
-            val h = size.height * 0.34f
-            val path = mihrabArchPath(Size(w, h))
-            val left = size.width - w * 0.45f
-            val top = -h * 0.40f
-            rotate(degrees = 180f, pivot = Offset(left + w / 2f, top + h / 2f)) {
-                translate(left = left, top = top) {
-                    drawPath(path, color = tokens.primary.copy(alpha = 0.04f))
-                }
-            }
+            // Soft corner glow instead of a clipped arch silhouette. Any
+            // hard-edged shape bled into the corner reads as a stray
+            // square/rectangle (its straight jambs and flat base stay on-screen
+            // while the curve goes off it) — rotating it wasn't enough. A radial
+            // gradient has no edges at all, so it can only read as brand warmth.
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        tokens.primary.copy(alpha = 0.07f),
+                        tokens.primary.copy(alpha = 0f),
+                    ),
+                    center = Offset(size.width, 0f),
+                    radius = size.minDimension * 1.1f,
+                ),
+            )
         }
 
 // MARK: Card
@@ -147,17 +149,28 @@ fun BrandSectionHeader(
 
 // MARK: Brand mark (mihrab arch glyph)
 
-/** The mihrab-arch brand mark as a small filled glyph — used where the app's
- * logo should stand in for a generic icon (e.g. the streak icon, per
- * stakeholder direction: the streak is the app logo, not a fire emoji). */
+/**
+ * The app's brand mark.
+ *
+ * Draws the real logo asset rather than the hand-traced mihrab arch. The arch
+ * was a stand-in from before the logo existed, and it kept surfacing in places
+ * a user reads as "the app's icon" — the streaks list among them — where a
+ * near-miss of the brand is worse than either the mark or nothing.
+ *
+ * Tinted with [color] so it still reads correctly on a coloured container, the
+ * same way the iOS `FatwaMark` renders its asset as a template.
+ */
 @Composable
 fun BrandMark(
     modifier: Modifier = Modifier,
     color: Color = brandTokens().primary,
 ) {
-    androidx.compose.foundation.Canvas(modifier = modifier) {
-        drawPath(mihrabArchPath(size), color = color)
-    }
+    androidx.compose.foundation.Image(
+        painter = androidx.compose.ui.res.painterResource(R.drawable.fatwabot_logo),
+        contentDescription = null,
+        modifier = modifier,
+        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(color),
+    )
 }
 
 // MARK: Ring progress
@@ -249,6 +262,49 @@ fun BrandEmptyState(
             style = MaterialTheme.typography.bodyMedium,
             color = tokens.onSurfaceSecondary,
             textAlign = TextAlign.Center,
+        )
+    }
+}
+
+// MARK: Info notice
+
+/**
+ * Soft informational banner — an ⓘ glyph beside a short passage, used to carry
+ * a study/advisory note above a screen's content.
+ *
+ * The copy is deliberately NOT baked in: callers pass a resolved string so it can
+ * come from the server string pack (ADR-0011) and be changed without a release.
+ * Rendered in brand tones rather than the system blue so it reads as part of the
+ * app instead of an OS alert.
+ */
+@Composable
+fun InfoNotice(
+    text: String,
+    modifier: Modifier = Modifier,
+    tokens: ColorTokens = brandTokens(),
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(tokens.primaryContainer.copy(alpha = 0.55f), shape)
+            .border(1.dp, tokens.primary.copy(alpha = 0.14f), shape)
+            .padding(14.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            Icons.Filled.Info,
+            contentDescription = null,
+            tint = tokens.primary,
+            modifier = Modifier.size(17.dp),
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = tokens.onSurface,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.weight(1f),
         )
     }
 }

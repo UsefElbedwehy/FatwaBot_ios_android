@@ -31,16 +31,39 @@ val LightTokens = ColorTokens(
     outline = Color(0xFFE3D5CC),
 )
 
+// Dark palette — "True Night", chosen by the owner from a rendered comparison
+// of five candidates. Mirror of iOS DesignTokens.swift; see the long note there
+// for the full reasoning. In short:
+//
+// `primary` does two jobs — it fills large surfaces (the nav band, the search
+// cap) AND is a foreground for headings and icons. On a near-black ground those
+// two jobs cannot both clear 4.5:1 with a single token; it is arithmetically
+// impossible. So `primary` is tuned for the harder job (body-sized heading
+// text) and the fill rides on the 3:1 large-bold-text allowance. The rule that
+// falls out: **never put small text on a `primary` fill** — use
+// `primaryContainer` for that.
+//
+// Measured: onSurface/surface 21.00:1 · primary-as-text/surface 4.78:1 (the old
+// #B8514A was 3.88 and failed) · primary-as-text/**elevated** 4.26:1 — that last
+// one is the number that actually governs, because headings sit on cards rather
+// than on the black background. It clears 3:1 but not 4.5, so a `primary`
+// heading must stay large and bold · onPrimary/primary 4.16:1 (large bold only)
+// · accent/surface 12.78:1.
+//
+// Trade-off: `surface` is true black for OLED, which leaves one elevation step
+// and no third level, so nested rows lean on `outline` rather than their own
+// fill. Graded three-level alternatives were built and rejected in favour of
+// this one.
 val DarkTokens = ColorTokens(
-    primary = Color(0xFFD08770),
-    primaryContainer = Color(0xFF3A2422),
-    accent = Color(0xFFD4A73F),
-    surface = Color(0xFF171210),
-    surfaceElevated = Color(0xFF221A17),
-    onSurface = Color(0xFFF1E7E0),
-    onSurfaceSecondary = Color(0xFFB5A398),
-    onPrimary = Color(0xFF2B1B17),
-    outline = Color(0xFF463832),
+    primary = Color(0xFFC4564B),
+    primaryContainer = Color(0xFF351F1C),
+    accent = Color(0xFFEFC46B),
+    surface = Color(0xFF000000),
+    surfaceElevated = Color(0xFF16110F),
+    onSurface = Color(0xFFFFFFFF),
+    onSurfaceSecondary = Color(0xFFC4B3A9),
+    onPrimary = Color(0xFFFFF7F5),
+    outline = Color(0xFF2A2320),
 )
 
 object ShapeTokens {

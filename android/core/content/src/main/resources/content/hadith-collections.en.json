@@ -1,11 +1,60 @@
 {
   "collections": [
     {
-      "id": "00000000-0000-4000-a000-000000002000",
+      "id": "aa1ac277-60cd-42e0-b9e6-6c8a8c614dae",
       "slug": "nawawi40",
-      "name": "The Forty Hadith of an-Nawawi",
-      "description": "Forty hadith on the foundations of the faith, compiled by Imam an-Nawawi",
-      "entryCount": 3
+      "name": "Forty Hadith of an-Nawawi",
+      "description": "Forty foundational hadith on the essentials of the religion, compiled by Imam an-Nawawi",
+      "entryCount": 42
+    },
+    {
+      "id": "86db8a22-29e5-4e1f-80b1-cd48d02ddfca",
+      "slug": "qudsi40",
+      "name": "Forty Hadith Qudsi",
+      "description": "Forty sacred (qudsi) hadith the Prophet ﷺ related from his Lord",
+      "entryCount": 40
+    },
+    {
+      "id": "cb525ab8-1a6a-446e-a57d-1a94e652d782",
+      "slug": "bukhari",
+      "name": "Sahih al-Bukhari",
+      "description": "The rigorously authentic collection of Imam Muhammad al-Bukhari",
+      "entryCount": 7554
+    },
+    {
+      "id": "161d800f-5864-4f79-aa7f-48f9450f727f",
+      "slug": "muslim",
+      "name": "Sahih Muslim",
+      "description": "The authentic collection of Imam Muslim ibn al-Hajjaj",
+      "entryCount": 7360
+    },
+    {
+      "id": "16bf042f-a6ea-4749-bf5f-0338855aea64",
+      "slug": "abudawud",
+      "name": "Sunan Abu Dawud",
+      "description": "The Sunan of Imam Abu Dawud as-Sijistani",
+      "entryCount": 5272
+    },
+    {
+      "id": "23376f92-f3a2-403f-9361-4596391e4b32",
+      "slug": "tirmidhi",
+      "name": "Jami' at-Tirmidhi",
+      "description": "The Jami' of Imam Abu 'Isa at-Tirmidhi",
+      "entryCount": 3889
+    },
+    {
+      "id": "50aa2f26-6837-44ce-8a29-d354b57cb9bd",
+      "slug": "nasai",
+      "name": "Sunan an-Nasa'i",
+      "description": "As-Sunan as-Sughra (al-Mujtaba) of Imam an-Nasa'i",
+      "entryCount": 5672
+    },
+    {
+      "id": "2bc37f44-b7dd-48ce-949c-b23da4693a70",
+      "slug": "ibnmajah",
+      "name": "Sunan Ibn Majah",
+      "description": "The Sunan of Imam Ibn Majah al-Qazwini",
+      "entryCount": 4336
     }
   ]
 }

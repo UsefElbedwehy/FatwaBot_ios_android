@@ -2,7 +2,15 @@ package com.fatwabot.app.navigation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import android.app.TimePickerDialog
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import android.text.format.DateFormat
+import java.util.Locale
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +27,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Contrast
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.Check
+import androidx.core.os.LocaleListCompat
+import androidx.appcompat.app.AppCompatDelegate
+import com.fatwabot.app.theme.ThemeMode
+import com.fatwabot.app.theme.ThemeModeController
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
@@ -64,15 +81,26 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.fatwabot.app.BuildConfig
 import com.fatwabot.app.R
 import com.fatwabot.app.account.AccountViewModel
+import com.fatwabot.app.notifications.ContentReminderViewModel
+import com.fatwabot.app.notifications.WirdReminderViewModel
+import com.fatwabot.feature.awrad.FixedWirdSlot
+import com.fatwabot.feature.awrad.WirdPrayerAnchor
+import com.fatwabot.feature.awrad.WirdReminderTime
+import com.fatwabot.feature.awrad.fixedWirdNameResolver
+import com.fatwabot.core.content.ContentReminderPreferences
+import com.fatwabot.feature.awrad.WirdReminderPreferences
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.network.AccountProvider
 import kotlinx.coroutines.launch
 import com.fatwabot.core.designsystem.BrandSectionHeader
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
+import com.fatwabot.core.designsystem.InfoNotice
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.core.prayer.PrayerNameUi
 import com.fatwabot.core.prayer.PrayerNotificationPreferences
 import com.fatwabot.feature.prayer.PrayerViewModel
+import com.fatwabot.feature.prayer.titleRes
 
 /**
  * Settings tab — profile-first, mirroring iOS SettingsScreen. Adds per-type
@@ -80,7 +108,14 @@ import com.fatwabot.feature.prayer.PrayerViewModel
  * and a "?" features guide (stakeholder direction, 2026-07-12).
  */
 @Composable
-fun SettingsScreen(prayerViewModel: PrayerViewModel) {
+fun SettingsScreen(
+    prayerViewModel: PrayerViewModel,
+    /**
+     * Resolved in the composition root (RootScaffold) from the config string
+     * packs, so this screen keeps no config/network dependency (ADR-0010).
+     */
+    contact: ContactLinks,
+) {
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     Column(
         modifier = Modifier
@@ -92,22 +127,207 @@ fun SettingsScreen(prayerViewModel: PrayerViewModel) {
     ) {
         AccountSection()
 
+        AppearanceSection()
+
+        LanguageSection()
+
         NotificationsSection(prayerViewModel)
 
         FeaturesGuideSection()
 
+        DiagnosticsSection()
+
+        // Hidden entirely while the dashboard has supplied no channel — an empty
+        // "Contact" header helps nobody.
+        if (!contact.isEmpty) {
+            ContactSection(links = contact)
+        }
+
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            BrandSectionHeader("حول التطبيق", icon = Icons.Filled.Info)
+            BrandSectionHeader(stringResource(R.string.settings_about), icon = Icons.Filled.Info)
             BrandCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("الإصدار", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.settings_version), color = MaterialTheme.colorScheme.onSurface)
                     Text(BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        }
+    }
+}
+
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+private interface DiagnosticsEntryPoint {
+    fun tracker(): com.fatwabot.app.analytics.FirebaseAnalyticsTracker
+    fun analytics(): com.fatwabot.core.common.AnalyticsTracking
+}
+
+/** Diagnostics opt-out. Crash + usage reporting is on by default (a crash you
+ * can't see is a crash you can't fix, and nothing personal is collected), but
+ * this is a worship app — someone who would rather send nothing at all
+ * shouldn't have to uninstall to get that. Flipping it disables the SDKs
+ * themselves, not just our call sites — and, via the composite, also drops
+ * whatever our own ingest still has queued, so nothing recorded before the
+ * decision is transmitted after it. */
+@Composable
+private fun DiagnosticsSection() {
+    val context = LocalContext.current
+    val entryPoint = remember {
+        dagger.hilt.android.EntryPointAccessors
+            .fromApplication(context.applicationContext, DiagnosticsEntryPoint::class.java)
+    }
+    // Concrete tracker for the current choice; the composite to apply a change,
+    // so Firebase and our own recorder both hear about it.
+    val tracker = remember(entryPoint) { entryPoint.tracker() }
+    val analytics = remember(entryPoint) { entryPoint.analytics() }
+    var enabled by remember { mutableStateOf(tracker.isCollectionEnabled) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BrandSectionHeader(stringResource(R.string.settings_diagnostics), icon = Icons.Filled.Info)
+        BrandCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.settings_diagnostics_share),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        stringResource(R.string.settings_diagnostics_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = {
+                        enabled = it
+                        analytics.setCollectionEnabled(it)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Appearance control — System / Light / Dark. Applied app-wide by
+ * ThemeModeController (overrides uiMode so every isSystemInDarkTheme() reflects
+ * it), so toggling here recomposes the whole app. */
+@Composable
+private fun AppearanceSection() {
+    val context = LocalContext.current
+    val selected = ThemeModeController.mode
+    val options = listOf(
+        ThemeMode.SYSTEM to stringResource(R.string.appearance_system),
+        ThemeMode.LIGHT to stringResource(R.string.appearance_light),
+        ThemeMode.DARK to stringResource(R.string.appearance_dark),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BrandSectionHeader(stringResource(R.string.settings_appearance), icon = Icons.Filled.Contrast)
+        BrandCard {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                options.forEach { (mode, label) ->
+                    val isSelected = mode == selected
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent)
+                            .clickable { ThemeModeController.set(context, mode) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Language row. Opens the OS-native per-app Language screen (Android 13+, via
+ * ACTION_APP_LOCALE_SETTINGS with the app's declared locales_config). On older
+ * versions there is no per-app language screen, so it falls back to App info. */
+@Composable
+private fun LanguageSection() {
+    // In-app switching (owner request, 2026-08). iOS keeps the native route —
+    // Apple offers a per-app Language screen and no supported in-app equivalent —
+    // so the two platforms differ here on purpose.
+    //
+    // AppCompatDelegate rather than the platform LocaleManager: the framework API
+    // only exists on API 33+, and minSdk is 26. AppCompat persists the choice
+    // itself and replays it on launch, so nothing here needs its own storage.
+    val current = AppCompatDelegate.getApplicationLocales()
+    val selected = if (current.isEmpty) "" else current[0]?.language.orEmpty()
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BrandSectionHeader(stringResource(R.string.language_section), icon = Icons.Filled.Language)
+        BrandCard {
+            Column {
+                LanguageOption(R.string.language_system, "", selected)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                LanguageOption(R.string.language_arabic, "ar", selected)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                LanguageOption(R.string.language_english, "en", selected)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageOption(labelRes: Int, tag: String, selected: String) {
+    val isSelected = tag == selected
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // Empty tag == follow the system. Applying the *same* locale again
+                // would still recreate the activity, so selecting the current one
+                // is a no-op rather than a visible flicker.
+                if (!isSelected) {
+                    AppCompatDelegate.setApplicationLocales(
+                        if (tag.isEmpty()) {
+                            LocaleListCompat.getEmptyLocaleList()
+                        } else {
+                            LocaleListCompat.forLanguageTags(tag)
+                        },
+                    )
+                }
+            }
+            .padding(vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(labelRes),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        if (isSelected) {
+            Icon(
+                Icons.Filled.Check,
+                contentDescription = stringResource(R.string.language_selected),
+                tint = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
@@ -120,37 +340,207 @@ private fun NotificationsSection(prayerViewModel: PrayerViewModel) {
         prayerViewModel.updateNotificationPreferences(next)
     }
 
+    val contentViewModel: ContentReminderViewModel = hiltViewModel()
+    var contentPrefs by remember { mutableStateOf(contentViewModel.current()) }
+    fun updateContent(next: ContentReminderPreferences) {
+        contentPrefs = next
+        contentViewModel.update(next)
+    }
+
+    val wirdViewModel: WirdReminderViewModel = hiltViewModel()
+    var wirdPrefs by remember { mutableStateOf(wirdViewModel.current()) }
+    fun updateWird(next: WirdReminderPreferences) {
+        wirdPrefs = next
+        wirdViewModel.update(next)
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        BrandSectionHeader("الإشعارات", icon = Icons.Filled.NotificationsActive)
+        BrandSectionHeader(stringResource(R.string.settings_notifications), icon = Icons.Filled.NotificationsActive)
         BrandCard {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                ToggleRow("الأذان", "إشعار عند دخول وقت كل صلاة.", prefs.adhanEnabled) {
+                ToggleRow(stringResource(R.string.settings_notif_adhan_title), stringResource(R.string.settings_notif_adhan_subtitle), prefs.adhanEnabled) {
                     update(prefs.copy(adhanEnabled = it))
                 }
                 Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ToggleRow("تنبيه قبل الأذان", "تنبيه قبل الأذان بوقت تحدده.", prefs.preAdhanEnabled) {
+                ToggleRow(stringResource(R.string.settings_notif_pre_adhan_title), stringResource(R.string.settings_notif_pre_adhan_subtitle), prefs.preAdhanEnabled) {
                     update(prefs.copy(preAdhanEnabled = it))
                 }
                 if (prefs.preAdhanEnabled) {
-                    OffsetRow("دقائق قبل الأذان", prefs.preAdhanOffsetMinutes) {
+                    OffsetRow(stringResource(R.string.settings_notif_minutes_before), prefs.preAdhanOffsetMinutes) {
                         update(prefs.copy(preAdhanOffsetMinutes = it))
                     }
                 }
                 Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ToggleRow("تذكير بالإقامة", "تذكير بعد الأذان بوقت تحدده.", prefs.iqamaEnabled) {
+                ToggleRow(stringResource(R.string.settings_notif_iqama_title), stringResource(R.string.settings_notif_iqama_subtitle), prefs.iqamaEnabled) {
                     update(prefs.copy(iqamaEnabled = it))
                 }
                 if (prefs.iqamaEnabled) {
-                    OffsetRow("دقائق بعد الأذان", prefs.iqamaOffsetMinutes) {
-                        update(prefs.copy(iqamaOffsetMinutes = it))
+                    // The gap differs per prayer in practice, so each gets its own
+                    // stepper. The notice explains why there are five rows here
+                    // rather than the single one this used to be.
+                    InfoNotice(
+                        stringResource(R.string.settings_notif_iqama_notice),
+                        modifier = Modifier.padding(vertical = 6.dp),
+                    )
+                    for (prayer in PrayerNameUi.entries.filter { it.isPrayer }) {
+                        OffsetRow(stringResource(prayer.titleRes()), prefs.iqamaOffset(prayer)) {
+                            update(prefs.withIqamaOffset(prayer, it))
+                        }
                     }
                 }
                 Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                ToggleRow("الثلث الأخير من الليل", "تنبيه عند بدء الثلث الأخير من الليل.", prefs.lastThirdEnabled) {
+                ToggleRow(stringResource(R.string.settings_notif_last_third_title), stringResource(R.string.settings_notif_last_third_subtitle), prefs.lastThirdEnabled) {
                     update(prefs.copy(lastThirdEnabled = it))
+                }
+                Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                // Daily azkar/hadith reminders at random waking-hour times.
+                ToggleRow(
+                    stringResource(R.string.settings_notif_content_title),
+                    stringResource(R.string.settings_notif_content_subtitle),
+                    contentPrefs.enabled,
+                ) {
+                    updateContent(contentPrefs.copy(enabled = it))
+                }
+                if (contentPrefs.enabled) {
+                    CountRow(stringResource(R.string.settings_notif_content_per_day), contentPrefs.perDay) {
+                        updateContent(contentPrefs.copy(perDay = it))
+                    }
+                }
+                Divider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                // One "did you complete it?" notification per active wird, once a
+                // day, answerable straight from the notification shade.
+                ToggleRow(
+                    stringResource(R.string.settings_notif_wird_title),
+                    stringResource(R.string.settings_notif_wird_subtitle),
+                    wirdPrefs.enabled,
+                ) {
+                    updateWird(wirdPrefs.copy(enabled = it))
+                }
+                if (wirdPrefs.enabled) {
+                    // The four fixed slots each get their own time (client
+                    // request). They are on every board and their natural moments
+                    // are hours apart — asking about أذكار الصباح at the same time
+                    // as قيام الليل is asking about a window that closed.
+                    val slotName = fixedWirdNameResolver(LocalContext.current)
+                    FixedWirdSlot.entries.forEach { slot ->
+                        val anchored = wirdPrefs.prayerAnchor(slot.wirdId) != null
+                        // An anchored slot follows its prayer, so its clock
+                        // picker is hidden rather than shown-but-ignored.
+                        if (!anchored) {
+                            val time = wirdPrefs.timeFor(slot.wirdId, slot.reminderHour)
+                            TimeRow(slotName.name(slot), time.hour, time.minute) { hour, minute ->
+                                updateWird(
+                                    wirdPrefs.withTime(slot.wirdId, WirdReminderTime.of(hour, minute)),
+                                )
+                            }
+                        }
+                        slot.anchorPrayer?.let { prayer ->
+                            // The slot name is the title here, not only on the
+                            // time picker: anchoring hides that picker, and with
+                            // it the only thing saying which wird the switch
+                            // belongs to.
+                            ToggleRow(
+                                slotName.name(slot),
+                                stringResource(
+                                    R.string.settings_notif_wird_follow_prayer,
+                                    stringResource(anchorPrayerNameRes(prayer)),
+                                ),
+                                anchored,
+                            ) { on ->
+                                updateWird(
+                                    if (on) {
+                                        wirdPrefs.withPrayerAnchor(
+                                            slot.wirdId,
+                                            WirdPrayerAnchor(prayer, slot.defaultAnchorOffsetMinutes),
+                                        )
+                                    } else {
+                                        wirdPrefs.withoutPrayerAnchor(slot.wirdId)
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    // User-created wirds keep the shared time.
+                    TimeRow(
+                        stringResource(R.string.settings_notif_wird_time_other),
+                        wirdPrefs.hour,
+                        wirdPrefs.minute,
+                    ) { hour, minute ->
+                        updateWird(wirdPrefs.copy(hour = hour, minute = minute))
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * Time-of-day picker for the wird reminder. Uses the platform dialog rather than
+ * a Compose one so it inherits the user's 12/24-hour system setting — a worship
+ * app showing 8:00 PM to someone whose phone is on 24h reads as a bug.
+ */
+@Composable
+private fun TimeRow(label: String, hour: Int, minute: Int, onChange: (Int, Int) -> Unit) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                TimePickerDialog(
+                    context,
+                    { _, pickedHour, pickedMinute -> onChange(pickedHour, pickedMinute) },
+                    hour,
+                    minute,
+                    DateFormat.is24HourFormat(context),
+                ).show()
+            }
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            // Formatted through the system locale so Arabic renders Arabic-Indic
+            // digits, matching every other number on the screen.
+            String.format(Locale.getDefault(), "%02d:%02d", hour, minute),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+/**
+ * Stepper for "how many reminders a day", 0–5. Same shape as [OffsetRow] but over
+ * a count rather than minutes, so the bounds and the unit label differ.
+ */
+@Composable
+private fun CountRow(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        IconButton(
+            onClick = { onChange((value - 1).coerceAtLeast(ContentReminderPreferences.COUNT_MIN)) },
+            enabled = value > ContentReminderPreferences.COUNT_MIN,
+        ) { Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.settings_stepper_decrease), tint = MaterialTheme.colorScheme.primary) }
+        Text(
+            stringResource(R.string.settings_notif_content_count_value, value),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.width(48.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        IconButton(
+            onClick = { onChange((value + 1).coerceAtMost(ContentReminderPreferences.COUNT_MAX)) },
+            enabled = value < ContentReminderPreferences.COUNT_MAX,
+        ) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.settings_stepper_increase), tint = MaterialTheme.colorScheme.primary) }
     }
 }
 
@@ -182,9 +572,9 @@ private fun OffsetRow(label: String, value: Int, onChange: (Int) -> Unit) {
         IconButton(
             onClick = { onChange((value - 1).coerceAtLeast(PrayerNotificationPreferences.OFFSET_MIN)) },
             enabled = value > PrayerNotificationPreferences.OFFSET_MIN,
-        ) { Icon(Icons.Filled.Remove, contentDescription = "إنقاص", tint = MaterialTheme.colorScheme.primary) }
+        ) { Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.settings_stepper_decrease), tint = MaterialTheme.colorScheme.primary) }
         Text(
-            "$value د",
+            stringResource(R.string.settings_minutes_value, value),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -194,7 +584,7 @@ private fun OffsetRow(label: String, value: Int, onChange: (Int) -> Unit) {
         IconButton(
             onClick = { onChange((value + 1).coerceAtMost(PrayerNotificationPreferences.OFFSET_MAX)) },
             enabled = value < PrayerNotificationPreferences.OFFSET_MAX,
-        ) { Icon(Icons.Filled.Add, contentDescription = "زيادة", tint = MaterialTheme.colorScheme.primary) }
+        ) { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.settings_stepper_increase), tint = MaterialTheme.colorScheme.primary) }
     }
 }
 
@@ -203,14 +593,14 @@ private data class GuideItem(val icon: ImageVector, val title: String, val body:
 @Composable
 private fun FeaturesGuideSection() {
     val items = listOf(
-        GuideItem(Icons.Filled.Campaign, "الأذان", "يرسل إشعارًا عند دخول وقت كل صلاة من الصلوات الخمس حسب موقعك."),
-        GuideItem(Icons.Filled.NotificationsNone, "تنبيه قبل الأذان", "تنبيه مبكر قبل الأذان بعدد الدقائق الذي تحدده لتستعد للصلاة."),
-        GuideItem(Icons.Filled.Groups, "تذكير بالإقامة", "تذكير بعد الأذان بعدد الدقائق الذي تحدده — عند وقت الإقامة تقريبًا."),
-        GuideItem(Icons.Filled.NightsStay, "الثلث الأخير من الليل", "ينبهك عند بدء الثلث الأخير من الليل (من المغرب إلى الفجر) — وهو وقت محبوب للتهجد والدعاء."),
-        GuideItem(Icons.Filled.AutoAwesome, "التتابع", "يتتبع عدد الأيام المتتالية التي تحافظ فيها على كل عبادة. أكمل النشاط يوميًا ليكبر تتابعك."),
+        GuideItem(Icons.Filled.Campaign, stringResource(R.string.settings_notif_adhan_title), stringResource(R.string.settings_guide_adhan_body)),
+        GuideItem(Icons.Filled.NotificationsNone, stringResource(R.string.settings_notif_pre_adhan_title), stringResource(R.string.settings_guide_pre_adhan_body)),
+        GuideItem(Icons.Filled.Groups, stringResource(R.string.settings_notif_iqama_title), stringResource(R.string.settings_guide_iqama_body)),
+        GuideItem(Icons.Filled.NightsStay, stringResource(R.string.settings_notif_last_third_title), stringResource(R.string.settings_guide_last_third_body)),
+        GuideItem(Icons.Filled.AutoAwesome, stringResource(R.string.settings_guide_streak_title), stringResource(R.string.settings_guide_streak_body)),
     )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        BrandSectionHeader("دليل الميزات", icon = Icons.Filled.HelpOutline)
+        BrandSectionHeader(stringResource(R.string.settings_guide_title), icon = Icons.Filled.HelpOutline)
         BrandCard {
             Column {
                 items.forEachIndexed { index, item ->
@@ -385,4 +775,17 @@ private fun SignInButton(textRes: Int, enabled: Boolean, onClick: () -> Unit) {
     ) {
         Text(stringResource(textRes), fontWeight = FontWeight.SemiBold)
     }
+}
+
+/**
+ * Display name for an anchor prayer.
+ *
+ * Only the two prayers a wird slot can anchor to. A full PrayerNameUi mapping
+ * would pull the prayer feature's enum into Settings for two cases, and the
+ * fallback keeps a future third anchor from crashing here.
+ */
+private fun anchorPrayerNameRes(prayer: String): Int = when (prayer) {
+    "fajr" -> com.fatwabot.feature.prayer.R.string.prayer_fajr
+    "asr" -> com.fatwabot.feature.prayer.R.string.prayer_asr
+    else -> com.fatwabot.feature.prayer.R.string.prayer_fajr
 }

@@ -5,9 +5,11 @@ import SwiftUI
 /// Daily checklist (docs/features/awrad.md screen 1).
 public struct AwradBoardScreen: View {
     @State private var viewModel: AwradViewModel
+    @State private var editingWird: Wird?
+    @State private var wirdPendingDelete: Wird?
     @State private var showCreateSheet = false
-    @State private var showStats = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     private let locale: String
 
     public init(viewModel: AwradViewModel, locale: String = "ar") {
@@ -19,14 +21,21 @@ public struct AwradBoardScreen: View {
         colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
     }
 
+    /// Whether "أضف ورد اليوم" would actually add anything right now — hides
+    /// the menu item once all four are already active, rather than offering an
+    /// action that's a silent no-op.
+    private var hasAllFixedSlots: Bool {
+        FixedWirdSlot.allCases.allSatisfy { slot in
+            viewModel.activeWirds.contains { $0.id == slot.wirdId }
+        }
+    }
+
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                if viewModel.wirds.isEmpty {
+                if viewModel.activeWirds.isEmpty {
                     emptyState
                 } else {
-                    statsGrid
-
                     VStack(alignment: .leading, spacing: 12) {
                         BrandSectionHeader("worship.awrad", systemImage: "leaf.fill", tokens: tokens)
                         VStack(spacing: 12) {
@@ -44,32 +53,57 @@ public struct AwradBoardScreen: View {
         .brandScreenBackground(tokens)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { showStats = true } label: { Image(systemName: "chart.bar") }
-                    .accessibilityLabel(Text("awrad.stats_title"))
+                Menu {
+                    if !hasAllFixedSlots {
+                        Button {
+                            viewModel.addTodaysWird()
+                        } label: {
+                            Label("awrad.add_today", systemImage: "leaf")
+                        }
+                    }
+                    Button {
+                        showCreateSheet = true
+                    } label: {
+                        Label("awrad.create_custom", systemImage: "plus.circle")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
-            ToolbarItem(placement: .primaryAction) {
-                Button { showCreateSheet = true } label: { Image(systemName: "plus") }
-                    .accessibilityLabel(Text("awrad.add_first_wird"))
+        }
+        .sheet(item: $editingWird) { wird in
+            WirdTargetSheet(wird: wird) { newTarget in
+                viewModel.setTarget(wirdId: wird.id, target: newTarget)
             }
         }
         .sheet(isPresented: $showCreateSheet) {
             AwradCreateSheet(viewModel: viewModel, locale: locale)
         }
-        .sheet(isPresented: $showStats) {
-            AwradStatsView(stats: viewModel.stats)
+        .confirmationDialog(
+            Text("awrad.delete_confirm_title"),
+            isPresented: Binding(
+                get: { wirdPendingDelete != nil },
+                set: { if !$0 { wirdPendingDelete = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: wirdPendingDelete
+        ) { wird in
+            Button("awrad.delete_confirm_action", role: .destructive) {
+                viewModel.deleteWird(wird.id)
+                wirdPendingDelete = nil
+            }
+            Button("common.cancel", role: .cancel) { wirdPendingDelete = nil }
+        } message: { wird in
+            Text(wird.name)
         }
-        .task { await viewModel.loadTemplates(locale: locale) }
-    }
-
-    // MARK: - Stats
-
-    private var statsGrid: some View {
-        let stats = viewModel.stats
-        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            StatTile(titleKey: "awrad.stats.total_dhikr", value: stats.totalDhikrCount, systemImage: "circle.hexagonpath.fill", tokens: tokens)
-            StatTile(titleKey: "awrad.stats.completed_days", value: stats.completedDaysCount, systemImage: "checkmark.seal.fill", tokens: tokens)
-            StatTile(titleKey: "awrad.stats.quran_pages", value: stats.quranPagesCount, systemImage: "book.fill", tokens: tokens)
-            StatTile(titleKey: "awrad.stats.salawat", value: stats.salawatCount, systemImage: "heart.fill", tokens: tokens)
+        .task {
+            // Picks up anything a notification "yes" wrote while the app was
+            // backgrounded (see WirdCompletionResponder).
+            viewModel.reload()
+            await viewModel.loadTemplates(locale: locale)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { viewModel.reload() }
         }
     }
 
@@ -87,18 +121,28 @@ public struct AwradBoardScreen: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
             }
-            Button("awrad.add_first_wird") { showCreateSheet = true }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .background(
-                    LinearGradient(
-                        colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.accent)],
-                        startPoint: .leading, endPoint: .trailing
-                    ),
-                    in: Capsule()
-                )
+
+            VStack(spacing: 10) {
+                Button("awrad.add_today") { viewModel.addTodaysWird() }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.accent)],
+                            startPoint: .leading, endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
+
+                Button("awrad.create_custom") { showCreateSheet = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color(hexToken: tokens.primary))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+            }
+            .frame(maxWidth: 320)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 40)
@@ -130,9 +174,14 @@ public struct AwradBoardScreen: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
+                // Name first, badge under it. Inline, the badge stole width from
+                // the title and forced names like "Night Prayer (Qiyam)" to wrap
+                // across three lines with the badge floating beside the middle
+                // one. The name is what the user reads; it gets the full width.
                 Text(wird.name)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("\(count)/\(wird.target)")
                     .font(.caption)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
@@ -142,6 +191,26 @@ public struct AwradBoardScreen: View {
             .accessibilityElement(children: .combine)
 
             Spacer(minLength: 8)
+
+            Button {
+                wirdPendingDelete = wird
+            } label: {
+                Image(systemName: "trash")
+                    .font(.body)
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("awrad.delete"))
+
+            Button {
+                editingWird = wird
+            } label: {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.body)
+                    .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("awrad.edit_target"))
 
             Button {
                 viewModel.tick(wirdId: wird.id)
@@ -156,6 +225,7 @@ public struct AwradBoardScreen: View {
         }
         .brandCard(tokens)
     }
+
 
     // MARK: - Mark day complete
 
@@ -190,42 +260,21 @@ public struct AwradBoardScreen: View {
     }
 }
 
-/// Premium stat tile — a stacked icon + big number + label in an elevated card.
-private struct StatTile: View {
-    let titleKey: LocalizedStringKey
-    let value: Int
-    let systemImage: String
-    let tokens: ColorTokens
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ZStack {
-                Circle().fill(Color(hexToken: tokens.primaryContainer))
-                Image(systemName: systemImage)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color(hexToken: tokens.primary))
-            }
-            .frame(width: 34, height: 34)
-            .accessibilityHidden(true)
-
-            Text("\(value)")
-                .font(.system(size: 28, weight: .heavy, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(Color(hexToken: tokens.onSurface))
-            Text(titleKey)
-                .font(.caption)
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .brandCard(tokens)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-struct AwradStatsView: View {
-    let stats: WirdStats
+/// Retargeting, the one edit a fixed slot allows (and a plain one allows too).
+/// The name is deliberately not editable: the four fixed slots are named by the
+/// product, and no wird has ever been renameable here.
+struct WirdTargetSheet: View {
+    let wird: Wird
+    let onSave: (Int) -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @State private var targetText: String
+
+    init(wird: Wird, onSave: @escaping (Int) -> Void) {
+        self.wird = wird
+        self.onSave = onSave
+        _targetText = State(initialValue: "\(wird.target)")
+    }
 
     private var tokens: ColorTokens {
         colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
@@ -233,44 +282,57 @@ struct AwradStatsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 12) {
-                    stat("awrad.stats.total_dhikr", stats.totalDhikrCount, systemImage: "circle.hexagonpath.fill")
-                    stat("awrad.stats.completed_days", stats.completedDaysCount, systemImage: "checkmark.seal.fill")
-                    stat("awrad.stats.quran_pages", stats.quranPagesCount, systemImage: "book.fill")
-                    stat("awrad.stats.salawat", stats.salawatCount, systemImage: "heart.fill")
+            VStack(alignment: .leading, spacing: 16) {
+                Text(wird.name)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color(hexToken: tokens.onSurface))
+
+                targetField
+
+                Button("awrad.save_custom") {
+                    onSave(Int(targetText) ?? wird.target)
+                    dismiss()
                 }
-                .padding(20)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hexToken: tokens.primary), Color(hexToken: tokens.accent)],
+                        startPoint: .leading, endPoint: .trailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+
+                Spacer()
             }
+            .padding(20)
             .brandScreenBackground(tokens)
-            .navigationTitle(Text("awrad.stats_title"))
+            .navigationTitle(Text("awrad.edit_target"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("common.done") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
         }
     }
 
-    private func stat(_ titleKey: LocalizedStringKey, _ value: Int, systemImage: String) -> some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(Color(hexToken: tokens.primaryContainer))
-                Image(systemName: systemImage)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Color(hexToken: tokens.primary))
-            }
-            .frame(width: 40, height: 40)
-            .accessibilityHidden(true)
-            Text(titleKey)
-                .font(.body.weight(.medium))
-                .foregroundStyle(Color(hexToken: tokens.onSurface))
-            Spacer()
-            Text("\(value)")
-                .font(.title3.weight(.bold).monospacedDigit())
-                .foregroundStyle(Color(hexToken: tokens.primary))
-        }
-        .brandCard(tokens)
-        .accessibilityElement(children: .combine)
+    private var targetField: some View {
+        let field = TextField("awrad.custom_target_placeholder", text: $targetText)
+            .font(.body)
+            .foregroundStyle(Color(hexToken: tokens.onSurface))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(hexToken: tokens.surface), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(hexToken: tokens.outline).opacity(0.7), lineWidth: 1)
+            )
+        #if os(iOS)
+        return field.keyboardType(.numberPad)
+        #else
+        return field
+        #endif
     }
 }

@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:localeConfig="@xml/locales_config"
         android:name=".FatwaBotApplication"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -23,11 +24,53 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Widget deep links — keep the scheme in sync with
+                 com.fatwabot.core.common.DeepLink.SCHEME -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="fatwabot" />
+            </intent-filter>
         </activity>
+
+        <!-- AlarmManager loses every alarm on reboot, and a schedule computed
+             against the old clock is wrong after a timezone change. Neither was
+             handled: RECEIVE_BOOT_COMPLETED was declared but nothing listened. -->
+        <receiver
+            android:name="com.fatwabot.app.notifications.ScheduleRestoreReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name="com.fatwabot.feature.prayer.PrayerAlarmReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".notifications.ContentReminderAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Posts the daily "did you complete [wird]؟" notification. -->
+        <receiver
+            android:name=".notifications.WirdReminderAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Where the نعم / لاحقاً buttons land. exported="false": only our own
+             PendingIntents may fire it, so nothing outside the app can mark a
+             wird complete. -->
+        <receiver
+            android:name=".notifications.WirdReminderActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.fatwabot.app.WIRD_REMINDER_DONE" />
+                <action android:name="com.fatwabot.app.WIRD_REMINDER_LATER" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".push.FatwaBotMessagingService"

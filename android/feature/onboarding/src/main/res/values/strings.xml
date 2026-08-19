@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_welcome_title">Welcome to Fatwa</string>
+    <string name="onboarding_welcome_body">Your daily companion for prayer, worship, and steadfast habits.</string>
+    <string name="onboarding_get_started">Get started</string>
+    <string name="onboarding_highlights_title">What you\'ll find</string>
+    <string name="onboarding_highlight_prayer">Prayer times &amp; Qibla</string>
+    <string name="onboarding_highlight_azkar">Azkar, tasbih, awrad &amp; hadith</string>
+    <string name="onboarding_highlight_streak">Track your streak</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_location_title">Accurate prayer times</string>
+    <string name="onboarding_location_body">We use your location to calculate prayer times and the Qibla direction accurately where you are.</string>
+    <string name="onboarding_notification_title">Never miss a prayer</string>
+    <string name="onboarding_notification_body">Get gentle reminders for the adhan and your daily azkar — fully customizable from Settings.</string>
+    <string name="onboarding_allow">Allow</string>
+    <string name="onboarding_not_now">Not now</string>
+    <string name="onboarding_sign_in_title">Save your progress</string>
+    <string name="onboarding_sign_in_body">Sign in to keep your streaks and favorites and sync them across your devices. You can do this later anytime.</string>
+    <string name="onboarding_sign_in_failed">The process didn\'t complete. You can try again or continue as a guest.</string>
+    <string name="onboarding_sign_in_apple">Sign in with Apple</string>
+    <string name="onboarding_sign_in_google">Continue with Google</string>
+    <string name="onboarding_continue_as_guest">Continue as guest</string>
+</resources>

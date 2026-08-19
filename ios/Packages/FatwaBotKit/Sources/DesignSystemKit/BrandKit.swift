@@ -25,19 +25,22 @@ private struct BrandScreenBackground: ViewModifier {
                     ],
                     startPoint: .top, endPoint: .bottom
                 )
-                // A large, very faint mihrab arch watermark hanging from the
-                // top-trailing corner — brand texture without competing with
-                // content. Rotated 180° so the *curve* (not the arch's straight
-                // jambs/base) is what bleeds into view; otherwise the flat base
-                // reads as a stray square in the corner.
-                MihrabArchShape(archRatio: 0.85)
-                    .fill(Color(hexToken: tokens.primary).opacity(0.04))
-                    .frame(width: 300, height: 360)
-                    .rotationEffect(.degrees(180))
-                    .offset(x: 150, y: -150)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .clipped()
-                    .allowsHitTesting(false)
+                // Soft corner glow instead of a clipped arch silhouette. Any
+                // hard-edged shape bled into the corner reads as a stray
+                // square/rectangle (its straight jambs and flat base stay
+                // on-screen while the curve goes off it) — rotating it wasn't
+                // enough. A radial gradient has no edges at all, so it can only
+                // ever read as brand warmth.
+                RadialGradient(
+                    colors: [
+                        Color(hexToken: tokens.primary).opacity(0.07),
+                        Color(hexToken: tokens.primary).opacity(0.0),
+                    ],
+                    center: .topTrailing,
+                    startRadius: 0,
+                    endRadius: 420
+                )
+                .allowsHitTesting(false)
             }
             .ignoresSafeArea()
         )
@@ -232,5 +235,48 @@ public struct BrandEmptyState: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 44)
         .padding(.horizontal, 24)
+    }
+}
+
+// MARK: - Info notice
+
+/// Soft informational banner — an ⓘ glyph beside a short passage, used to carry
+/// a study/advisory note above a screen's content.
+///
+/// The copy is deliberately NOT baked in: callers pass a resolved string so it can
+/// come from the server string pack (ADR-0011) and be changed without a release.
+/// Rendered in brand tones rather than the system blue so it reads as part of the
+/// app instead of an OS alert.
+public struct InfoNotice: View {
+    private let text: String
+    private let tokens: ColorTokens
+
+    public init(_ text: String, tokens: ColorTokens) {
+        self.text = text
+        self.tokens = tokens
+    }
+
+    public var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 17))
+                .foregroundStyle(Color(hexToken: tokens.primary))
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.footnote)
+                .foregroundStyle(Color(hexToken: tokens.onSurface))
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            Color(hexToken: tokens.primaryContainer).opacity(0.55),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color(hexToken: tokens.primary).opacity(0.14), lineWidth: 1)
+        )
     }
 }

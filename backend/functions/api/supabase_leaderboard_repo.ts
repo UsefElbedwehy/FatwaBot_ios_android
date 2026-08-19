@@ -17,6 +17,7 @@ function toMembership(row: Record<string, unknown>): LeaderboardMembership {
     handle: row.handle as string,
     publishName: Boolean(row.publish_name),
     city: (row.city as string | null) ?? null,
+    country: (row.country as string | null) ?? null,
     joinedAt: new Date(row.joined_at as string),
   };
 }
@@ -30,6 +31,7 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
     userId: string,
     publishName: boolean,
     city: string | null,
+    country: string | null,
   ): Promise<LeaderboardMembership> {
     const { data, error } = await this.db
       .schema("gamification").from("leaderboard_memberships")
@@ -41,6 +43,7 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
           handle: generateHandle(),
           publish_name: publishName,
           city,
+          country,
         },
         { onConflict: "app_id,leaderboard_key,user_id" },
       )
@@ -62,11 +65,12 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
     ctx: AppContext,
     leaderboardKey: string,
     userId: string,
-    changes: { publishName?: boolean; city?: string | null },
+    changes: { publishName?: boolean; city?: string | null; country?: string | null },
   ): Promise<LeaderboardMembership | null> {
     const patch: Record<string, unknown> = {};
     if (changes.publishName !== undefined) patch.publish_name = changes.publishName;
     if (changes.city !== undefined) patch.city = changes.city;
+    if (changes.country !== undefined) patch.country = changes.country;
 
     const { data, error } = await this.db
       .schema("gamification").from("leaderboard_memberships")
@@ -118,6 +122,7 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
           user_id: e.userId,
           rank: e.rank,
           score: e.score,
+          bucket: e.bucket,
           computed_at: new Date().toISOString(),
         })),
         { onConflict: "app_id,leaderboard_key,period_key,user_id" },
@@ -125,13 +130,47 @@ export class SupabaseLeaderboardRepo implements LeaderboardRepo {
     if (error) throw error;
   }
 
+  async snapshotComputedAt(
+    ctx: AppContext,
+    leaderboardKey: string,
+    periodKey: string,
+  ): Promise<Date | null> {
+    const { data, error } = await this.db
+      .schema("gamification").from("leaderboard_snapshots")
+      .select("computed_at")
+      .eq("app_id", ctx.appId).eq("leaderboard_key", leaderboardKey).eq("period_key", periodKey)
+      .order("computed_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    const row = (data ?? [])[0];
+    return row ? new Date(row.computed_at as string) : null;
+  }
+
   async getSnapshot(ctx: AppContext, leaderboardKey: string, periodKey: string): Promise<SnapshotEntry[]> {
     const { data, error } = await this.db
       .schema("gamification").from("leaderboard_snapshots")
-      .select("user_id,rank,score")
+      .select("user_id,rank,score,bucket")
       .eq("app_id", ctx.appId).eq("leaderboard_key", leaderboardKey).eq("period_key", periodKey)
       .order("rank", { ascending: true });
     if (error) throw error;
-    return (data ?? []).map((r) => ({ userId: r.user_id, rank: r.rank, score: Number(r.score) }));
+    return (data ?? []).map((r) => ({
+      userId: r.user_id,
+      rank: r.rank,
+      score: Number(r.score),
+      bucket: (r.bucket as string | null) ?? "",
+    }));
+  }
+
+  async listPeriodKeys(ctx: AppContext, leaderboardKey: string): Promise<string[]> {
+    const { data, error } = await this.db
+      .schema("gamification").from("leaderboard_snapshots")
+      .select("period_key, computed_at")
+      .eq("app_id", ctx.appId).eq("leaderboard_key", leaderboardKey)
+      .order("computed_at", { ascending: false });
+    if (error) throw error;
+    // No native DISTINCT in the query builder — dedupe client-side. `Set`
+    // preserves first-seen order, which is `computed_at` descending from the
+    // query above, so the newest period naturally sorts first.
+    return [...new Set((data ?? []).map((r) => r.period_key as string))];
   }
 }

@@ -46,6 +46,42 @@ public final class GamificationEventRecorder: ActivityEventRecording {
         }
     }
 
+    /// Takes ownership of worship logged outside the app (the متابعة العبادات
+    /// widget) and clears it from the inbox.
+    ///
+    /// ## Why the ids are preserved rather than re-minted
+    /// `record(eventType:metadata:)` generates a fresh `clientEventId`. Using it
+    /// here would defeat the inbox's whole idempotency story: the id minted at
+    /// the tap is what makes a re-run safe, and replacing it means a drain that
+    /// runs twice submits the same prayer under two ids and counts it twice.
+    ///
+    /// ## Why enqueue happens before clear
+    /// Crashing between the two leaves the entry in both places, and the backend
+    /// dedupes on `client_event_id` — so the deed is counted once. Clearing
+    /// first and crashing would lose it outright. Given a choice between a
+    /// duplicate the server already collapses and a silently dropped act of
+    /// worship, this ordering is the only defensible one.
+    public func drain(_ inbox: WorshipInbox) async {
+        let entries = inbox.peek()
+        guard !entries.isEmpty else { return }
+
+        var queue = store.load()
+        let known = Set(queue.map(\.clientEventId))
+        queue.append(contentsOf: entries.filter { !known.contains($0.clientEventId) }.map {
+            QueuedActivityEvent(
+                clientEventId: $0.clientEventId,
+                eventType: $0.eventType,
+                occurredAt: $0.occurredAt,
+                timezone: $0.timezone,
+                metadata: $0.metadata
+            )
+        })
+        store.save(queue)
+        inbox.clear(entries)
+
+        await flush()
+    }
+
     /// Submits every currently-queued event in one batch (the backend ingest
     /// is idempotent per client_event_id, so a partial-failure retry never
     /// double-counts). Clears the queue only after a confirmed round-trip.

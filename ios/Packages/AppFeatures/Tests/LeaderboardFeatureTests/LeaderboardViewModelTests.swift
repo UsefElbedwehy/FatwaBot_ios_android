@@ -5,6 +5,9 @@ import NetworkingKit
 final class FakeAuthenticatedAPIClient: AuthenticatedAPIClientProtocol, @unchecked Sendable {
     var getHandler: (@Sendable (String, [URLQueryItem]) throws -> Any)?
     var postHandler: (@Sendable (String, Any) throws -> Any)?
+    /// Encoded request bodies, so a test can assert on what actually went over
+    /// the wire rather than on state the caller could have set either way.
+    private(set) var postedBodies: [String] = []
     var postEmptyHandler: (@Sendable (String) throws -> Any)?
     private(set) var lastPostBody: Any?
     private(set) var lastPostPath: String?
@@ -21,6 +24,9 @@ final class FakeAuthenticatedAPIClient: AuthenticatedAPIClientProtocol, @uncheck
     func post<Body: Encodable & Sendable, Response: Decodable & Sendable>(_ path: String, body: Body) async throws -> Response {
         lastPostPath = path
         lastPostBody = body
+        postedBodies.append(
+            (try? JSONEncoder().encode(body)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        )
         guard let result = try postHandler?(path, body) as? Response else {
             throw APIError.transport("no handler configured")
         }
@@ -107,5 +113,82 @@ final class LeaderboardViewModelTests: XCTestCase {
         await viewModel.leave(key: "weekly_fajr")
 
         XCTAssertFalse(viewModel.boards[0].joined)
+    }
+
+    // MARK: - Region is derived, never typed
+
+    nonisolated private static func regionalBoard(scope: String, key: String) -> LeaderboardBoard {
+        LeaderboardBoard(
+            key: key, name: "board", scope: scope, period: "weekly",
+            joined: false, myRank: nil, entries: []
+        )
+    }
+
+    func testJoiningACityBoardSendsTheDerivedCityWithoutBeingTold() async {
+        // The join sheet no longer has a text field: it passes nil and the view
+        // model fills the city in from the prayer-times location. If that link
+        // breaks, a city join silently posts no city and the user lands on a
+        // board nobody else is on.
+        let client = FakeAuthenticatedAPIClient()
+        client.getHandler = { _, _ in
+            ListBoardsResponse(boards: [Self.regionalBoard(scope: "city", key: "consistency_city")])
+        }
+        client.postHandler = { _, _ in
+            LeaderboardMembership(handle: "anon", publishName: false, city: "الرياض")
+        }
+        let viewModel = LeaderboardViewModel(
+            client: client,
+            region: ClosureRegionResolver { LeaderboardRegion(city: "الرياض", countryCode: "SA") }
+        )
+        await viewModel.load()
+
+        await viewModel.join(key: "consistency_city", publishName: false, city: nil)
+
+        XCTAssertTrue(
+            client.postedBodies.contains { $0.contains("الرياض") },
+            "a city join must carry the derived city"
+        )
+    }
+
+    func testJoiningACountryBoardSendsTheDerivedCountryCode() async {
+        let client = FakeAuthenticatedAPIClient()
+        client.getHandler = { _, _ in
+            ListBoardsResponse(boards: [Self.regionalBoard(scope: "country", key: "consistency_country")])
+        }
+        client.postHandler = { _, _ in
+            LeaderboardMembership(handle: "anon", publishName: false, city: nil)
+        }
+        let viewModel = LeaderboardViewModel(
+            client: client,
+            region: ClosureRegionResolver { LeaderboardRegion(city: "الرياض", countryCode: "SA") }
+        )
+        await viewModel.load()
+
+        await viewModel.join(key: "consistency_country", publishName: false, city: nil)
+
+        XCTAssertTrue(client.postedBodies.contains { $0.contains("\"SA\"") })
+    }
+
+    func testAGlobalJoinCarriesNoRegionAtAll() async {
+        // A global board must not leak the user's city or country — there is no
+        // reason for the server to receive it, and sending it anyway is the kind
+        // of quiet over-collection nobody notices.
+        let client = FakeAuthenticatedAPIClient()
+        client.getHandler = { _, _ in
+            ListBoardsResponse(boards: [Self.regionalBoard(scope: "global", key: "consistency_global")])
+        }
+        client.postHandler = { _, _ in
+            LeaderboardMembership(handle: "anon", publishName: false, city: nil)
+        }
+        let viewModel = LeaderboardViewModel(
+            client: client,
+            region: ClosureRegionResolver { LeaderboardRegion(city: "الرياض", countryCode: "SA") }
+        )
+        await viewModel.load()
+
+        await viewModel.join(key: "consistency_global", publishName: false, city: nil)
+
+        XCTAssertFalse(client.postedBodies.contains { $0.contains("الرياض") })
+        XCTAssertFalse(client.postedBodies.contains { $0.contains("\"SA\"") })
     }
 }

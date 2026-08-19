@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +54,12 @@ import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.RankMedal
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.feature.leaderboard.R
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 /** Leaderboards screen — mirror of iOS LeaderboardScreen
@@ -76,6 +83,13 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
         ) {
             state.error?.let { error -> NoticeCard(error, tokens) }
 
+            if (state.boards.isNotEmpty()) {
+                // Custom awrad are deliberately unranked (owner decision,
+                // 2026-07). Saying so is the difference between a rule and a
+                // user quietly concluding their effort doesn't register.
+                NoticeCard(stringResource(R.string.leaderboard_scoring_notice), tokens)
+            }
+
             state.boards.forEach { board ->
                 BoardCard(
                     board = board,
@@ -88,7 +102,7 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
             if (!state.isLoading && state.boards.isEmpty() && state.error == null) {
                 BrandEmptyState(
                     Icons.Filled.EmojiEvents,
-                    "لا توجد لوحات متصدرين متاحة بعد.",
+                    stringResource(R.string.leaderboard_empty),
                     tokens = tokens,
                 )
             }
@@ -104,6 +118,7 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
     joinTarget?.let { board ->
         JoinDialog(
             board = board,
+            suggestedRegion = state.suggestedRegion,
             onDismiss = { joinTarget = null },
             onConfirm = { publishName, city ->
                 joinTarget = null
@@ -111,6 +126,33 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
             },
         )
     }
+}
+
+/**
+ * "Resets 1 Jan 2027" when the board has a known reset date, falling back to
+ * the raw "scope · period" for `lifetime` (no reset at all) and for a
+ * `seasonal`/`challenge` board an admin hasn't dated yet. The recurring
+ * periods (`weekly`, `monthly`, `halfyearly`) always have one — see
+ * `periodBoundsFor` on the backend — so in practice this only falls back for
+ * the two admin-configured period types.
+ *
+ * `runCatching` rather than trusting the field, matching how
+ * `SearchHistoryScreen.groupByDay` treats a server timestamp: a malformed or
+ * unparseable date must degrade to the old text, not crash the card.
+ */
+@Composable
+private fun periodSummary(board: LeaderboardBoard): String {
+    val fallback = "${board.scope} · ${board.period}"
+    val endsAt = board.periodEndsAt ?: return fallback
+    // `runCatching` (not @Composable) must finish before any `stringResource`
+    // call — Compose only allows composable calls from a composable context,
+    // which a plain lambda passed to `runCatching` is not.
+    val formatted = runCatching {
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+            .withLocale(Locale.getDefault())
+            .format(Instant.parse(endsAt).atZone(ZoneId.systemDefault()))
+    }.getOrNull() ?: return fallback
+    return stringResource(R.string.leaderboard_resets_on, formatted)
 }
 
 @Composable
@@ -147,14 +189,14 @@ private fun BoardCard(
                         color = tokens.onSurface,
                     )
                     Text(
-                        "${board.scope} · ${board.period}",
+                        periodSummary(board),
                         style = MaterialTheme.typography.bodySmall,
                         color = tokens.onSurfaceSecondary,
                     )
                 }
                 board.myRank?.let { rank ->
                     Text(
-                        "ترتيبي: #$rank",
+                        stringResource(R.string.leaderboard_my_rank, rank),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = tokens.primary,
@@ -177,7 +219,7 @@ private fun BoardCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.primary),
                 ) {
-                    Text("مغادرة اللوحة", fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.leaderboard_leave), fontWeight = FontWeight.Medium)
                 }
             } else {
                 Button(
@@ -190,7 +232,7 @@ private fun BoardCard(
                 ) {
                     Icon(Icons.Filled.PersonAddAlt, contentDescription = null, modifier = Modifier.width(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("انضمام", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.leaderboard_join), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -199,6 +241,7 @@ private fun BoardCard(
 
 @Composable
 private fun EntryRow(entry: LeaderboardEntry, isMe: Boolean, tokens: ColorTokens) {
+    val entryDescription = stringResource(R.string.leaderboard_entry_cd, entry.rank, entry.displayName, entry.score.toInt())
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -206,7 +249,7 @@ private fun EntryRow(entry: LeaderboardEntry, isMe: Boolean, tokens: ColorTokens
             .background(if (isMe) tokens.primary.copy(alpha = 0.08f) else Color.Transparent)
             .padding(horizontal = 8.dp, vertical = 8.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "المركز ${entry.rank}، ${entry.displayName}، ${entry.score.toInt()}"
+                contentDescription = entryDescription
             },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -228,14 +271,35 @@ private fun EntryRow(entry: LeaderboardEntry, isMe: Boolean, tokens: ColorTokens
 }
 
 @Composable
-private fun JoinDialog(board: LeaderboardBoard, onDismiss: () -> Unit, onConfirm: (Boolean, String?) -> Unit) {
+private fun JoinDialog(
+    board: LeaderboardBoard,
+    /**
+     * Derived from the prayer-times location. Not editable: the app already
+     * knows where the user is, and asking them to type it invites typos that
+     * silently fragment a city board — "Riyadh", "riyadh" and "الرياض" become
+     * three leaderboards nobody is competing on. Client request, 2026-08-09.
+     */
+    suggestedRegion: LeaderboardRegion,
+    onDismiss: () -> Unit,
+    onConfirm: (Boolean, String?) -> Unit,
+) {
     var publishName by remember { mutableStateOf(false) }
-    var city by remember { mutableStateOf("") }
     val isCityScope = board.scope == "city"
+    val isCountryScope = board.scope == "country"
+    // Neither scope asks the user for anything now — both are derived — so the
+    // only thing that can block a join is not knowing the region at all.
+    val missingCountry = isCountryScope && suggestedRegion.countryCode == null
+    val missingCity = isCityScope && suggestedRegion.city == null
+    val missingRegion = missingCountry || missingCity
+    // "مصر" rather than "EG". The code is an implementation detail of the API.
+    val countryName = suggestedRegion.countryCode?.let {
+        java.util.Locale("", it).getDisplayCountry(java.util.Locale.getDefault())
+            .takeIf { name -> name.isNotBlank() } ?: it
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("الانضمام إلى اللوحة") },
+        title = { Text(stringResource(R.string.leaderboard_join_title)) },
         text = {
             Column {
                 Row(
@@ -243,20 +307,35 @@ private fun JoinDialog(board: LeaderboardBoard, onDismiss: () -> Unit, onConfirm
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
                 ) {
-                    Text("نشر اسمي بدلاً من اسم مستعار")
+                    Text(stringResource(R.string.leaderboard_publish_name))
                     Switch(checked = publishName, onCheckedChange = { publishName = it })
                 }
-                if (isCityScope) {
-                    OutlinedTextField(value = city, onValueChange = { city = it }, placeholder = { Text("مدينتك") })
+                if (isCityScope && suggestedRegion.city != null) {
+                    Text(stringResource(R.string.leaderboard_city, suggestedRegion.city))
+                }
+                if (isCountryScope && countryName != null) {
+                    Text(stringResource(R.string.leaderboard_country, countryName))
+                }
+                if (missingRegion) {
+                    // Previously the user could tap Join and the server answered
+                    // 400 country_required — an error they had no way to act on.
+                    Text(
+                        stringResource(R.string.leaderboard_region_unavailable),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(publishName, if (isCityScope) city else null) },
-                enabled = !isCityScope || city.isNotBlank(),
-            ) { Text("انضمام") }
+                // null for both scopes: the view model derives the city from
+                // the same location, so passing a copy here would be a second
+                // source of truth.
+                onClick = { onConfirm(publishName, null) },
+                enabled = !missingRegion,
+            ) { Text(stringResource(R.string.leaderboard_join)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.leaderboard_cancel)) } },
     )
 }

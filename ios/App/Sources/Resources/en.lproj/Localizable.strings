@@ -7,6 +7,13 @@
 "tabs.settings" = "Settings";
 "common.coming_soon" = "Coming soon, in shaa Allah";
 "settings.prayer_section" = "Prayer";
+"settings.appearance_section" = "Appearance";
+"settings.appearance.system" = "System";
+"settings.appearance.light" = "Light";
+"settings.appearance.dark" = "Dark";
+"settings.language_section" = "Language";
+"settings.language.title" = "App Language";
+"settings.language.subtitle" = "Change the app's language in System Settings";
 "settings.live_activity.title" = "Prayer countdown on Lock Screen";
 "settings.live_activity.subtitle" = "Shows the time remaining until the next prayer on your Lock Screen and Dynamic Island.";
 "settings.profile.guest_name" = "Guest";
@@ -46,7 +53,7 @@
 "worship.prayer_times" = "Prayer times";
 "worship.qibla" = "Qibla";
 "worship.azkar" = "Azkar";
-"worship.dua" = "Duas";
+"worship.dua" = "Du'a";
 "worship.tasbeeh" = "Tasbeeh";
 "quick.qibla" = "Qibla";
 "quick.tasbeeh" = "Tasbeeh";
@@ -100,7 +107,6 @@
 "azkar.virtue_note_label" = "Benefit";
 "azkar.session_complete" = "Azkar completed";
 "azkar.session_complete_subtitle" = "May Allah accept it from you";
-"azkar.toggle_translation" = "Toggle translation";
 "dua.favorites" = "Favorites";
 "dua.search_placeholder" = "Search duas…";
 "dua.search_results" = "Search results";
@@ -109,22 +115,27 @@
 "dua.favorite" = "Add to favorites";
 "dua.unfavorite" = "Remove from favorites";
 "dua.toggle_transliteration" = "Toggle transliteration";
-"worship.awrad" = "My Awrad";
+"worship.awrad" = "Your Wird Today";
+"worship.wird_tile" = "Wird";
+"worship.wird_daily" = "Daily Wird";
 "awrad.mark_day_complete" = "Mark Today Complete";
 "awrad.empty_title" = "No wirds yet";
 "awrad.empty_subtitle" = "Add your first wird to start your daily journey";
-"awrad.add_first_wird" = "Add a wird";
-"awrad.stats_title" = "My Stats";
-"awrad.stats.total_dhikr" = "Total dhikr";
-"awrad.stats.completed_days" = "Completed days";
-"awrad.stats.quran_pages" = "Qur'an pages";
-"awrad.stats.salawat" = "Salawat";
+"awrad.add_today" = "Add today's wird";
 "awrad.templates_section" = "Choose from templates";
 "awrad.create_custom" = "Create a custom wird";
 "awrad.custom_name_placeholder" = "Wird name";
 "awrad.custom_target_placeholder" = "Daily target";
 "awrad.save_custom" = "Save wird";
 "awrad.create_title" = "New Wird";
+"awrad.edit_target" = "Edit target";
+"awrad.delete" = "Delete";
+"awrad.delete_confirm_title" = "Delete this wird?";
+"awrad.delete_confirm_action" = "Delete";
+"awrad.fixed.qiyam_al_layl" = "Night Prayer (Qiyam)";
+"awrad.fixed.daily_quran" = "Daily Qur'an Wird";
+"awrad.fixed.morning_azkar" = "Morning Adhkar";
+"awrad.fixed.evening_azkar" = "Evening Adhkar";
 "common.cancel" = "Cancel";
 "worship.hadith" = "Hadith";
 "hadith.progress_read %lld %lld" = "%1$lld/%2$lld read";
@@ -135,8 +146,6 @@
 "hadith.next" = "Next";
 "gamification.title" = "Journey";
 "gamification.streaks_section" = "Streaks";
-"gamification.missions_section" = "Missions";
-"gamification.badges_section" = "Badges";
 "gamification.empty_state" = "Complete Azkar, Tasbeeh, Awrad, or Hadith readings to start your journey.";
 "gamification.grace_remaining %lld" = "%lld mercy day(s) left";
 "gamification.longest %lld" = "Best: %lld";
@@ -147,6 +156,7 @@
 "leaderboard.join" = "Join";
 "leaderboard.leave" = "Leave board";
 "leaderboard.my_rank %lld" = "My rank: #%lld";
+"leaderboard.resets_on %@" = "Resets %@";
 "leaderboard.empty_state" = "No leaderboards available yet.";
 "leaderboard.publish_name" = "Publish my name instead of a pseudonym";
 "leaderboard.city_placeholder" = "Your city";
@@ -157,7 +167,7 @@
 "search_history.empty_state" = "Your search history will appear here.";
 "search_history.clear_all" = "Clear All";
 "search_history.clear_all_confirm_title" = "Clear all search history?";
-"onboarding.welcome.title" = "Welcome to Fatwa Bot";
+"onboarding.welcome.title" = "Welcome to Fatwa";
 "onboarding.welcome.subtitle" = "Your daily companion for prayer, worship, and steady habits.";
 "onboarding.get_started" = "Get started";
 "onboarding.highlights.title" = "What you'll find";
@@ -183,7 +193,16 @@
 "notif.iqama.body" = "The congregation is about to begin";
 "notif.last_third.title" = "The last third of the night";
 "notif.last_third.body" = "A blessed time for tahajjud and du'a";
+"notif.content.azkar.title" = "A remembrance for you";
+"notif.content.hadith.title" = "A hadith for you";
+/* %@ is the wird's name — the user has to know which one they are answering for. */
+"notif.wird.title" = "Did you complete %@?";
+"notif.wird.body" = "Answer from here — no need to open the app.";
+"notif.wird.action.yes" = "Yes";
+"notif.wird.action.later" = "Later";
 "settings.notifications_section" = "Notifications";
+"settings.notif.disabled_banner" = "Notifications are turned off for Fatwa in iOS Settings, so prayer, wird and reminder alerts won't arrive no matter what's on below.";
+"settings.notif.disabled_banner_action" = "Open Settings";
 "settings.notif.adhan.title" = "Adhan";
 "settings.notif.adhan.subtitle" = "A notification at each prayer time.";
 "settings.notif.pre_adhan.title" = "Pre-adhan reminder";
@@ -195,6 +214,13 @@
 "settings.notif.minutes_before" = "Minutes before adhan";
 "settings.notif.minutes_after" = "Minutes after adhan";
 "settings.notif.minutes_value %lld" = "%lld min";
+"settings.notif.content.title" = "Daily azkar & hadith";
+"settings.notif.content.subtitle" = "Reminders at random times between 9am and 9pm.";
+"settings.notif.content.per_day" = "Reminders per day";
+"settings.notif.content.count_value %lld" = "%lld a day";
+"settings.notif.wird.title" = "Daily wird reminder";
+"settings.notif.wird.subtitle" = "One reminder per wird — answer \"Yes\" without opening the app.";
+"settings.notif.wird.time" = "Reminder time";
 "settings.guide_section" = "Features guide";
 "settings.guide.adhan" = "Sends a notification at the exact time of each of the five daily prayers, based on your location.";
 "settings.guide.pre_adhan" = "An early heads-up a set number of minutes before the adhan, so you can prepare.";
@@ -202,3 +228,66 @@
 "settings.guide.last_third" = "Notifies you when the last third of the night begins (from Maghrib to Fajr) — a beloved time for tahajjud and supplication.";
 "settings.guide.live_activity" = "Shows a live countdown to the next prayer on your Lock Screen and Dynamic Island.";
 "settings.guide.streaks" = "Tracks how many days in a row you keep up each act of worship. Complete an activity each day to grow your streak.";
+"home.card.question" = "General question";
+"home.card.hadith" = "Find hadith";
+"home.card.fatwa" = "Search a fatwa";
+"home.search_placeholder" = "Type your question here…";
+"home.tagline" = "Answers in light of the way of Ahl as-Sunnah wa al-Jama\'ah";
+"home.coming_soon.title" = "Coming soon, in shaa Allah";
+"home.coming_soon.body" = "Smart search for fatwas and hadith is on its way.";
+
+"settings.diagnostics_section" = "Diagnostics";
+"settings.diagnostics.title" = "Share usage reports";
+"settings.diagnostics.subtitle" = "Helps us fix problems. Never includes your searches, location, or name.";
+
+"worship.remembrance" = "Azkar & Du'a";
+
+"tasbeeh.notice" = "This is a placeholder notice. It can be edited from the admin dashboard without releasing an app update.";
+
+"settings.notif.iqama.notice" = "Mosques use a different gap for each prayer. These are common defaults — adjust any of them to match your mosque.";
+
+/* Contact section. The addresses themselves are server-driven (ADR-0011 keys
+   contact.email / contact.whatsapp / contact.instagram / contact.x) — only the
+   labels are localized here. */
+"settings.contact_section" = "Contact";
+"settings.contact.email" = "Email";
+"settings.contact.whatsapp" = "WhatsApp";
+"settings.contact.instagram" = "Instagram";
+"settings.contact.x" = "X";
+
+"streak.badge.accessibility %lld" = "Streak: %lld days";
+
+"leaderboard.country" = "Country";
+"leaderboard.country_unavailable" = "Your country isn't available yet. Set your location in prayer settings, then try again.";
+
+"leaderboard.scoring_notice" = "Ranking counts your four fixed awrad, azkar, hadith and tasbeeh — each capped per week, so consistency wins, not volume. Custom awrad stay personal and aren't ranked.";
+
+"hadith.under_review" = "Under scholarly review — available soon";
+
+"hadith.collection_empty" = "Nothing to read here yet — this collection is still under review.";
+
+"settings.sync_section" = "Content sync";
+"settings.sync.never" = "Not synced yet";
+"settings.sync.never_detail" = "Showing bundled content until the first sync completes.";
+"settings.sync.in_progress" = "Syncing…";
+"settings.sync.in_progress_detail" = "Checking for new content.";
+"settings.sync.up_to_date" = "Up to date";
+"settings.sync.checked_at %@" = "Checked %@ — nothing new.";
+"settings.sync.updated_at %lld %@" = "Updated %lld item(s) at %@.";
+"settings.sync.failed" = "Some content did not sync";
+"settings.sync.failed_detail %lld %@" = "%lld item(s) failed at %@. The app is still using its saved copy.";
+
+"azkar.search_placeholder" = "Search adhkar and du'a…";
+"azkar.search_clear" = "Clear search";
+"azkar.search_empty" = "No matching results";
+"azkar.start_session" = "Start session";
+"azkar.copy" = "Copy";
+"content.copy" = "Copy";
+"azkar.repeat_a11y %lld" = "Said %lld times";
+
+"settings.notif.wird.time_other" = "Your other wirds";
+
+"settings.notif.wird.follow_prayer" = "Follow %@ time";
+
+"leaderboard.city" = "City";
+"leaderboard.region_unavailable" = "We could not determine your location yet. Open the Prayer screen once, then come back.";

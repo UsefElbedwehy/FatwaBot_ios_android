@@ -4,4 +4,36 @@
     <string name="widget_hijri">Hijri Date</string>
     <string name="widget_streak">Streak</string>
     <string name="widget_daily_challenge">Daily Challenge</string>
+    <string name="widget_open_app">Open the app</string>
+    <string name="widget_prayer_fajr">Fajr</string>
+    <string name="widget_prayer_sunrise">Sunrise</string>
+    <string name="widget_prayer_dhuhr">Dhuhr</string>
+    <string name="widget_prayer_asr">Asr</string>
+    <string name="widget_prayer_maghrib">Maghrib</string>
+    <string name="widget_prayer_isha">Isha</string>
+    <string name="widget_streak_best">Best: %1$d</string>
+    <string name="widget_streak_grace">%1$d grace day(s) left</string>
+    <string name="widget_hijri_year">%1$d AH</string>
+    <string name="widget_prayer_times">Prayer Times</string>
+    <string name="widget_dua">Daily Du\'a</string>
+    <string name="widget_dua_title">Du\'a</string>
+    <!-- %s is a live H:MM:SS countdown rendered by a Chronometer. -->
+    <string name="widget_countdown_format">in %s</string>
+    <string name="widget_hadith">Daily Hadith</string>
+    <string name="widget_hadith_title">Hadith</string>
+    <string name="widget_prayer_midnight">Midnight</string>
+    <string name="widget_prayer_last_third">Last third</string>
+    <string name="widget_day_sheet">Full day</string>
+    <string name="widget_worship_tracker">Worship tracker</string>
+    <string name="widget_deed_azkar_morning">Morning adhkar</string>
+    <string name="widget_deed_azkar_evening">Evening adhkar</string>
+    <string name="widget_tasbih">Counter</string>
+    <string name="widget_tasbih_hint">Tap to count</string>
+    <string name="widget_tasbih_reset">Reset</string>
+    <string name="widget_occasion">Ramadan &amp; Eid</string>
+    <string name="widget_occasion_ramadan">Ramadan</string>
+    <string name="widget_occasion_eid_al_fitr">Eid al-Fitr</string>
+    <string name="widget_occasion_eid_al_adha">Eid al-Adha</string>
+    <string name="widget_occasion_days">days</string>
+    <string name="widget_prayer_calendar">Prayer &amp; calendar</string>
 </resources>

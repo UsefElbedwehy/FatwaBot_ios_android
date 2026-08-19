@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">فتوى بوت</string>
+    <string name="app_name">فتوى</string>
     <string name="tab_home">الرئيسية</string>
     <string name="tab_worship">العبادة</string>
     <string name="tab_journey">المسيرة</string>
@@ -18,4 +18,92 @@
     <string name="settings_account_sign_in_google">المتابعة عبر Google</string>
     <string name="settings_account_error_generic">تعذّر إتمام العملية. حاول مرة أخرى.</string>
     <string name="settings_account_error_already_linked">هذا الحساب مرتبط بملف آخر بالفعل.</string>
+    <string name="settings_about">حول التطبيق</string>
+    <string name="settings_version">الإصدار</string>
+    <string name="settings_notifications">الإشعارات</string>
+    <string name="settings_notif_adhan_title">الأذان</string>
+    <string name="settings_notif_adhan_subtitle">إشعار عند دخول وقت كل صلاة.</string>
+    <string name="settings_notif_pre_adhan_title">تنبيه قبل الأذان</string>
+    <string name="settings_notif_pre_adhan_subtitle">تنبيه قبل الأذان بوقت تحدده.</string>
+    <string name="settings_notif_minutes_before">دقائق قبل الأذان</string>
+    <string name="settings_notif_iqama_title">تذكير بالإقامة</string>
+    <string name="settings_notif_iqama_subtitle">تذكير بعد الأذان بوقت تحدده.</string>
+    <string name="settings_notif_minutes_after">دقائق بعد الأذان</string>
+    <string name="settings_notif_iqama_notice">تختلف مدة الإقامة بين الصلوات من مسجد لآخر. هذه قيم افتراضية شائعة، ويمكنك تعديل أي منها لتوافق مسجدك.</string>
+    <string name="settings_notif_last_third_title">الثلث الأخير من الليل</string>
+    <string name="settings_notif_last_third_subtitle">تنبيه عند بدء الثلث الأخير من الليل.</string>
+    <string name="settings_stepper_decrease">إنقاص</string>
+    <string name="settings_stepper_increase">زيادة</string>
+    <string name="settings_minutes_value">%1$d د</string>
+    <string name="settings_notif_content_title">أذكار وأحاديث يومية</string>
+    <string name="settings_notif_content_subtitle">تذكيرات في أوقات عشوائية بين ٩ صباحًا و٩ مساءً.</string>
+    <string name="settings_notif_content_per_day">عدد التذكيرات يوميًا</string>
+    <string name="settings_notif_content_count_value">%1$d يوميًا</string>
+    <string name="notif_channel_content">أذكار وأحاديث يومية</string>
+    <string name="notif_content_azkar_title">ذكر لك</string>
+    <string name="notif_content_hadith_title">حديث لك</string>
+    <string name="settings_notif_wird_title">تذكير الورد اليومي</string>
+    <string name="settings_notif_wird_subtitle">تذكير لكل ورد، تجيب عليه بـ«نعم» دون فتح التطبيق.</string>
+    <string name="settings_notif_wird_time">وقت التذكير</string>
+    <string name="notif_channel_wird">تذكير الورد اليومي</string>
+    <!-- %1$s هو اسم الورد — لا بد أن يعرف المستخدم عن أي ورد يُسأل. -->
+    <string name="notif_wird_title">هل أكملت %1$s؟</string>
+    <string name="notif_wird_body">أجب من هنا دون فتح التطبيق.</string>
+    <string name="notif_wird_action_yes">نعم</string>
+    <string name="notif_wird_action_later">لاحقاً</string>
+    <string name="settings_guide_title">دليل الميزات</string>
+    <string name="settings_guide_adhan_body">يرسل إشعارًا عند دخول وقت كل صلاة من الصلوات الخمس حسب موقعك.</string>
+    <string name="settings_guide_pre_adhan_body">تنبيه مبكر قبل الأذان بعدد الدقائق الذي تحدده لتستعد للصلاة.</string>
+    <string name="settings_guide_iqama_body">تذكير بعد الأذان بعدد الدقائق الذي تحدده — عند وقت الإقامة تقريبًا.</string>
+    <string name="settings_guide_last_third_body">ينبهك عند بدء الثلث الأخير من الليل (من المغرب إلى الفجر) — وهو وقت محبوب للتهجد والدعاء.</string>
+    <string name="settings_guide_streak_title">التتابع</string>
+    <string name="settings_guide_streak_body">يتتبع عدد الأيام المتتالية التي تحافظ فيها على كل عبادة. أكمل النشاط يوميًا ليكبر تتابعك.</string>
+    <string name="worship_prayer_times">أوقات الصلاة</string>
+    <string name="worship_qibla">القبلة</string>
+    <string name="worship_tasbeeh">السُّبحة</string>
+    <!-- Bundled fallback for the server-driven Tasbeeh notice (key "tasbeeh.notice"). -->
+    <string name="tasbeeh_notice">هذا نص تنبيه مؤقت. يمكن تعديله من لوحة التحكم دون تحديث التطبيق.</string>
+    <string name="worship_azkar">الأذكار</string>
+    <string name="worship_dua">الأدعية</string>
+    <string name="worship_remembrance">الأذكار والأدعية</string>
+    <string name="worship_wird_tile">ورد</string>
+    <string name="worship_wird_daily">الورد اليومي</string>
+    <string name="worship_hadith">الأحاديث</string>
+    <string name="journey_leaderboards">لوحات المتصدرين</string>
+    <string name="journey_search_history">سجل البحث</string>
+    <string name="journey_title">مسيرتك</string>
+    <string name="common_back">رجوع</string>
+    <string name="language_section">اللغة</string>
+    <string name="language_title">لغة التطبيق</string>
+    <string name="language_subtitle">غيّر لغة التطبيق من إعدادات النظام</string>
+    <string name="notification_channel_general">التنبيهات العامة</string>
+    <string name="settings_appearance">المظهر</string>
+    <string name="appearance_system">النظام</string>
+    <string name="appearance_light">فاتح</string>
+    <string name="appearance_dark">داكن</string>
+    <string name="home_card_question">سؤال ديني عام</string>
+    <string name="home_card_hadith">استخراج الأحاديث</string>
+    <string name="home_card_fatwa">ابحث عن فتوى</string>
+    <string name="home_search_placeholder">اكتب سؤالك هنا...</string>
+    <string name="home_tagline">البحث عن الإجابة على ضوء منهج أهل السنة والجماعة</string>
+    <string name="home_coming_soon_title">قريباً بإذن الله</string>
+    <string name="home_coming_soon_body">البحث الذكي عن الفتاوى والأحاديث قيد الإعداد، وسيصلك قريباً.</string>
+    <string name="common_ok">حسناً</string>
+    <string name="settings_diagnostics">التشخيص</string>
+    <string name="settings_diagnostics_share">مشاركة تقارير الأعطال والاستخدام</string>
+    <string name="settings_diagnostics_note">تساعدنا في إصلاح المشكلات. لا تتضمن بحثك أو موقعك أو اسمك أبداً.</string>
+    <!-- Contact section. The addresses themselves are server-driven (ADR-0011 keys
+         contact.email / contact.whatsapp / contact.instagram / contact.x) — only
+         the labels are localized here. -->
+    <string name="settings_contact">التواصل</string>
+    <string name="settings_contact_email">البريد الإلكتروني</string>
+    <string name="settings_contact_whatsapp">واتساب</string>
+    <string name="settings_contact_instagram">إنستغرام</string>
+    <string name="settings_contact_x">إكس</string>
+    <string name="language_system">لغة النظام</string>
+    <string name="language_arabic">العربية</string>
+    <string name="language_english">English</string>
+    <string name="language_selected">المختارة</string>
+    <string name="settings_notif_wird_time_other">بقية الأوراد</string>
+    <string name="settings_notif_wird_follow_prayer">اتبع وقت %1$s</string>
 </resources>

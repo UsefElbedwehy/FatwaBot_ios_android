@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="searchhistory_clear_all">مسح الكل</string>
+    <string name="searchhistory_empty">سيظهر سجل بحثك هنا.</string>
+    <string name="searchhistory_clear_confirm_title">مسح كل سجل البحث؟</string>
+    <string name="searchhistory_cancel">إلغاء</string>
+    <string name="searchhistory_delete">حذف</string>
+</resources>

@@ -1,5 +1,6 @@
 import ContentKit
 import DesignSystemKit
+import CoreKit
 import SwiftUI
 
 /// The reading/counting session (docs/features/azkar.md screen 2). Completion
@@ -7,7 +8,6 @@ import SwiftUI
 /// game (ADR-0007 tone guidance).
 public struct AzkarSessionScreen: View {
     @State private var viewModel: AzkarViewModel
-    @State private var showTranslation = true
     @Environment(\.colorScheme) private var colorScheme
     private let category: AzkarCategory
 
@@ -38,7 +38,13 @@ public struct AzkarSessionScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .onAppear {
-            if viewModel.currentItem == nil, !viewModel.isSessionComplete {
+            // The view model is shared across categories, so a finished session
+            // must not leak its state onto the next category opened: always
+            // re-initialise when this screen is for a different category.
+            // (Guarding only on `!isSessionComplete` made every category opened
+            // after a completed one render as already-completed.)
+            if viewModel.categoryId != category.id
+                || (viewModel.currentItem == nil && !viewModel.isSessionComplete) {
                 viewModel.startSession(categoryId: category.id, items: category.items)
             }
         }
@@ -52,13 +58,13 @@ public struct AzkarSessionScreen: View {
                 // Arabic dhikr — the prominent centerpiece card.
                 BrandCard(tokens, padding: 22) {
                     VStack(alignment: .trailing, spacing: 16) {
-                        Text(item.arabicText)
+                        Text(item.arabicText.expandingArabicHonorifics)
                             .font(.title.weight(.medium))
                             .foregroundStyle(Color(hexToken: tokens.onSurface))
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: .infinity, alignment: .trailing)
 
-                        if showTranslation, let translation = item.translation {
+                        if let translation = item.translation {
                             Divider()
                                 .overlay(Color(hexToken: tokens.outline))
                             Text(translation)
@@ -87,17 +93,6 @@ public struct AzkarSessionScreen: View {
                     .padding(.top, 4)
             }
             .padding(20)
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showTranslation.toggle()
-                } label: {
-                    Image(systemName: showTranslation ? "text.bubble.fill" : "text.bubble")
-                        .foregroundStyle(Color(hexToken: tokens.primary))
-                }
-                .accessibilityLabel(Text("azkar.toggle_translation"))
-            }
         }
     }
 

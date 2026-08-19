@@ -1,0 +1,106 @@
+package com.fatwabot.core.prayer
+
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlinx.datetime.Instant
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/** Mirrors iOS NotificationBudgetTests. */
+class NotificationBudgetTest {
+    private val engine = PrayerEngine()
+
+    private fun timeline(days: Int) =
+        engine.timeline(24.7136, 46.6753, 2026, 3, 20, days, PrayerSettings(method = "umm_al_qura"))
+
+    /** Everything on: 5 adhan + 5 pre-adhan + 5 iqama + 1 last third per day. */
+    private val full = PrayerNotificationPreferences(
+        adhanEnabled = true, preAdhanEnabled = true, preAdhanOffsetMinutes = 10,
+        iqamaEnabled = true, lastThirdEnabled = true,
+    )
+
+    private fun before(days: List<PrayerDayUi>) =
+        Instant.fromEpochSeconds(days.first().times.getValue(PrayerNameUi.FAJR).epochSeconds - 3600)
+
+    private fun dayOf(epochSeconds: Long): LocalDate =
+        java.time.Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.systemDefault()).toLocalDate()
+
+    @Test
+    fun `adhan survives across the whole horizon when the budget is tight`() {
+        val days = timeline(10)
+        val plan = NotificationPlanner.plan(days, full, before(days), budget = 48)
+        // The bug: chronological truncation gave three days of everything and
+        // then silence — no adhan at all from day four.
+        val adhanDays = plan
+            .filter { it.kind == PlannedNotification.Kind.ADHAN }
+            .map { dayOf(it.fireEpochSeconds) }
+            .toSet()
+        // Measured under the tiered policy: two days of every type, then the
+        // rest of the budget on adhan — six days against the three the old
+        // chronological truncation gave.
+        assertTrue("adhan must reach well past day three, got ${adhanDays.size}", adhanDays.size >= 6)
+        assertTrue(plan.size <= 48)
+    }
+
+    @Test
+    fun `soft reminders survive near term`() {
+        val days = timeline(10)
+        val now = before(days)
+        val plan = NotificationPlanner.plan(days, full, now, budget = 48)
+        val cutoff = now.epochSeconds + NotificationPlanner.FULL_FIDELITY_DAYS * 86_400L
+        // Pure adhan-first allocation would buy a longer horizon but strip the
+        // pre-adhan nudge entirely — a regression noticed the next morning.
+        assertTrue(
+            plan.any {
+                it.fireEpochSeconds < cutoff && it.kind != PlannedNotification.Kind.ADHAN
+            },
+        )
+    }
+
+    @Test
+    fun `beyond the full fidelity window only the adhan survives`() {
+        val days = timeline(10)
+        val now = before(days)
+        val plan = NotificationPlanner.plan(days, full, now, budget = 48)
+        val cutoff = now.epochSeconds + NotificationPlanner.FULL_FIDELITY_DAYS * 86_400L
+        assertTrue(
+            plan.filter { it.fireEpochSeconds >= cutoff }
+                .all { it.kind == PlannedNotification.Kind.ADHAN },
+        )
+    }
+
+    @Test
+    fun `the plan is still chronological after allocation`() {
+        val days = timeline(10)
+        val plan = NotificationPlanner.plan(days, full, before(days), budget = 48)
+        assertEquals(plan.map { it.fireEpochSeconds }.sorted(), plan.map { it.fireEpochSeconds })
+    }
+
+    @Test
+    fun `a plan that fits is left completely alone`() {
+        val days = timeline(2)
+        val plan = NotificationPlanner.plan(days, full, before(days), budget = 10_000)
+        // Under budget, every reminder the user asked for must be present —
+        // prioritisation must not quietly drop things when there is room.
+        assertTrue(plan.any { it.kind == PlannedNotification.Kind.IQAMA })
+        assertTrue(plan.any { it.kind == PlannedNotification.Kind.LAST_THIRD })
+        assertTrue(plan.any { it.kind == PlannedNotification.Kind.PRE_ADHAN })
+    }
+
+    @Test
+    fun `only the adhan is armed as a user-visible alarm`() {
+        // setExactAndAllowWhileIdle is throttled in Doze — Android enforces a
+        // minimum gap between successive such alarms, and the pre-adhan reminder
+        // ten minutes ahead puts the adhan inside it. That deferral is the
+        // reported "الأذان يتأخر ٥ دقائق". setAlarmClock is exempt.
+        assertTrue(PlannedNotification.Kind.ADHAN.usesAlarmClock)
+
+        // The rest stay off it on purpose: setAlarmClock claims the system's
+        // "next alarm" indicator, and four reminders a day claiming it would
+        // make the indicator meaningless.
+        assertTrue(!PlannedNotification.Kind.PRE_ADHAN.usesAlarmClock)
+        assertTrue(!PlannedNotification.Kind.IQAMA.usesAlarmClock)
+        assertTrue(!PlannedNotification.Kind.LAST_THIRD.usesAlarmClock)
+    }
+}

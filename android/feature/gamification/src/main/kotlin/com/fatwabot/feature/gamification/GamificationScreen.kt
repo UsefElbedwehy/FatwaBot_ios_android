@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -56,8 +57,11 @@ import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.LocalReduceMotion
 import com.fatwabot.core.designsystem.MotionTokens
 import com.fatwabot.core.designsystem.RingProgress
+import com.fatwabot.core.designsystem.StreakBadge
+import com.fatwabot.core.designsystem.StreakBadgeSize
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.motionAnimationSpec
+import com.fatwabot.feature.gamification.R
 
 /** Journey tab — mirror of iOS GamificationScreen. Renders server descriptors
  * verbatim (docs/features/gamification.md). */
@@ -69,7 +73,9 @@ fun GamificationScreen(viewModel: GamificationViewModel = hiltViewModel()) {
     LaunchedEffect(Unit) { viewModel.load() }
 
     val profile = state.profile
-    val isEmpty = profile.streaks.isEmpty() && profile.missions.isEmpty() && profile.badges.isEmpty()
+    // Streaks alone: missions and badges are no longer shown, so counting
+    // them would keep the empty state hidden behind data nobody can see.
+    val isEmpty = profile.streaks.isEmpty()
     val headline = profile.streaks.maxByOrNull { it.currentLength }
 
     Box(modifier = Modifier.fillMaxSize().brandScreenBackground(tokens)) {
@@ -88,24 +94,12 @@ fun GamificationScreen(viewModel: GamificationViewModel = hiltViewModel()) {
 
             if (profile.streaks.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("السلاسل", icon = Icons.Filled.CalendarMonth)
+                    BrandSectionHeader(stringResource(R.string.gamification_streaks), icon = Icons.Filled.CalendarMonth)
                     profile.streaks.forEach { StreakCard(it) }
                 }
             }
-            if (profile.missions.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("المهام", icon = Icons.Filled.MilitaryTech)
-                    profile.missions.forEach { MissionCard(it) }
-                }
-            }
-            if (profile.badges.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandSectionHeader("الأوسمة", icon = Icons.Filled.EmojiEvents)
-                    BadgeGrid(profile.badges)
-                }
-            }
             if (!state.isLoading && isEmpty && state.error == null) {
-                BrandEmptyState(Icons.Filled.NightsStay, "ابدأ رحلتك — أكمل نشاطًا لرؤية تقدمك هنا")
+                BrandEmptyState(Icons.Filled.NightsStay, stringResource(R.string.gamification_empty))
             }
         }
         if (state.isLoading && isEmpty) {
@@ -129,7 +123,7 @@ private fun NoticeCard(error: String) {
 
 @Composable
 private fun StreakHeroCard(streak: GamificationStreak) {
-    val denom = maxOf(streak.longestLength, streak.currentLength, 1)
+    val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,25 +138,25 @@ private fun StreakHeroCard(streak: GamificationStreak) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(96.dp)) {
-            RingProgress(value = streak.currentLength.toFloat() / denom, strokeWidth = 9.dp, modifier = Modifier.fillMaxSize())
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "${streak.currentLength}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                BrandMark(color = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(14.dp))
-            }
-        }
+        // Flame + brand mark + count (owner decision, 2026-07). The ring this
+        // replaced encoded current/longest as a fraction, which reads as
+        // "progress toward a goal" — a streak has no goal, and a user at their
+        // personal best saw a full ring that never moved again.
+        StreakBadge(
+            count = streak.currentLength,
+            tokens = tokens,
+            size = StreakBadgeSize.LARGE,
+            isActive = streak.currentLength > 0,
+            contentDescription = stringResource(R.string.streak_badge_accessibility, streak.currentLength),
+            modifier = Modifier.size(96.dp),
+        )
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(streak.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text("الأطول: ${streak.longestLength}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.gamification_longest, streak.longestLength), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (streak.graceRemaining > 0) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(14.dp))
-                    Text("سماحية متبقية: ${streak.graceRemaining}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    Text(stringResource(R.string.gamification_grace_remaining, streak.graceRemaining), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                 }
             }
         }
@@ -186,62 +180,18 @@ private fun StreakCard(streak: GamificationStreak) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(streak.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                 if (streak.graceRemaining > 0) {
-                    Text("سماحية متبقية: ${streak.graceRemaining}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.gamification_grace_remaining, streak.graceRemaining), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("${streak.currentLength}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                Text("الأطول: ${streak.longestLength}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.gamification_longest, streak.longestLength), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
 }
 
-@Composable
-private fun MissionCard(mission: GamificationMission) {
-    val fraction = if (mission.target > 0) (mission.progress.toFloat() / mission.target).coerceIn(0f, 1f) else 0f
-    val reduceMotion = LocalReduceMotion.current
-    val animatedFraction by animateFloatAsState(
-        targetValue = fraction,
-        animationSpec = motionAnimationSpec(reduceMotion, MotionTokens.STANDARD_MS),
-        label = "missionProgress",
-    )
-    BrandCard {
-        Row(
-            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
-                RingProgress(value = animatedFraction, strokeWidth = 6.dp, modifier = Modifier.fillMaxSize())
-                Text(
-                    "${(animatedFraction * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(mission.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Text("${mission.progress}/${mission.target}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
 
-@Composable
-private fun BadgeGrid(badges: List<GamificationBadge>) {
-    // A non-scrolling grid embedded in the outer scroll: fixed height rows.
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 104.dp),
-        modifier = Modifier.fillMaxWidth().heightForRows(badges.size),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        userScrollEnabled = false,
-    ) {
-        items(badges) { badge -> BadgeTile(badge) }
-    }
-}
 
 /** Give the embedded grid a deterministic height so it lays out inside the
  * parent vertical scroll (LazyVerticalGrid can't measure itself in an
@@ -251,45 +201,3 @@ private fun Modifier.heightForRows(count: Int): Modifier {
     return this.then(Modifier.height((rows * 132).dp))
 }
 
-@Composable
-private fun BadgeTile(badge: GamificationBadge) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(0.85f)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(12.dp)
-            .semantics(mergeDescendants = true) {
-                contentDescription = if (badge.isEarned) "${badge.name}، تم الحصول عليها" else "${badge.name}، لم يتم الحصول عليها بعد"
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(50))
-                .background(
-                    if (badge.isEarned) MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)
-                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (badge.isEarned) Icons.Filled.EmojiEvents else Icons.Filled.Lock,
-                contentDescription = null,
-                tint = if (badge.isEarned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            badge.name,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            color = if (badge.isEarned) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}

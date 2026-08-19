@@ -27,6 +27,14 @@ let package = Package(
         .target(
             name: "DesignSystemKit",
             dependencies: ["CoreKit"],
+            // Amiri (SIL OFL) — bundled so Azkar/Du'a/Hadith cards match the
+            // client-specified reference typography without depending on a
+            // system font the device may not have (client direction, 2026-08-13).
+            // The client's reference named "Amiri Quran" specifically, a
+            // separate Uthmani-script variant of the same family this build
+            // does not have on hand — using standard Amiri until that file is
+            // provided; swapping it in later is just replacing these 4 files.
+            resources: [.process("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
         .target(
@@ -37,7 +45,11 @@ let package = Package(
         .target(
             name: "ContentKit",
             dependencies: ["CoreKit", "NetworkingKit"],
-            resources: [.copy("Resources")],
+            // `.process` flattens the seed JSON to the bundle root, which (a) keeps the
+            // simulator bundle shallow — Xcode 26's codesign rejects a shallow bundle
+            // that contains a reserved `Resources/` subfolder — and (b) lets
+            // `bundle.url(forResource:withExtension:)` (no subdirectory) actually find them.
+            resources: [.process("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
         .testTarget(name: "ConfigKitTests", dependencies: ["ConfigKit"]),

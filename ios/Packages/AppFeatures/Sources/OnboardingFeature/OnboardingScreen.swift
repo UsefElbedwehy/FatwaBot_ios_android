@@ -109,21 +109,29 @@ private struct SignInStepView: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 14)
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
                 .tint(Color(hexToken: tokens.primary))
                 .disabled(viewModel.isSigningIn)
             }
 
-            Button("onboarding.signin.guest") { viewModel.continueAsGuest() }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                .disabled(viewModel.isSigningIn)
+            // `.frame(maxWidth: .infinity)` has to sit *inside* the label. Applied
+            // after `.buttonStyle`, it only stretches the invisible tap frame —
+            // `.bordered` draws its visible capsule at the text's intrinsic width
+            // regardless, which is why this and "Not now" below used to render as
+            // a narrow, centered pill rather than the full-width bar every other
+            // onboarding button already was.
+            Button {
+                viewModel.continueAsGuest()
+            } label: {
+                Text("onboarding.signin.guest")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+            .buttonStyle(.bordered)
+            .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            .disabled(viewModel.isSigningIn)
         }
         .padding(24)
     }
@@ -151,10 +159,9 @@ private struct WelcomeStepView: View {
             } label: {
                 Text("onboarding.get_started")
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .tint(Color(hexToken: tokens.primary))
         }
         .padding(24)
@@ -200,10 +207,9 @@ private struct HighlightsStepView: View {
             } label: {
                 Text("onboarding.continue")
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .tint(Color(hexToken: tokens.primary))
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
@@ -244,20 +250,22 @@ private struct PrimingStepView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .tint(Color(hexToken: tokens.primary))
             .disabled(isBusy)
 
-            Button("onboarding.not_now") { onSkip() }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                .disabled(isBusy)
+            Button {
+                onSkip()
+            } label: {
+                Text("onboarding.not_now")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+            .buttonStyle(.bordered)
+            .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+            .disabled(isBusy)
         }
         .padding(24)
     }

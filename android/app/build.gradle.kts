@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.crashlytics)
 }
 
 android {
@@ -43,7 +44,6 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:prayer"))
-    implementation(project(":feature:home"))
     implementation(project(":feature:prayer"))
     implementation(project(":core:config"))
     implementation(project(":core:network"))
@@ -62,6 +62,11 @@ dependencies {
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
     implementation(libs.androidx.core.ktx)
+    // Per-app language selection: AppCompatDelegate.setApplicationLocales is
+    // the only route that works below API 33, where the platform LocaleManager
+    // does not exist. minSdk is 26, so the framework API alone would leave most
+    // of the supported range with no way to switch language in-app.
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
@@ -75,6 +80,8 @@ dependencies {
     implementation(libs.glance.appwidget)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
     // Google Sign-In via Credential Manager (returns a Google ID token that the
     // backend verifies against Google's JWKS).
     implementation(libs.androidx.credentials)
