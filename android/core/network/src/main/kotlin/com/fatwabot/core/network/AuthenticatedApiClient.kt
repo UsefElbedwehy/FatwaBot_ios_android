@@ -91,7 +91,7 @@ class AuthenticatedApiClient(
 
     private fun okhttp3.Response.consume(): String = use {
         val responseBody = it.body?.string().orEmpty()
-        if (!it.isSuccessful) throw ApiException.Server(it.code, null)
+        if (!it.isSuccessful) throw ApiException.Server(it.code, extractErrorCode(responseBody))
         responseBody
     }
 }

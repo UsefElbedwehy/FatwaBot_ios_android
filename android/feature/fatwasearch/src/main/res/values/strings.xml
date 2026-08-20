@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mirrors :app's home_card_* strings (see note in FatwaSearchModels.kt). -->
+    <string name="fatwa_search_mode_fatwa">Search a fatwa</string>
+    <string name="fatwa_search_mode_hadith">Find hadith</string>
+    <string name="fatwa_search_mode_general">General question</string>
+
+    <string name="fatwa_search_placeholder_fatwa">Ask your fatwa question…</string>
+    <string name="fatwa_search_placeholder_hadith">Type the hadith as you remember it…</string>
+    <string name="fatwa_search_placeholder_general">Ask a religious question…</string>
+
+    <string name="fatwa_search_hint_fatwa">We\'ll search for a documented fatwa from Ibn Uthaymeen\'s rulings.</string>
+    <string name="fatwa_search_hint_hadith">Type the hadith as you remember it, and we\'ll surface its authentic wording, grading, and source.</string>
+    <string name="fatwa_search_hint_general">Ask a general religious question and we\'ll answer with sourced evidence.</string>
+
+    <string name="fatwa_search_submit">Search</string>
+    <string name="fatwa_search_retry">Retry</string>
+    <string name="fatwa_search_answer">Answer</string>
+    <string name="fatwa_search_no_answer">No answer found</string>
+    <string name="fatwa_search_sources">Sources</string>
+    <string name="fatwa_search_ask_again">Ask another question</string>
+    <string name="fatwa_search_page_badge">p. %1$d</string>
+    <string name="fatwa_search_loading">Searching</string>
+    <string name="fatwa_search_error_generic">Something went wrong. Please try again.</string>
+    <string name="fatwa_search_unavailable_title">Coming soon, in shaa Allah</string>
+    <string name="fatwa_search_unavailable_body">Smart search for fatwas and hadith is on its way.</string>
+</resources>

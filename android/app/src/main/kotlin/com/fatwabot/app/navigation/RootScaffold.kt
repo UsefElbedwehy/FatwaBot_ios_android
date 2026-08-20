@@ -71,6 +71,11 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import com.fatwabot.core.network.AuthenticatedApiClientProtocol
+import com.fatwabot.feature.fatwasearch.FatwaSearchMode
+import com.fatwabot.feature.fatwasearch.FatwaSearchScreen
+import com.fatwabot.feature.fatwasearch.FatwaSearchViewModel
+import com.fatwabot.feature.fatwasearch.titleRes
 import com.fatwabot.feature.prayer.CityPicker
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.formatTime
@@ -82,6 +87,14 @@ private interface AnalyticsEntryPoint {
     fun analytics(): AnalyticsTracking
 }
 
+/** Resolves the authenticated client for [FatwaSearchViewModel], which is a
+ * plain (non-Hilt) class — see its kdoc for why. Mirrors [AnalyticsEntryPoint]. */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+private interface FatwaSearchEntryPoint {
+    fun authenticatedClient(): AuthenticatedApiClientProtocol
+}
+
 /**
  * M1 shell: 4 tabs with Home (server-layout sections) and Worship→Prayer live;
  * feature nav-graphs replace inline composition as features multiply (ADR-0005).
@@ -90,6 +103,11 @@ private interface AnalyticsEntryPoint {
 fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {}) {
     var selected by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var worshipDestination by rememberSaveable { mutableStateOf<WorshipDestination?>(null) }
+    // Home's own single-level "push" — mirrors worshipDestination above. Two
+    // fields rather than one data class so `rememberSaveable` covers each
+    // natively (enum + String), with no custom Saver to write.
+    var homeSearchMode by rememberSaveable { mutableStateOf<FatwaSearchMode?>(null) }
+    var homeSearchQuestion by rememberSaveable { mutableStateOf("") }
     val prayerViewModel: PrayerViewModel = hiltViewModel()
 
     val context = LocalContext.current
@@ -100,8 +118,8 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     }
     // One place that reports "where is the user", rather than an onAppear in
     // every screen — those drift as screens are added and quietly stop firing.
-    LaunchedEffect(selected, worshipDestination) {
-        analytics.screenView(screenKey(selected, worshipDestination))
+    LaunchedEffect(selected, worshipDestination, homeSearchMode) {
+        analytics.screenView(screenKey(selected, worshipDestination, homeSearchMode))
     }
 
     // Route a widget tap to the screen it promised, then clear it so the same
@@ -112,6 +130,7 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
         if (link == DeepLink.HOME) {
             selected = AppTab.HOME
             worshipDestination = null
+            homeSearchMode = null
         } else {
             selected = AppTab.WORSHIP
             worshipDestination = link.worshipDestination()
@@ -150,7 +169,8 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     // wants the room (the Tasbeeh tap target, the Qibla compass, a hadith being
     // read). Mirrors iOS `isShowingDetail`. Scaffold reports zero bottom padding
     // when the slot is empty, so hiding it also releases the reserved space.
-    val isShowingDetail = selected == AppTab.WORSHIP && worshipDestination != null
+    val isShowingDetail = (selected == AppTab.WORSHIP && worshipDestination != null) ||
+        (selected == AppTab.HOME && homeSearchMode != null)
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -165,7 +185,12 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selected) {
-                AppTab.HOME -> SearchHome()
+                AppTab.HOME -> HomeTab(
+                    mode = homeSearchMode,
+                    initialQuestion = homeSearchQuestion,
+                    onOpen = { mode -> homeSearchMode = mode; homeSearchQuestion = "" },
+                    onBack = { homeSearchMode = null },
+                )
                 AppTab.WORSHIP -> WorshipTab(
                     prayerViewModel = prayerViewModel,
                     destination = worshipDestination,
@@ -180,9 +205,38 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     }
 }
 
-/** Stable, non-PII screen key for analytics. A pushed worship destination wins
- * over the tab, since that's the screen actually on top. */
-private fun screenKey(tab: AppTab, destination: WorshipDestination?): String = when {
+/** Home tab: the search-first landing screen, with a single-level "push" to
+ * the AI-search flow for the tapped mode — mirrors [WorshipTab]'s
+ * null-destination-means-menu pattern. [FatwaSearchViewModel] is a plain
+ * class (see its kdoc), so it's `remember`'d per (mode, initialQuestion)
+ * rather than obtained via `hiltViewModel()`. */
+@Composable
+private fun HomeTab(
+    mode: FatwaSearchMode?,
+    initialQuestion: String,
+    onOpen: (FatwaSearchMode) -> Unit,
+    onBack: () -> Unit,
+) {
+    if (mode == null) {
+        SearchHome(onOpen = onOpen)
+        return
+    }
+    val context = LocalContext.current
+    val client = remember {
+        EntryPointAccessors
+            .fromApplication(context.applicationContext, FatwaSearchEntryPoint::class.java)
+            .authenticatedClient()
+    }
+    val viewModel = remember(mode, initialQuestion) { FatwaSearchViewModel(client, mode, initialQuestion) }
+    WorshipDetailScaffold(title = stringResource(mode.titleRes()), onBack = onBack) {
+        FatwaSearchScreen(viewModel)
+    }
+}
+
+/** Stable, non-PII screen key for analytics. A pushed worship/home destination
+ * wins over the tab, since that's the screen actually on top. */
+private fun screenKey(tab: AppTab, destination: WorshipDestination?, searchMode: FatwaSearchMode?): String = when {
+    tab == AppTab.HOME && searchMode != null -> AnalyticsEvents.SCREEN_FATWA_SEARCH
     tab == AppTab.WORSHIP && destination != null -> when (destination) {
         WorshipDestination.PRAYER -> AnalyticsEvents.SCREEN_PRAYER
         WorshipDestination.QIBLA -> AnalyticsEvents.SCREEN_QIBLA

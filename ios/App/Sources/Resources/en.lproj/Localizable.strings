@@ -236,6 +236,21 @@
 "home.coming_soon.title" = "Coming soon, in shaa Allah";
 "home.coming_soon.body" = "Smart search for fatwas and hadith is on its way.";
 
+"fatwa_search.placeholder.fatwa" = "Ask your fatwa question…";
+"fatwa_search.placeholder.hadith" = "Type the hadith as you remember it…";
+"fatwa_search.placeholder.general" = "Ask a religious question…";
+"fatwa_search.hint.fatwa" = "We'll search for a documented fatwa from Ibn Uthaymeen's rulings.";
+"fatwa_search.hint.hadith" = "Type the hadith as you remember it, and we'll surface its authentic wording, grading, and source.";
+"fatwa_search.hint.general" = "Ask a general religious question and we'll answer with sourced evidence.";
+"fatwa_search.submit" = "Search";
+"fatwa_search.retry" = "Retry";
+"fatwa_search.answer" = "Answer";
+"fatwa_search.no_answer" = "No answer found";
+"fatwa_search.sources" = "Sources";
+"fatwa_search.ask_again" = "Ask another question";
+"fatwa_search.page_badge" = "p. %d";
+"fatwa_search.loading" = "Searching";
+
 "settings.diagnostics_section" = "Diagnostics";
 "settings.diagnostics.title" = "Share usage reports";
 "settings.diagnostics.subtitle" = "Helps us fix problems. Never includes your searches, location, or name.";

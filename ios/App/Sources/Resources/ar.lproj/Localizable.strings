@@ -238,6 +238,21 @@
 "home.coming_soon.title" = "قريباً بإذن الله";
 "home.coming_soon.body" = "البحث الذكي عن الفتاوى والأحاديث قيد الإعداد، وسيصلك قريباً.";
 
+"fatwa_search.placeholder.fatwa" = "اكتب سؤالك عن الفتوى...";
+"fatwa_search.placeholder.hadith" = "اكتب نص الحديث أو صفه...";
+"fatwa_search.placeholder.general" = "اكتب سؤالك الديني...";
+"fatwa_search.hint.fatwa" = "سنبحث لك عن فتوى موثقة من فتاوى ابن عثيمين رحمه الله.";
+"fatwa_search.hint.hadith" = "اكتب نص الحديث كما تتذكره، وسنستخرج لفظه الصحيح ودرجته ومصدره.";
+"fatwa_search.hint.general" = "اسأل سؤالاً دينياً عاماً وسنجيبك بإجابة موثقة بالمصادر.";
+"fatwa_search.submit" = "بحث";
+"fatwa_search.retry" = "إعادة المحاولة";
+"fatwa_search.answer" = "الإجابة";
+"fatwa_search.no_answer" = "لم نجد إجابة";
+"fatwa_search.sources" = "المصادر";
+"fatwa_search.ask_again" = "اسأل سؤالاً آخر";
+"fatwa_search.page_badge" = "ص. %d";
+"fatwa_search.loading" = "جارٍ البحث";
+
 "settings.diagnostics_section" = "التشخيص";
 "settings.diagnostics.title" = "مشاركة تقارير الاستخدام";
 "settings.diagnostics.subtitle" = "تساعدنا في إصلاح المشكلات. لا تتضمن بحثك أو موقعك أو اسمك أبداً.";

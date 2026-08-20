@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fatwa_search_mode_fatwa">ابحث عن فتوى</string>
+    <string name="fatwa_search_mode_hadith">استخراج الأحاديث</string>
+    <string name="fatwa_search_mode_general">سؤال ديني عام</string>
+
+    <string name="fatwa_search_placeholder_fatwa">اكتب سؤالك عن الفتوى...</string>
+    <string name="fatwa_search_placeholder_hadith">اكتب نص الحديث أو صفه...</string>
+    <string name="fatwa_search_placeholder_general">اكتب سؤالك الديني...</string>
+
+    <string name="fatwa_search_hint_fatwa">سنبحث لك عن فتوى موثقة من فتاوى ابن عثيمين رحمه الله.</string>
+    <string name="fatwa_search_hint_hadith">اكتب نص الحديث كما تتذكره، وسنستخرج لفظه الصحيح ودرجته ومصدره.</string>
+    <string name="fatwa_search_hint_general">اسأل سؤالاً دينياً عاماً وسنجيبك بإجابة موثقة بالمصادر.</string>
+
+    <string name="fatwa_search_submit">بحث</string>
+    <string name="fatwa_search_retry">إعادة المحاولة</string>
+    <string name="fatwa_search_answer">الإجابة</string>
+    <string name="fatwa_search_no_answer">لم نجد إجابة</string>
+    <string name="fatwa_search_sources">المصادر</string>
+    <string name="fatwa_search_ask_again">اسأل سؤالاً آخر</string>
+    <string name="fatwa_search_page_badge">ص. %1$d</string>
+    <string name="fatwa_search_loading">جارٍ البحث</string>
+    <string name="fatwa_search_error_generic">حدث خطأ ما، حاول مرة أخرى.</string>
+    <string name="fatwa_search_unavailable_title">قريباً بإذن الله</string>
+    <string name="fatwa_search_unavailable_body">البحث الذكي عن الفتاوى والأحاديث قيد الإعداد، وسيصلك قريباً.</string>
+</resources>

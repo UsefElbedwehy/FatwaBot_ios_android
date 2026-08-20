@@ -27,7 +27,7 @@ targets:
       - package: PrayerKit
         products: [PrayerKit]
       - package: AppFeatures
-        products: [PrayerFeature, TasbeehFeature, AzkarFeature, DuaFeature, AwradFeature, HadithFeature, GamificationFeature, LeaderboardFeature, SearchHistoryFeature, OnboardingFeature]
+        products: [PrayerFeature, TasbeehFeature, AzkarFeature, DuaFeature, AwradFeature, HadithFeature, GamificationFeature, LeaderboardFeature, SearchHistoryFeature, OnboardingFeature, FatwaSearchFeature]
       - target: FatwaBotWidgets
       - target: FatwaBotLiveActivity
       - package: GoogleSignIn

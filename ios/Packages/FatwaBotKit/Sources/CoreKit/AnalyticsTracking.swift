@@ -62,6 +62,7 @@ public enum AnalyticsEvents {
     public static let screenAwrad = "awrad"
     public static let screenHadith = "hadith"
     public static let screenJourney = "journey"
+    public static let screenFatwaSearch = "fatwa_search"
 
     // Events
     public static let screenView = "screen_view"

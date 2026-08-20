@@ -24,17 +24,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,16 +57,17 @@ import com.fatwabot.app.R
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.feature.fatwasearch.FatwaSearchMode
 
 /** Search-first Home (client mockup, design/homeDesign.jpeg) — parity with iOS
  * SearchHomeScreen: logo, wordmark, rosette divider, three neumorphic intent
- * cards, an embossed search field, and the manhaj tagline. Cards + search open a
- * "coming soon" dialog (M5 AI search is on hold). */
+ * cards, an embossed search field, and the manhaj tagline. Cards + search open
+ * the AI-search flow (M5) — `onOpen` pushes FatwaSearchScreen for the tapped
+ * mode; RootScaffold owns the destination state. */
 @Composable
-fun SearchHome() {
+fun SearchHome(onOpen: (FatwaSearchMode) -> Unit) {
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     val cs = MaterialTheme.colorScheme
-    var showComingSoon by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -113,14 +107,14 @@ fun SearchHome() {
         // Cards read fatwa · hadith · question from the start edge (matches the
         // RTL mockup where fatwa is on the right).
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            IntentCard(R.string.home_card_fatwa, Modifier.weight(1f), { showComingSoon = true }) {
+            IntentCard(R.string.home_card_fatwa, Modifier.weight(1f), { onOpen(FatwaSearchMode.FATWA) }) {
                 // Flipped so the magnifier handle points bottom-left, matching the mockup.
                 Icon(Icons.Filled.Search, null, tint = cs.primary, modifier = Modifier.size(21.dp).graphicsLayer(scaleX = -1f))
             }
-            IntentCard(R.string.home_card_hadith, Modifier.weight(1f), { showComingSoon = true }) {
+            IntentCard(R.string.home_card_hadith, Modifier.weight(1f), { onOpen(FatwaSearchMode.HADITH) }) {
                 Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = cs.primary, modifier = Modifier.size(21.dp))
             }
-            IntentCard(R.string.home_card_question, Modifier.weight(1f), { showComingSoon = true }) {
+            IntentCard(R.string.home_card_question, Modifier.weight(1f), { onOpen(FatwaSearchMode.GENERAL) }) {
                 QuestionBubbleIcon(cs.primary, 23.dp)
             }
         }
@@ -137,7 +131,7 @@ fun SearchHome() {
                     .shadow(5.dp, searchShape)
                     .clip(searchShape)
                     .background(cs.brandCardFill)
-                    .clickable { showComingSoon = true },
+                    .clickable { onOpen(FatwaSearchMode.GENERAL) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -167,16 +161,6 @@ fun SearchHome() {
                 textAlign = TextAlign.Center,
             )
         }
-    }
-
-    if (showComingSoon) {
-        AlertDialog(
-            onDismissRequest = { showComingSoon = false },
-            confirmButton = { TextButton(onClick = { showComingSoon = false }) { Text(stringResource(R.string.common_ok)) } },
-            icon = { Icon(Icons.Filled.Star, contentDescription = null, tint = cs.primary) },
-            title = { Text(stringResource(R.string.home_coming_soon_title)) },
-            text = { Text(stringResource(R.string.home_coming_soon_body)) },
-        )
     }
 }
 
