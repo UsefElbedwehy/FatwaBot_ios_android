@@ -40,10 +40,15 @@ class AccountViewModel @Inject constructor(
 
     suspend fun load() {
         if (_state.value.profile != null) return
-        _state.update { it.copy(isLoading = true) }
+        _state.update { it.copy(isLoading = true, message = Message.NONE) }
         runCatching { account.me() }.fold(
             onSuccess = { p -> _state.update { it.copy(profile = p, isLoading = false) } },
-            onFailure = { _state.update { it.copy(isLoading = false) } },
+            // Left `profile == null` (renders as Guest) rather than fabricating a
+            // signed-in state — but unlike before, this is no longer silent: a
+            // transient failure here used to look identical to a genuine guest,
+            // with nothing telling a signed-in user why they suddenly appear
+            // signed out. Mirrors iOS AccountViewModel.load()/reload().
+            onFailure = { _state.update { it.copy(isLoading = false, message = Message.GENERIC) } },
         )
     }
 
