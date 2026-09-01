@@ -18,15 +18,18 @@ export interface VerifiedAnswer extends AnswerResult {
 /** `chunkTextById` must contain only the chunks actually retrieved for this
  *  query — a citation pointing at a chunkId absent from the map (the model
  *  inventing an id, or referencing a chunk outside its own context) is
- *  dropped exactly like a genuine substring mismatch. */
+ *  dropped exactly like a genuine substring mismatch.
+ *
+ *  Citations are checked even on an answer the model already self-refused
+ *  (`result.refused === true`) — e.g. hadith mode citing the closest
+ *  authentic wording while still refusing the exact quote asked for. An
+ *  earlier version skipped verification whenever `refused` was already
+ *  true, which meant a self-refusal's citations reached the user
+ *  unverified — the one case citation-verify exists to prevent. */
 export function verifyCitations(
   result: AnswerResult,
   chunkTextById: ReadonlyMap<string, string>,
 ): VerifiedAnswer {
-  if (result.refused) {
-    return { ...result, droppedCitations: [] };
-  }
-
   const verified: AnswerResult["citations"] = [];
   const dropped: AnswerResult["citations"] = [];
   for (const citation of result.citations) {
@@ -39,7 +42,13 @@ export function verifyCitations(
     (isVerified ? verified : dropped).push(citation);
   }
 
-  if (verified.length === 0) {
+  // Only force a hard refusal + blanked answer when there WERE citations and
+  // every one of them was fabricated — the model's only supporting evidence
+  // turned out to be fake, so nothing about the answer can be trusted. A
+  // bare self-refusal with no citations at all (or one that already
+  // verified) is left as-is, including whatever `answer` text the model
+  // wrote — handlers/search.ts decides what to actually show for that.
+  if (result.citations.length > 0 && verified.length === 0) {
     return {
       answer: "",
       citations: [],

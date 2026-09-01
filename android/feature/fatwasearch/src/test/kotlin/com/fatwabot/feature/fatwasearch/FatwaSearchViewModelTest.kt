@@ -30,6 +30,16 @@ class FatwaSearchViewModelTest {
     }
 
     @Test
+    fun `submit goes straight to unavailable without a network call when search is disabled`() = runTest {
+        val client = FakeApiClient(onPost = { _, _ -> error("must not call the network while search is disabled") })
+        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.FATWA, "سؤال", searchEnabled = false)
+
+        viewModel.submit()
+
+        assertEquals(FatwaSearchViewModel.Phase.Unavailable, viewModel.state.value.phase)
+    }
+
+    @Test
     fun `submit posts the trimmed question and mode and populates the result`() = runTest {
         var capturedPath: String? = null
         var capturedBody: String? = null
@@ -38,7 +48,7 @@ class FatwaSearchViewModelTest {
             capturedBody = body
             """{"answer":"الجواب: ...","citations":[{"chunk_id":"c1","scholar":"ابن عثيمين","source_title":"فتاوى أركان الإسلام","page_number":12,"quoted_text":"نص الاقتباس"}],"refused":false,"mode":"fatwa"}"""
         })
-        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.FATWA, "  ما حكم كذا  ")
+        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.FATWA, "  ما حكم كذا  ", searchEnabled = true)
 
         viewModel.submit()
 
@@ -54,7 +64,7 @@ class FatwaSearchViewModelTest {
     @Test
     fun `submit maps a 503 ai_unavailable to the unavailable phase`() = runTest {
         val client = FakeApiClient(onPost = { _, _ -> throw ApiException.Server(503, "ai_unavailable") })
-        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.HADITH, "سؤال")
+        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.HADITH, "سؤال", searchEnabled = true)
 
         viewModel.submit()
 
@@ -64,7 +74,7 @@ class FatwaSearchViewModelTest {
     @Test
     fun `submit maps other failures to a generic error phase`() = runTest {
         val client = FakeApiClient(onPost = { _, _ -> throw ApiException.Transport("offline") })
-        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.GENERAL, "سؤال")
+        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.GENERAL, "سؤال", searchEnabled = true)
 
         viewModel.submit()
 
@@ -76,7 +86,7 @@ class FatwaSearchViewModelTest {
         val client = FakeApiClient(onPost = { _, _ ->
             """{"answer":"جواب","citations":[],"refused":false,"mode":"general"}"""
         })
-        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.GENERAL, "سؤال")
+        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.GENERAL, "سؤال", searchEnabled = true)
         viewModel.submit()
 
         viewModel.reset()
@@ -90,7 +100,7 @@ class FatwaSearchViewModelTest {
         val client = FakeApiClient(onPost = { _, _ ->
             """{"answer":"لم نجد في مصادرنا الموثوقة ما يجيب عن هذا السؤال.","citations":[],"refused":true,"mode":"general"}"""
         })
-        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.GENERAL, "سؤال بلا مصدر")
+        val viewModel = FatwaSearchViewModel(client, FatwaSearchMode.GENERAL, "سؤال بلا مصدر", searchEnabled = true)
 
         viewModel.submit()
 

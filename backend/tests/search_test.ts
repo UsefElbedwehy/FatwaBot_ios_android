@@ -206,3 +206,102 @@ Deno.test("POST /v1/search drops a fabricated citation and flips to refused, nev
   assertEquals(body.refused, true, "the only citation failed verification, so the whole answer refuses");
   assertEquals(body.citations.length, 0, "a fabricated citation must never reach the client");
 });
+
+Deno.test("POST /v1/search keeps a self-refusal's own message when it carries a verified citation (hadith closest-match)", async () => {
+  const closestMatchProvider = new FixedAnswerProvider((chunks) => ({
+    answer: "لم يرد الحديث بهذا اللفظ، لكن أقرب لفظ صحيح هو ما يلي.",
+    refused: true,
+    citations: [{
+      chunkId: chunks[0].chunkId,
+      scholar: "ابن عثيمين",
+      sourceTitle: chunks[0].sourceTitle,
+      pageNumber: chunks[0].pageNumber ?? undefined,
+      quotedText: chunks[0].text,
+    }],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: closestMatchProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "نص حديث بصياغة غير دقيقة", mode: "hadith" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, true, "the model's own refusal (exact wording not found) is preserved");
+  assertEquals(
+    body.answer,
+    "لم يرد الحديث بهذا اللفظ، لكن أقرب لفظ صحيح هو ما يلي.",
+    "a self-refusal's own message must reach the user, not the generic fallback, when it has real support",
+  );
+  assertEquals(body.citations.length, 1, "the verified closest-match citation must still be shown");
+});
+
+Deno.test("POST /v1/search returns a video-sourced citation with its timestamp and a null page", async () => {
+  const videoCitingProvider = new FixedAnswerProvider((chunks) => ({
+    answer: "الجواب من مادة مرئية.",
+    refused: false,
+    citations: [{
+      chunkId: chunks[0].chunkId,
+      scholar: "ابن عثيمين",
+      sourceTitle: chunks[0].sourceTitle,
+      videoTimestamp: chunks[0].videoTimestamp ?? undefined,
+      quotedText: chunks[0].text,
+    }],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: videoCitingProvider,
+  };
+  // Exactly one locator, mirroring the DB's chunks_exactly_one_locator check.
+  d.fatwaSearch.seed([seedChunk({ pageNumber: null, videoTimestamp: 930 })]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "general" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, false);
+  assertEquals(body.citations.length, 1);
+  assertEquals(body.citations[0].video_timestamp, 930);
+  assertEquals(body.citations[0].page_number, null, "a video source has no page to report");
+});
+
+Deno.test("POST /v1/search falls back to the generic refusal message when a self-refusal has no verifiable support", async () => {
+  const bareRefusalProvider = new FixedAnswerProvider(() => ({
+    answer: "",
+    refused: true,
+    citations: [],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: bareRefusalProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(post("/v1/search", { question: "سؤال بلا مطابقة", mode: "hadith" }, auth), d);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, true);
+  assertEquals(
+    body.answer.length > 0,
+    true,
+    "still carries a localized refusal message, not an empty string",
+  );
+});

@@ -89,8 +89,12 @@ Deno.test("VoyageEmbeddingProvider posts the right request and orders results by
   assertEquals(result, [[0.1], [0.2]]);
 });
 
-Deno.test("VoyageEmbeddingProvider throws on a non-ok response", async () => {
-  const fakeFetch = (() => Promise.resolve(new Response("bad key", { status: 401 }))) as typeof fetch;
+Deno.test("VoyageEmbeddingProvider throws immediately on a non-retryable response", async () => {
+  let calls = 0;
+  const fakeFetch = (() => {
+    calls++;
+    return Promise.resolve(new Response("bad key", { status: 401 }));
+  }) as typeof fetch;
   const provider = new VoyageEmbeddingProvider("bad-key", { fetch: fakeFetch });
   let threw = false;
   try {
@@ -99,6 +103,134 @@ Deno.test("VoyageEmbeddingProvider throws on a non-ok response", async () => {
     threw = true;
   }
   assert(threw);
+  assertEquals(calls, 1, "a 401 is never retryable — should not have looped");
+});
+
+Deno.test("VoyageEmbeddingProvider retries a 429 and succeeds once the throttle clears", async () => {
+  let calls = 0;
+  const sleeps: number[] = [];
+  const fakeFetch = (() => {
+    calls++;
+    if (calls < 3) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ detail: "rate limited" }), { status: 429 }),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [{ embedding: [0.5], index: 0 }] }), { status: 200 }),
+    );
+  }) as typeof fetch;
+  const provider = new VoyageEmbeddingProvider("test-key", {
+    fetch: fakeFetch,
+    sleep: (ms) => {
+      sleeps.push(ms);
+      return Promise.resolve();
+    },
+  });
+
+  const result = await provider.embed(["x"]);
+
+  assertEquals(result, [[0.5]]);
+  assertEquals(calls, 3, "should have retried twice before succeeding on the third attempt");
+  assertEquals(sleeps, [20_000, 20_000], "no Retry-After header — falls back to the ~3RPM cadence");
+});
+
+Deno.test("VoyageEmbeddingProvider honors a Retry-After header when Voyage sends one", async () => {
+  let calls = 0;
+  const sleeps: number[] = [];
+  const fakeFetch = (() => {
+    calls++;
+    if (calls === 1) {
+      return Promise.resolve(
+        new Response("rate limited", { status: 429, headers: { "retry-after": "5" } }),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [{ embedding: [0.1], index: 0 }] }), { status: 200 }),
+    );
+  }) as typeof fetch;
+  const provider = new VoyageEmbeddingProvider("test-key", {
+    fetch: fakeFetch,
+    sleep: (ms) => {
+      sleeps.push(ms);
+      return Promise.resolve();
+    },
+  });
+
+  await provider.embed(["x"]);
+
+  assertEquals(sleeps, [5_000], "Retry-After: 5 means wait 5 seconds, not the default 20s");
+});
+
+Deno.test("VoyageEmbeddingProvider gives up after maxRetries and throws", async () => {
+  let calls = 0;
+  const fakeFetch = (() => {
+    calls++;
+    return Promise.resolve(new Response("still limited", { status: 429 }));
+  }) as typeof fetch;
+  const provider = new VoyageEmbeddingProvider("test-key", {
+    fetch: fakeFetch,
+    sleep: () => Promise.resolve(),
+    maxRetries: 2,
+  });
+
+  let threw = false;
+  try {
+    await provider.embed(["x"]);
+  } catch {
+    threw = true;
+  }
+
+  assert(threw);
+  assertEquals(calls, 3, "maxRetries=2 means 1 initial attempt + 2 retries = 3 calls");
+});
+
+Deno.test("VoyageEmbeddingProvider paces requests to stay under requestsPerMinute", async () => {
+  const fakeFetch = (() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ data: [{ embedding: [0.1], index: 0 }] }), { status: 200 }),
+    )) as typeof fetch;
+  let clock = 0;
+  const sleeps: number[] = [];
+  const provider = new VoyageEmbeddingProvider("test-key", {
+    fetch: fakeFetch,
+    requestsPerMinute: 2,
+    now: () => clock,
+    sleep: (ms) => {
+      sleeps.push(ms);
+      clock += ms; // simulate time actually passing during the wait
+      return Promise.resolve();
+    },
+  });
+
+  await provider.embed(["a"]); // slot 1, no wait
+  await provider.embed(["b"]); // slot 2, no wait
+  await provider.embed(["c"]); // window full — must wait for slot 1 to age out
+
+  assertEquals(sleeps.length, 1, "the third call within the same minute must wait for a free slot");
+  assertEquals(sleeps[0], 60_250, "waits out the full window (+250ms buffer) from a clock frozen at 0");
+});
+
+Deno.test("VoyageEmbeddingProvider does not pace requests when no limit is configured", async () => {
+  let calls = 0;
+  const fakeFetch = (() => {
+    calls++;
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [{ embedding: [0.1], index: 0 }] }), { status: 200 }),
+    );
+  }) as typeof fetch;
+  const provider = new VoyageEmbeddingProvider("test-key", {
+    fetch: fakeFetch,
+    sleep: () => {
+      throw new Error("must not sleep when requestsPerMinute is unset");
+    },
+  });
+
+  await provider.embed(["a"]);
+  await provider.embed(["b"]);
+  await provider.embed(["c"]);
+
+  assertEquals(calls, 3, "the live /v1/search path must never self-throttle by default");
 });
 
 // --- ClaudeAnswerProvider ---

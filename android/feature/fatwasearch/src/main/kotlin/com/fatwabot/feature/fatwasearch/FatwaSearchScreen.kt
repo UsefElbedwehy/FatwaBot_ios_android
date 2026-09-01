@@ -5,6 +5,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,6 +15,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Book
@@ -70,7 +73,10 @@ fun FatwaSearchScreen(viewModel: FatwaSearchViewModel) {
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            // fillMaxSize, not fillMaxWidth: the background is painted on this
+            // box, so with short content it stopped at the content's height and
+            // the rest of the screen showed the raw window colour.
+            .fillMaxSize()
             .brandScreenBackground(tokens)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
@@ -93,6 +99,7 @@ fun FatwaSearchScreen(viewModel: FatwaSearchViewModel) {
             is FatwaSearchViewModel.Phase.Loading -> DhikrLoadingView(tokens)
             is FatwaSearchViewModel.Phase.Unavailable -> UnavailableCard(tokens)
             is FatwaSearchViewModel.Phase.Error -> ErrorCard(
+                message = phase.message,
                 onRetry = { scope.launch { viewModel.submit() } },
                 tokens = tokens,
             )
@@ -168,14 +175,19 @@ private fun UnavailableCard(tokens: ColorTokens) {
 }
 
 @Composable
-private fun ErrorCard(onRetry: () -> Unit, tokens: ColorTokens) {
+private fun ErrorCard(
+    message: String?,
+    onRetry: () -> Unit, tokens: ColorTokens) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
-            stringResource(R.string.fatwa_search_error_generic),
+            // The server's own message when it sent one — it explains what
+            // actually failed. This was hardcoded to the generic string, so a
+            // specific, actionable error was thrown away.
+            message?.takeIf { it.isNotBlank() } ?: stringResource(R.string.fatwa_search_error_generic),
             style = MaterialTheme.typography.bodyMedium,
             color = tokens.onSurfaceSecondary,
             textAlign = TextAlign.Center,
@@ -191,7 +203,7 @@ private fun ResultView(response: SearchResponse, onAskAgain: () -> Unit, tokens:
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         BrandSectionHeader(
             title = stringResource(if (response.refused) R.string.fatwa_search_no_answer else R.string.fatwa_search_answer),
-            icon = if (response.refused) Icons.AutoMirrored.Filled.Help else Icons.Filled.Book,
+            icon = if (response.refused) Icons.AutoMirrored.Filled.Help else Icons.AutoMirrored.Filled.Chat,
             tokens = tokens,
         )
         BrandCard(tokens = tokens) {
@@ -205,7 +217,11 @@ private fun ResultView(response: SearchResponse, onAskAgain: () -> Unit, tokens:
         }
 
         if (response.citations.isNotEmpty()) {
-            BrandSectionHeader(title = stringResource(R.string.fatwa_search_sources), tokens = tokens)
+            BrandSectionHeader(
+                title = stringResource(R.string.fatwa_search_sources),
+                icon = Icons.AutoMirrored.Filled.MenuBook,
+                tokens = tokens,
+            )
             response.citations.forEach { citation ->
                 ArabicContentCard(
                     arabic = citation.quotedText,

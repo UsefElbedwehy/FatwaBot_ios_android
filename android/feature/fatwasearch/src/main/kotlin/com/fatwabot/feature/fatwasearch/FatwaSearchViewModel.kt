@@ -8,6 +8,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.Json
 
+/** Kill switch for the whole AI-search flow, independent of what the backend
+ * would actually return. Search is fully built and already degrades to the
+ * "coming soon" framing on its own when the provider keys aren't configured
+ * (503 `ai_unavailable`) — this flag existed for the separate, non-technical
+ * reason that the OCR corpus's copyright/licensing basis isn't resolved yet.
+ *
+ * Enabled for testing now that both provider keys are configured. This is
+ * still safe with an unresolved corpus: retrieval enforces
+ * `license_status = 'granted'` in SQL (`0042_fatwa_schema.sql`), and nothing
+ * ingested pre-pause has ever been flipped to `'granted'` — so search will
+ * refuse ("couldn't find a vetted source") rather than surface any
+ * copyrighted content, regardless of this flag. */
+object FatwaSearchFeatureFlags {
+    const val SEARCH_ENABLED = true
+}
+
 /** State machine for the AI fatwa-search flow (`POST /v1/search`,
  * docs/features/ai-search-m5.0-spec.md §App wiring) — mirror of iOS
  * FatwaSearchViewModel.
@@ -22,6 +38,7 @@ class FatwaSearchViewModel(
     private val client: AuthenticatedApiClientProtocol,
     val mode: FatwaSearchMode,
     initialQuestion: String,
+    private val searchEnabled: Boolean = FatwaSearchFeatureFlags.SEARCH_ENABLED,
 ) {
     sealed interface Phase {
         data object Idle : Phase
@@ -49,6 +66,10 @@ class FatwaSearchViewModel(
     suspend fun submit() {
         val trimmed = _state.value.question.trim()
         if (trimmed.isEmpty()) return
+        if (!searchEnabled) {
+            _state.update { it.copy(phase = Phase.Unavailable) }
+            return
+        }
         _state.update { it.copy(phase = Phase.Loading) }
         runCatching {
             val body = json.encodeToString(SearchRequestBody.serializer(), SearchRequestBody(trimmed, mode.wireValue))

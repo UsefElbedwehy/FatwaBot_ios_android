@@ -82,7 +82,14 @@ export async function handleSearch(
   const chunkTextById = new Map(chunks.map((c) => [c.chunkId, c.text]));
   const verified = verifyCitations(raw, chunkTextById);
 
-  const answer = verified.refused ? resolveRequired(REFUSAL_MESSAGE, ctx.locale) : verified.answer;
+  // A refusal still carries useful text sometimes — hadith mode is asked to
+  // name the closest authentic wording even while refusing the exact quote.
+  // Only fall back to the generic localized message when there's genuinely
+  // nothing else to show (the common case, and always true when
+  // citation-verify blanked the answer for fabricated evidence).
+  const answer = verified.refused && verified.answer.trim().length === 0
+    ? resolveRequired(REFUSAL_MESSAGE, ctx.locale)
+    : verified.answer;
 
   await deps.fatwaSearch.logAnswer(ctx, {
     userId,
