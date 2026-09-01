@@ -136,7 +136,11 @@ fun ArabicContentCard(
                 text = displayText,
                 color = tokens.onSurface,
                 textAlign = TextAlign.End,
-                style = MaterialTheme.typography.titleMedium,
+                // Amiri 21sp / 31sp leading, as on iOS. This was Roboto
+                // `titleMedium` — 16sp with 24sp leading — so scripture was set
+                // in the wrong face, 5sp small, with leading tight enough for
+                // tashkīl to collide with the line above.
+                style = ArabicScriptureStyle,
                 modifier = Modifier.fillMaxWidth(),
             )
 

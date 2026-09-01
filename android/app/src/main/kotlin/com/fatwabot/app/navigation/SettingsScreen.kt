@@ -68,6 +68,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -275,26 +276,35 @@ private fun LanguageSection() {
     //
     // AppCompatDelegate rather than the platform LocaleManager: the framework API
     // only exists on API 33+, and minSdk is 26. AppCompat persists the choice
-    // itself and replays it on launch, so nothing here needs its own storage.
-    val current = AppCompatDelegate.getApplicationLocales()
-    val selected = if (current.isEmpty) "" else current[0]?.language.orEmpty()
+    // itself and replays it on launch, so nothing here needs its own storage —
+    // but only because MainActivity is an AppCompatActivity. As a plain
+    // ComponentActivity this whole API was a silent no-op and the picker never
+    // did anything.
+    //
+    // Held in state, not read straight off the delegate on each composition:
+    // applying a locale recreates the activity asynchronously, so without this
+    // the tapped row would keep its old checkmark until the recreate landed.
+    var selected by rememberSaveable {
+        val current = AppCompatDelegate.getApplicationLocales()
+        mutableStateOf(if (current.isEmpty) "" else current[0]?.language.orEmpty())
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         BrandSectionHeader(stringResource(R.string.language_section), icon = Icons.Filled.Language)
         BrandCard {
             Column {
-                LanguageOption(R.string.language_system, "", selected)
+                LanguageOption(R.string.language_system, "", selected) { selected = it }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                LanguageOption(R.string.language_arabic, "ar", selected)
+                LanguageOption(R.string.language_arabic, "ar", selected) { selected = it }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                LanguageOption(R.string.language_english, "en", selected)
+                LanguageOption(R.string.language_english, "en", selected) { selected = it }
             }
         }
     }
 }
 
 @Composable
-private fun LanguageOption(labelRes: Int, tag: String, selected: String) {
+private fun LanguageOption(labelRes: Int, tag: String, selected: String, onSelect: (String) -> Unit) {
     val isSelected = tag == selected
     Row(
         modifier = Modifier
@@ -304,6 +314,7 @@ private fun LanguageOption(labelRes: Int, tag: String, selected: String) {
                 // would still recreate the activity, so selecting the current one
                 // is a no-op rather than a visible flicker.
                 if (!isSelected) {
+                    onSelect(tag)
                     AppCompatDelegate.setApplicationLocales(
                         if (tag.isEmpty()) {
                             LocaleListCompat.getEmptyLocaleList()

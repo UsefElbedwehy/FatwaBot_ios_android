@@ -1,5 +1,6 @@
 package com.fatwabot.app.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -33,10 +34,16 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlin.math.abs
 import kotlin.math.cos
@@ -45,8 +52,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,7 +71,11 @@ import com.fatwabot.app.notifications.ContentReminderViewModel
 import com.fatwabot.app.notifications.WirdReminderViewModel
 import com.fatwabot.core.common.AnalyticsEvents
 import com.fatwabot.core.common.AnalyticsTracking
+import com.fatwabot.core.common.ContentFocus
 import com.fatwabot.core.common.DeepLink
+import com.fatwabot.core.designsystem.DarkTokens
+import com.fatwabot.core.designsystem.LightTokens
+import com.fatwabot.core.designsystem.brandScreenBackground
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -100,9 +109,18 @@ private interface FatwaSearchEntryPoint {
  * feature nav-graphs replace inline composition as features multiply (ADR-0005).
  */
 @Composable
-fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {}) {
+fun RootScaffold(
+    deepLink: DeepLink? = null,
+    contentFocus: ContentFocus? = null,
+    onDeepLinkHandled: () -> Unit = {},
+) {
     var selected by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var worshipDestination by rememberSaveable { mutableStateOf<WorshipDestination?>(null) }
+    // Which specific azkar/hadith item to land on — set only when the link
+    // that opened this path was a content-reminder notification. Plain
+    // `remember` (not `rememberSaveable`), mirroring iOS `worshipContentFocus`:
+    // it's re-derived from the intent on every cold start, not persisted.
+    var worshipContentFocus by remember { mutableStateOf<ContentFocus?>(null) }
     // Home's own single-level "push" — mirrors worshipDestination above. Two
     // fields rather than one data class so `rememberSaveable` covers each
     // natively (enum + String), with no custom Saver to write.
@@ -134,6 +152,7 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
         } else {
             selected = AppTab.WORSHIP
             worshipDestination = link.worshipDestination()
+            worshipContentFocus = contentFocus
         }
         onDeepLinkHandled()
     }
@@ -171,6 +190,25 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     // when the slot is empty, so hiding it also releases the reserved space.
     val isShowingDetail = (selected == AppTab.WORSHIP && worshipDestination != null) ||
         (selected == AppTab.HOME && homeSearchMode != null)
+
+    // System back pops the pushed screen instead of leaving the app. Without
+    // this there was no handler at all for a pushed worship destination or the
+    // Home search flow, so Android fell through to finishing the activity —
+    // pressing back on Prayer or Qibla quit FatwaBot outright. A nested
+    // BackHandler (e.g. RemembranceScreen's session) registers later and takes
+    // priority, so this only fires once the inner levels are unwound.
+    BackHandler(enabled = isShowingDetail) {
+        if (selected == AppTab.HOME) homeSearchMode = null else worshipDestination = null
+    }
+    // The Scaffold paints the flat app background and each screen paints its
+    // own `brandScreenBackground` inside the content slot — as it always did.
+    //
+    // Do NOT hoist that gradient to a root Box: it is a *vertical* gradient
+    // (surface → primaryContainer@35%), so spanning it over the whole window
+    // instead of the content area re-maps which colour lands at which screen
+    // position. In dark mode that turned the lower screen maroon-tinted where
+    // it had been near-black. The band above the bottom bar needs a fix that
+    // doesn't touch screen backgrounds.
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -195,6 +233,7 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
                     prayerViewModel = prayerViewModel,
                     destination = worshipDestination,
                     onDestinationChange = { worshipDestination = it },
+                    contentFocus = worshipContentFocus,
                 )
                 AppTab.SETTINGS -> SettingsScreen(
                     prayerViewModel = prayerViewModel,
@@ -278,6 +317,24 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                 .height(barHeight + bottomInset)
                 .drawBehind {
                     val path = cradlePath(size, 54.dp.toPx(), 18.dp.toPx(), 22.dp.toPx())
+                    // Soft upward shadow so the band reads as floating over the
+                    // page rather than pasted onto it (iOS gets this from
+                    // `.shadow(color: primary.opacity(0.28), radius: 16, y: -4)`).
+                    // Compose's drawPath can't blur, so drop to the framework
+                    // paint's shadow layer.
+                    drawIntoCanvas { canvas ->
+                        val paint = Paint()
+                        paint.asFrameworkPaint().apply {
+                            color = android.graphics.Color.TRANSPARENT
+                            setShadowLayer(
+                                16.dp.toPx(),
+                                0f,
+                                -4.dp.toPx(),
+                                cs.primary.copy(alpha = 0.28f).toArgb(),
+                            )
+                        }
+                        canvas.drawPath(path, paint)
+                    }
                     drawPath(path, cs.primary)
                     // `primary` is lifted in the dark palette so it can serve as a
                     // foreground on the near-black surface. At the size of this band
@@ -294,7 +351,7 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                     .height(barHeight)
                     .align(Alignment.TopCenter)
                     .offset(y = 6.dp)
-                    .padding(horizontal = 40.dp),
+                    .padding(horizontal = 44.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -339,14 +396,19 @@ private fun cradlePath(size: Size, shoulderHalf: Float, valleyDip: Float, edgeDr
 private fun SideItem(tab: AppTab, icon: ImageVector, selected: AppTab, cs: androidx.compose.material3.ColorScheme, onClick: () -> Unit) {
     val active = tab == selected
     Box(
-        modifier = Modifier.size(54.dp).clickable(onClick = onClick),
+        // 60dp to match iOS's tap frame, and clipped to a circle so the ripple
+        // is a disc rather than a rectangle stamped onto the maroon band (iOS
+        // uses `.buttonStyle(.plain)` — no press chrome at all).
+        modifier = Modifier.size(60.dp).clip(CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             icon,
             contentDescription = stringResource(tab.titleRes),
             tint = cs.onPrimary.copy(alpha = if (active) 1f else 0.78f),
-            modifier = Modifier.size(24.dp),
+            // 28dp, not 24: Material pads its glyphs inside the 24dp box, so at
+            // 24 they read noticeably lighter than iOS's semibold SF Symbols.
+            modifier = Modifier.size(28.dp),
         )
     }
 }
@@ -361,6 +423,9 @@ private fun HomeCircle(
     Column(
         modifier = modifier
             .size(92.dp)
+            // Before the clip, so the shadow falls outside the disc rather than
+            // being clipped away — matches iOS's `.shadow(radius: 9, y: 3)`.
+            .shadow(9.dp, CircleShape)
             .clip(CircleShape)
             // In dark, `surface` is near-black — the same value as the page behind
             // the band, so the disc read as a hole punched through it rather than a
@@ -375,10 +440,14 @@ private fun HomeCircle(
             painter = painterResource(com.fatwabot.core.designsystem.R.drawable.fatwabot_logo),
             contentDescription = null,
             modifier = Modifier.width(30.dp).height(40.dp),
+            // Tinted like iOS's FatwaMark — the raw raster's baked-in colour is
+            // not a brand token and reads poorly inside the cream disc.
+            colorFilter = ColorFilter.tint(cs.primary),
         )
         Text(
             stringResource(AppTab.HOME.titleRes),
             style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
             color = cs.primary,
             modifier = Modifier.padding(top = 1.dp),
         )

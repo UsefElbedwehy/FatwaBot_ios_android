@@ -1,13 +1,12 @@
 package com.fatwabot.app.navigation
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,13 +17,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.filled.AccessTimeFilled
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LibraryBooks
-import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,11 +42,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
+import com.fatwabot.core.common.ContentFocus
 import com.fatwabot.core.config.ConfigService
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -130,6 +132,7 @@ fun WorshipTab(
     prayerViewModel: PrayerViewModel,
     destination: WorshipDestination?,
     onDestinationChange: (WorshipDestination?) -> Unit,
+    contentFocus: ContentFocus? = null,
 ) {
     val prayerState by prayerViewModel.state.collectAsStateWithLifecycle()
 
@@ -162,6 +165,7 @@ fun WorshipTab(
                 RemembranceSegment.AZKAR
             },
             onExit = { onDestinationChange(null) },
+            focus = contentFocus,
         )
         WorshipDestination.AWRAD -> WorshipDetailScaffold(
             title = stringResource(WorshipDestination.AWRAD.titleRes),
@@ -173,7 +177,12 @@ fun WorshipTab(
         WorshipDestination.HADITH -> WorshipDetailScaffold(
             title = stringResource(WorshipDestination.HADITH.titleRes),
             onBack = { onDestinationChange(null) },
-        ) { HadithCollectionsScreen() }
+        ) {
+            HadithCollectionsScreen(
+                focusEntryId = contentFocus?.contentId,
+                focusCollectionSlug = contentFocus?.categorySlug,
+            )
+        }
         WorshipDestination.JOURNEY -> {
             BackHandler { onDestinationChange(null) }
             JourneyTab()
@@ -194,15 +203,25 @@ private fun tileTitleRes(destination: WorshipDestination): Int = when (destinati
     else -> destination.titleRes
 }
 
+/** Chosen to match the iOS tile's SF Symbol as closely as Material allows —
+ *  all solid/filled, since every iOS glyph here is a `.fill` variant. */
 private fun iconFor(destination: WorshipDestination) = when (destination) {
-    WorshipDestination.PRAYER -> Icons.Filled.AccessTime
+    // Solid clock face, not the outlined AccessTime — iOS uses `clock.fill`.
+    WorshipDestination.PRAYER -> Icons.Filled.AccessTimeFilled
     WorshipDestination.QIBLA -> Icons.Filled.Explore
-    WorshipDestination.AZKAR -> Icons.AutoMirrored.Filled.MenuBook
+    // Closed filled book (`book.closed.fill`), not an open outlined one.
+    WorshipDestination.AZKAR -> Icons.Filled.Book
     WorshipDestination.DUA -> Icons.Filled.Favorite
-    WorshipDestination.AWRAD -> Icons.Filled.Spa
-    WorshipDestination.HADITH -> Icons.Filled.LibraryBooks
-    WorshipDestination.JOURNEY -> Icons.AutoMirrored.Filled.TrendingUp
-    else -> Icons.Filled.Circle
+    // A leaf (`leaf.fill`). `Spa` is a lotus/spa flower — a different plant
+    // entirely and the wrong read for a daily wird.
+    WorshipDestination.AWRAD -> Icons.Filled.Eco
+    // Auto-mirrored: the stacked-books glyph has a spine side, and this is an
+    // Arabic-first app where the non-mirrored variant faces the wrong way.
+    WorshipDestination.HADITH -> Icons.AutoMirrored.Filled.LibraryBooks
+    WorshipDestination.JOURNEY -> Icons.AutoMirrored.Filled.ShowChart
+    // Was missing entirely, so Tasbeeh fell through to a single plain dot
+    // where iOS shows a 3×3 grid (`circle.grid.3x3.fill`).
+    WorshipDestination.TASBEEH -> Icons.Filled.Apps
 }
 
 @Composable
@@ -231,17 +250,22 @@ private fun WorshipTile(destination: WorshipDestination, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.aspectRatio(1f).clickable(onClick = onClick),
+        // No forced square: iOS sizes the tile from its content (plate + label),
+        // so a two-line label grows the tile instead of squeezing inside it.
+        modifier = Modifier.clickable(onClick = onClick),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
         ) {
             Box(
+                // Full-width 88dp plate, matching iOS — it was a 64dp square
+                // floating in the middle of the tile.
                 modifier = Modifier
-                    .size(64.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(18.dp)),
+                    .fillMaxWidth()
+                    .height(88.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -255,6 +279,7 @@ private fun WorshipTile(destination: WorshipDestination, onClick: () -> Unit) {
             Text(
                 stringResource(tileTitleRes(destination)),
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
             )
