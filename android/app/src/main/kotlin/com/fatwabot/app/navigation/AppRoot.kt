@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.fatwabot.core.common.ContentFocus
 import com.fatwabot.core.common.DeepLink
 import com.fatwabot.core.common.OnboardingCompletionStore
 import com.fatwabot.core.designsystem.LocalReduceMotion
@@ -28,7 +29,11 @@ private interface OnboardingCompletionStoreEntryPoint {
  * (docs/features/onboarding.md) once per install, then RootScaffold forever
  * after — mirror of iOS AppRootView. */
 @Composable
-fun AppRoot(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {}) {
+fun AppRoot(
+    deepLink: DeepLink? = null,
+    contentFocus: ContentFocus? = null,
+    onDeepLinkHandled: () -> Unit = {},
+) {
     val context = LocalContext.current
     var isOnboardingCompleted by remember {
         val store = EntryPointAccessors.fromApplication(
@@ -39,7 +44,7 @@ fun AppRoot(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {}) {
 
     CompositionLocalProvider(LocalReduceMotion provides rememberReduceMotion()) {
         if (isOnboardingCompleted) {
-            RootScaffold(deepLink = deepLink, onDeepLinkHandled = onDeepLinkHandled)
+            RootScaffold(deepLink = deepLink, contentFocus = contentFocus, onDeepLinkHandled = onDeepLinkHandled)
         } else {
             OnboardingScreen(viewModel = hiltViewModel(), onFinished = { isOnboardingCompleted = true })
         }

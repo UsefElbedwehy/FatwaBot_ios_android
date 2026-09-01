@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FatwaBot" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- AppCompat, not android:Theme.Material: MainActivity is an
+         AppCompatActivity so that AppCompatDelegate.setApplicationLocales()
+         actually takes effect. That API routes through the registry of live
+         AppCompatDelegates, which is empty for a plain ComponentActivity — the
+         in-app language picker silently did nothing until this changed.
+         DayNight because the app already themes itself per uiMode. -->
+    <style name="Theme.FatwaBot" parent="Theme.AppCompat.DayNight.NoActionBar" />
 
     <!-- Shown as the launch/splash window background until Compose draws the
          first frame (mirrors the iOS LaunchScreen storyboard): cream field with
          the centered mihrab-arch + star mark. MainActivity swaps to
          Theme.FatwaBot in onCreate. -->
-    <style name="Theme.FatwaBot.Splash" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.FatwaBot.Splash" parent="Theme.FatwaBot">
         <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
 </resources>

@@ -28,6 +28,8 @@ class ContentReminderAlarmReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(ContentReminderScheduler.EXTRA_TITLE).orEmpty()
         val body = intent.getStringExtra(ContentReminderScheduler.EXTRA_BODY).orEmpty()
         val host = intent.getStringExtra(ContentReminderScheduler.EXTRA_DEEP_LINK)
+        val contentId = intent.getStringExtra(ContentReminderScheduler.EXTRA_CONTENT_ID)
+        val categorySlug = intent.getStringExtra(ContentReminderScheduler.EXTRA_CATEGORY_SLUG)
 
         val builder = NotificationCompat.Builder(context, ContentReminderScheduler.CHANNEL_ID)
             .setSmallIcon(com.fatwabot.core.designsystem.R.drawable.ic_notification)
@@ -41,12 +43,18 @@ class ContentReminderAlarmReceiver : BroadcastReceiver() {
 
         // Tapping opens the matching screen, through the same fatwabot:// route
         // MainActivity already handles for widget taps.
-        contentIntent(context, host, id)?.let(builder::setContentIntent)
+        contentIntent(context, host, id, contentId, categorySlug)?.let(builder::setContentIntent)
 
         context.getSystemService<NotificationManager>()?.notify(id.hashCode(), builder.build())
     }
 
-    private fun contentIntent(context: Context, host: String?, id: String): PendingIntent? {
+    private fun contentIntent(
+        context: Context,
+        host: String?,
+        id: String,
+        contentId: String?,
+        categorySlug: String?,
+    ): PendingIntent? {
         val link = DeepLink.entries.firstOrNull { it.host == host } ?: return null
         val intent = Intent(Intent.ACTION_VIEW, link.uri).apply {
             setPackage(context.packageName)
@@ -54,6 +62,10 @@ class ContentReminderAlarmReceiver : BroadcastReceiver() {
             // Otherwise MainActivity can't tell this from a widget tap and would
             // report it as one, inflating the metric that justifies the widgets.
             putExtra(EXTRA_FROM_NOTIFICATION, true)
+            // Which specific item to land on — read back by MainActivity to
+            // build a ContentFocus. Absent for every other notification kind.
+            putExtra(ContentReminderScheduler.EXTRA_CONTENT_ID, contentId)
+            putExtra(ContentReminderScheduler.EXTRA_CATEGORY_SLUG, categorySlug)
         }
         return PendingIntent.getActivity(
             context, id.hashCode(), intent,

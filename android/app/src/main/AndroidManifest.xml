@@ -83,5 +83,19 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification" />
+
+        <!-- Persists the in-app language choice on API 26–32, where the
+             platform has no per-app locale store. On API 33+ the OS handles it
+             (see android:localeConfig above) and this is inert. Without it the
+             picker would apply the locale for the session and forget it on the
+             next cold start. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
     </application>
 </manifest>
