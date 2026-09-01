@@ -48,5 +48,15 @@ ios/App/FatwaBot.xcodeproj/
 # Generated hadith/content import SQL (regenerate via scripts/hadith_import.ts)
 backend/supabase/imports/
 
+# Local embedding cache for load_corpus.ts — a paid-API cache, never shared/committed.
+backend/scripts/ai_ingest/.embedding_cache.json
+
+# M5 corpus — source PDFs and their OCR output. Third-party scholarly works whose
+# copyright/licensing basis is still unresolved (see the M5 licensing pause), so
+# the text must never enter git history, where it cannot be removed. The ingest
+# SCRIPTS are committed; the corpus they read and write is not.
+M5 Data/
+backend/scripts/ai_ingest/pilot_output/
+
 # Local signing config — per developer, never committed.
 ios/App/Local.env
