@@ -26,6 +26,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.fatwabot.core.common.DeepLink
 import com.fatwabot.core.prayer.PrayerWidgetSnapshot
+import java.time.ZoneId
 
 private val ExpandedCell = DpSize(250.dp, 180.dp)
 
@@ -100,6 +101,8 @@ private fun PrayerDaySheetContent(context: Context, snapshot: PrayerWidgetSnapsh
         // sheet would highlight الشروق as the next prayer.
         val nextPrayer = snapshot.nextEntry(nowSeconds)?.prayer
 
+        val zone = snapshot.zoneId
+
         // Glance has no grid primitive, so the sheet is two rows of three.
         sheet.times.chunked(3).forEach { row ->
             Row(modifier = GlanceModifier.fillMaxWidth()) {
@@ -107,6 +110,7 @@ private fun PrayerDaySheetContent(context: Context, snapshot: PrayerWidgetSnapsh
                     TimeCell(
                         label = prayerLabel(context, item.prayer),
                         epochSeconds = item.timeEpochSeconds,
+                        zone = zone,
                         isNext = item.prayer == nextPrayer,
                         // Sunrise is not a prayer and must not read as one.
                         isMuted = item.prayer == "sunrise",
@@ -121,6 +125,7 @@ private fun PrayerDaySheetContent(context: Context, snapshot: PrayerWidgetSnapsh
                 TimeCell(
                     label = context.getString(R.string.widget_prayer_midnight),
                     epochSeconds = sheet.midnightEpochSeconds!!,
+                    zone = zone,
                     isNext = false,
                     isMuted = true,
                 )
@@ -128,6 +133,7 @@ private fun PrayerDaySheetContent(context: Context, snapshot: PrayerWidgetSnapsh
                     TimeCell(
                         label = context.getString(R.string.widget_prayer_last_third),
                         epochSeconds = it,
+                        zone = zone,
                         isNext = false,
                         isMuted = true,
                     )
@@ -141,6 +147,7 @@ private fun PrayerDaySheetContent(context: Context, snapshot: PrayerWidgetSnapsh
 private fun androidx.glance.layout.RowScope.TimeCell(
     label: String,
     epochSeconds: Long,
+    zone: ZoneId,
     isNext: Boolean,
     isMuted: Boolean,
 ) {
@@ -158,7 +165,7 @@ private fun androidx.glance.layout.RowScope.TimeCell(
             ),
         )
         Text(
-            formatTime(epochSeconds),
+            formatTime(epochSeconds, zone),
             maxLines = 1,
             style = TextStyle(
                 color = when {

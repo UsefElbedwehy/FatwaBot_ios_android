@@ -103,7 +103,7 @@ class PrayerViewModel @Inject constructor(
     private fun rescheduleNotifications() {
         val scheduler = scheduler ?: return
         val location = _state.value.location ?: return
-        val today = localToday()
+        val today = localToday(location.zoneId)
         val timeline = runCatching {
             engine.timeline(
                 location.latitude, location.longitude,
@@ -118,7 +118,10 @@ class PrayerViewModel @Inject constructor(
     fun selectCity(city: ManualCity, displayName: String) {
         locationProvider.setManualCity(city, displayName)
         apply(
-            UserLocation(city.latitude, city.longitude, displayName, city.countryCode, isManual = true),
+            UserLocation(
+                city.latitude, city.longitude, displayName, city.countryCode,
+                isManual = true, timeZone = city.timeZone,
+            ),
         )
     }
 
@@ -138,7 +141,7 @@ class PrayerViewModel @Inject constructor(
 
     fun day(offset: Int): PrayerDayUi? {
         val location = _state.value.location ?: return null
-        val date = localToday().plusDays(offset.toLong())
+        val date = localToday(location.zoneId).plusDays(offset.toLong())
         return runCatching {
             engine.day(
                 location.latitude, location.longitude,
@@ -147,12 +150,12 @@ class PrayerViewModel @Inject constructor(
         }.getOrNull()
     }
 
-    private fun localToday(): LocalDate =
-        java.time.Instant.ofEpochSecond(clock.now().epochSeconds).atZone(ZoneId.systemDefault()).toLocalDate()
+    private fun localToday(zone: ZoneId): LocalDate =
+        java.time.Instant.ofEpochSecond(clock.now().epochSeconds).atZone(zone).toLocalDate()
 
     private fun apply(location: UserLocation, updateWidget: Boolean = true) {
         val settings = _state.value.settings
-        val today = localToday()
+        val today = localToday(location.zoneId)
         val days = runCatching {
             engine.timeline(
                 location.latitude, location.longitude,
@@ -188,8 +191,13 @@ class PrayerViewModel @Inject constructor(
             location = location.name,
             hijri = HijriDateUi.from(today, settings.clampedHijriOffset),
             generatedAtEpochSeconds = clock.now().epochSeconds,
+            timeZoneId = location.timeZone?.id,
         )
         store.write(snapshot)
         onWidgetSnapshotWritten?.refresh()
     }
 }
+
+/** The zone prayer times should be computed and displayed in for this
+ *  location, falling back to the device's own timezone if none resolved. */
+val UserLocation.zoneId: ZoneId get() = timeZone?.toZoneId() ?: ZoneId.systemDefault()

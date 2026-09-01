@@ -27,6 +27,14 @@ data class PrayerWidgetSnapshot(
      * falls back to its placeholder until the user next opens the app.
      */
     val days: List<DaySheet> = emptyList(),
+    /**
+     * IANA identifier of the location these times were computed for — read by
+     * the widgets so they format wall-clock times in the location's zone
+     * rather than the device's. Defaulted for the same backward-compat reason
+     * as [days]: `null` means "format in the device's own timezone", which is
+     * exactly what every widget already did before this field existed.
+     */
+    val timeZoneId: String? = null,
 ) {
     @Serializable
     data class Entry(val prayer: String, val timeEpochSeconds: Long)
@@ -77,6 +85,7 @@ data class PrayerWidgetSnapshot(
             hijri: HijriDateUi,
             generatedAtEpochSeconds: Long,
             horizonSeconds: Long = 48 * 3600,
+            timeZoneId: String? = null,
         ): PrayerWidgetSnapshot {
             val cutoff = generatedAtEpochSeconds + horizonSeconds
             val entries = timeline
@@ -112,7 +121,7 @@ data class PrayerWidgetSnapshot(
 
             return PrayerWidgetSnapshot(
                 location, hijri.monthName, hijri.day, hijri.year, entries,
-                generatedAtEpochSeconds, sheets,
+                generatedAtEpochSeconds, sheets, timeZoneId,
             )
         }
     }
