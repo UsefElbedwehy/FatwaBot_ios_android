@@ -76,6 +76,7 @@ import com.fatwabot.core.common.DeepLink
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.core.designsystem.brandScreenBackgroundEnd
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -299,6 +300,7 @@ private fun screenKey(tab: AppTab, destination: WorshipDestination?, searchMode:
 private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
+    val tokens = if (isDark) DarkTokens else LightTokens
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val barHeight = 108.dp
     val homeLift = 26.dp
@@ -313,6 +315,14 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                // Continue the screen's wash under the whole band, so the only
+                // shape here is the maroon cradle. The bar slot sits outside the
+                // content area, so the screen's own `brandScreenBackground` can
+                // never reach it — without this the band fell back to the flat
+                // app background and read as a rectangle behind the cradle.
+                // BEFORE the top padding, so it covers the overhang the raised
+                // Home circle is drawn into as well.
+                .background(tokens.brandScreenBackgroundEnd)
                 .padding(top = overhang)
                 .height(barHeight + bottomInset)
                 .drawBehind {

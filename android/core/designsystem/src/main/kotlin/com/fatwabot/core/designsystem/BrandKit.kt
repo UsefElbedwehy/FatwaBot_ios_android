@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -82,6 +83,26 @@ fun Modifier.brandScreenBackground(tokens: ColorTokens): Modifier =
                 ),
             )
         }
+
+/**
+ * The exact colour [brandScreenBackground]'s vertical gradient ends on —
+ * `primaryContainer @ 35%` composited over `surface`.
+ *
+ * Needed because the bottom-bar band lives OUTSIDE the content area, so no
+ * screen's own background can reach it: the wash stopped at the last content
+ * pixel and the band below it fell back to the flat app background, drawing a
+ * rectangle around the maroon cradle. Painting that band this colour continues
+ * the wash exactly where it left off, so only the cradle reads as a shape.
+ *
+ * iOS gets this for free — `BrandScreenBackground` applies `.ignoresSafeArea()`
+ * to the *background* while the content stays inset, so the gradient bleeds
+ * under the bar. Compose has no equivalent, and hoisting the gradient to the
+ * window instead is what regressed dark mode previously: the screens kept
+ * painting their own, so `primaryContainer @ 35%` composited over itself and
+ * the lower half of every dark screen turned maroon.
+ */
+val ColorTokens.brandScreenBackgroundEnd: Color
+    get() = primaryContainer.copy(alpha = 0.35f).compositeOver(surface)
 
 // MARK: Shadows
 
