@@ -73,26 +73,41 @@ class SystemLocationProvider @Inject constructor(
         val (name, country) = reverseGeocode(raw.latitude, raw.longitude)
         val location = UserLocation(
             raw.latitude, raw.longitude, name, country,
-            isManual = false, timeZone = country?.let(::singleTimeZoneForCountry),
+            isManual = false, timeZone = country?.let { timeZoneForCountry(it, raw.longitude) },
         )
         persist(location)
         return LocationState.Resolved(location)
     }
 
     /**
-     * Best-effort timezone from a country code — resolved only when the
-     * country has exactly ONE timezone. Android's Geocoder, unlike iOS's
-     * CLPlacemark, never returns a timezone directly, and a lat/lng-accurate
-     * lookup needs timezone-boundary data this app doesn't bundle. Guessing
-     * for a multi-zone country (the US, Russia, Brazil, ...) would often be
-     * wrong, which is worse than the previous behaviour of falling back to
-     * the device's own timezone — so multi-zone countries are left `null`
-     * here deliberately, not resolved to an arbitrary first match.
+     * Best-effort timezone for a GPS fix. Android's Geocoder, unlike iOS's
+     * `CLPlacemark`, never returns a timezone, and a boundary-accurate lookup
+     * needs shapefile data this app doesn't bundle.
+     *
+     * A single-timezone country is exact. For a multi-zone one (the US, Russia,
+     * Brazil, ...) we pick the country zone whose standard offset is closest to
+     * the one the longitude implies — 15° of longitude per hour. This was
+     * previously left `null` on the reasoning that a guess is worse than
+     * falling back to the device's timezone. That reasoning was wrong: the
+     * device's timezone is not a neutral default but an unrelated one, and it
+     * is wrong by however far the user has travelled. Observed on a device set
+     * to Africa/Cairo with a Mountain View fix: Fajr rendered at 3:07 PM. The
+     * longitude estimate is off by at most an hour or so within a country;
+     * the device fallback was off by ten.
+     *
+     * Remaining imprecision: two zones sharing a standard offset but differing
+     * in DST rules (America/Phoenix vs America/Denver) can resolve to the wrong
+     * one, an error of at most one hour for part of the year. The device
+     * fallback stays for a country we can't resolve at all.
      */
-    private fun singleTimeZoneForCountry(countryCode: String): TimeZone? {
+    private fun timeZoneForCountry(countryCode: String, longitude: Double): TimeZone? {
         val ids = android.icu.util.TimeZone.getAvailableIDs(countryCode)
-        val id = ids.singleOrNull() ?: return null
-        return TimeZone.getTimeZone(id)
+        ids.singleOrNull()?.let { return TimeZone.getTimeZone(it) }
+        val solarOffsetMs = (longitude / 15.0 * 3_600_000.0).toLong()
+        val best = ids.minByOrNull { id ->
+            kotlin.math.abs(TimeZone.getTimeZone(id).rawOffset.toLong() - solarOffsetMs)
+        } ?: return null
+        return TimeZone.getTimeZone(best)
     }
 
     private fun hasPermission(): Boolean =

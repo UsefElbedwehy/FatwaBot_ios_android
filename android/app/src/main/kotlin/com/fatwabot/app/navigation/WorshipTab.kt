@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.AccessTimeFilled
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Book
@@ -218,7 +218,10 @@ private fun iconFor(destination: WorshipDestination) = when (destination) {
     // Auto-mirrored: the stacked-books glyph has a spine side, and this is an
     // Arabic-first app where the non-mirrored variant faces the wrong way.
     WorshipDestination.HADITH -> Icons.AutoMirrored.Filled.LibraryBooks
-    WorshipDestination.JOURNEY -> Icons.AutoMirrored.Filled.ShowChart
+    // NOT the auto-mirrored variant: this is a rising trend line, and RTL
+    // mirroring flips it into a falling one — the Journey tile read as decline
+    // in Arabic. Direction is the meaning here, not reading order.
+    WorshipDestination.JOURNEY -> Icons.Filled.ShowChart
     // Was missing entirely, so Tasbeeh fell through to a single plain dot
     // where iOS shows a 3×3 grid (`circle.grid.3x3.fill`).
     WorshipDestination.TASBEEH -> Icons.Filled.Apps

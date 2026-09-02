@@ -301,6 +301,16 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
     val tokens = if (isDark) DarkTokens else LightTokens
+    // What the band must blend into, which is not one colour: the tab roots
+    // don't share a background. Home and Settings paint the warm wash, so the
+    // band continues it. Worship's grid paints none and shows the flat Scaffold
+    // colour — deliberately, since iOS's worship grid is a flat `surface` fill
+    // rather than the wash — so the band has to go flat there too. Using one
+    // fixed colour left a visible seam above the bar on Worship.
+    val bandBackdrop = when (selected) {
+        AppTab.WORSHIP -> cs.background
+        else -> tokens.brandScreenBackgroundEnd
+    }
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val barHeight = 108.dp
     val homeLift = 26.dp
@@ -322,7 +332,7 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                 // app background and read as a rectangle behind the cradle.
                 // BEFORE the top padding, so it covers the overhang the raised
                 // Home circle is drawn into as well.
-                .background(tokens.brandScreenBackgroundEnd)
+                .background(bandBackdrop)
                 .padding(top = overhang)
                 .height(barHeight + bottomInset)
                 .drawBehind {
