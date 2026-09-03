@@ -305,3 +305,60 @@ Deno.test("POST /v1/search falls back to the generic refusal message when a self
     "still carries a localized refusal message, not an empty string",
   );
 });
+
+// A 500 that says only "internal_error" is undiagnosable from the client, and
+// on a deployment whose logs you can't reach, undiagnosable full stop. Each
+// stage now reports which one failed.
+
+Deno.test("POST /v1/search reports retrieval_failed when the search stage throws", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: {
+      embed: () => Promise.reject(new Error("voyage 401")),
+      id: "broken",
+    } as unknown as DevStubEmbeddingProvider,
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
+  assertEquals(res.status, 502);
+  assertEquals((await res.json()).error.code, "retrieval_failed");
+});
+
+Deno.test("POST /v1/search reports answer_failed when the model stage throws", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: {
+      answer: () => Promise.reject(new Error("anthropic 500")),
+      id: "broken",
+    } as unknown as DevStubAnswerProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
+  assertEquals(res.status, 502);
+  assertEquals((await res.json()).error.code, "answer_failed");
+});
+
+Deno.test("POST /v1/search still returns the answer when only the audit log write fails", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  d.fatwaSearch.logAnswer = () => Promise.reject(new Error("answers_log insert failed"));
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, false);
+  assertEquals(body.citations.length, 1);
+});

@@ -39,11 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlin.math.abs
 import kotlin.math.cos
@@ -337,24 +334,18 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                 .height(barHeight + bottomInset)
                 .drawBehind {
                     val path = cradlePath(size, 54.dp.toPx(), 18.dp.toPx(), 22.dp.toPx())
-                    // Soft upward shadow so the band reads as floating over the
-                    // page rather than pasted onto it (iOS gets this from
-                    // `.shadow(color: primary.opacity(0.28), radius: 16, y: -4)`).
-                    // Compose's drawPath can't blur, so drop to the framework
-                    // paint's shadow layer.
-                    drawIntoCanvas { canvas ->
-                        val paint = Paint()
-                        paint.asFrameworkPaint().apply {
-                            color = android.graphics.Color.TRANSPARENT
-                            setShadowLayer(
-                                16.dp.toPx(),
-                                0f,
-                                -4.dp.toPx(),
-                                cs.primary.copy(alpha = 0.28f).toArgb(),
-                            )
-                        }
-                        canvas.drawPath(path, paint)
-                    }
+                    // No drop shadow. iOS does declare one on this shape
+                    // (`.shadow(color: primary.opacity(0.28), radius: 16, y: -4)`
+                    // in RootTabView), and this used to port those numbers
+                    // literally via the framework paint's shadow layer — but the
+                    // two blurs are not the same for the same figure. SwiftUI's
+                    // `radius` is about twice its Gaussian sigma; Skia's
+                    // `setShadowLayer` takes something closer to the sigma
+                    // itself, so 16 there and 16 here are different shadows.
+                    // Against the light cream the Android one was a visible haze
+                    // — measurably ~43px of gradient above the curve — where the
+                    // iOS one reads as nothing. The client's ask is the clean
+                    // shape, so draw the clean shape.
                     drawPath(path, cs.primary)
                     // `primary` is lifted in the dark palette so it can serve as a
                     // foreground on the near-black surface. At the size of this band

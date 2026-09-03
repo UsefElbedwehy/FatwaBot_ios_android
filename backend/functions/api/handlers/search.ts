@@ -77,8 +77,28 @@ export async function handleSearch(
     return apiError(503, "ai_unavailable", "AI search is not configured yet");
   }
 
-  const chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode);
-  const raw = await deps.answerProvider.answer(question, mode, chunks, ctx.locale);
+  // Each stage reports its own failure code. Previously any throw anywhere in
+  // here fell through to the router's blanket `internal_error`, so a 500 said
+  // only "something broke" — indistinguishable between the embedding call, the
+  // SQL search functions, and the answer model, and diagnosable only by someone
+  // with dashboard access to the stack trace. The codes carry no internal
+  // detail; the stack still goes to the log, not to the client.
+  let chunks;
+  try {
+    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode);
+  } catch (err) {
+    console.error("search_retrieval_failed", err instanceof Error ? err.stack ?? err.message : err);
+    return apiError(502, "retrieval_failed", "Could not search the sources");
+  }
+
+  let raw;
+  try {
+    raw = await deps.answerProvider.answer(question, mode, chunks, ctx.locale);
+  } catch (err) {
+    console.error("search_answer_failed", err instanceof Error ? err.stack ?? err.message : err);
+    return apiError(502, "answer_failed", "Could not generate an answer");
+  }
+
   const chunkTextById = new Map(chunks.map((c) => [c.chunkId, c.text]));
   const verified = verifyCitations(raw, chunkTextById);
 
@@ -91,17 +111,25 @@ export async function handleSearch(
     ? resolveRequired(REFUSAL_MESSAGE, ctx.locale)
     : verified.answer;
 
-  await deps.fatwaSearch.logAnswer(ctx, {
-    userId,
-    mode,
-    question,
-    retrievedChunkIds: chunks.map((c) => c.chunkId),
-    citations: verified.citations,
-    answer,
-    refused: verified.refused,
-    model: verified.model,
-  });
-  await deps.searchHistory.record(ctx, userId, MODE_TO_HISTORY_SOURCE[mode], question, ctx.locale);
+  // Bookkeeping, not the product. A failed audit-log or history write used to
+  // throw away an answer that had already been retrieved, generated and
+  // verified — the user paid for the whole pipeline and got a 500 because a
+  // side-table insert failed. Log it and hand over the answer.
+  try {
+    await deps.fatwaSearch.logAnswer(ctx, {
+      userId,
+      mode,
+      question,
+      retrievedChunkIds: chunks.map((c) => c.chunkId),
+      citations: verified.citations,
+      answer,
+      refused: verified.refused,
+      model: verified.model,
+    });
+    await deps.searchHistory.record(ctx, userId, MODE_TO_HISTORY_SOURCE[mode], question, ctx.locale);
+  } catch (err) {
+    console.error("search_logging_failed", err instanceof Error ? err.stack ?? err.message : err);
+  }
 
   return json({
     answer,
