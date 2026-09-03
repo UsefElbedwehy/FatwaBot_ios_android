@@ -66,9 +66,13 @@ function modeUsesTrigram(mode: FatwaMode): boolean {
 }
 
 /** Which half of retrieval failed: the outbound embedding call, or the SQL
- *  search functions. */
+ *  search functions — and for the latter, which of the three. */
 export class RetrievalError extends Error {
-  constructor(readonly stage: "embedding" | "search", readonly reason: unknown) {
+  constructor(
+    readonly stage: "embedding" | "search",
+    readonly reason: unknown,
+    readonly failedSearches: string[] = [],
+  ) {
     super(`retrieval failed at the ${stage} stage`);
     this.name = "RetrievalError";
   }
@@ -94,18 +98,42 @@ export async function hybridRetrieve(
     throw new RetrievalError("embedding", err);
   }
 
-  const searches: Promise<RetrievedChunk[]>[] = [
-    repo.vectorSearch(ctx, embedding, o.vectorTopK),
-    repo.ftsSearch(ctx, question, o.ftsTopK),
+  const named: { name: string; run: Promise<RetrievedChunk[]> }[] = [
+    { name: "vector", run: repo.vectorSearch(ctx, embedding, o.vectorTopK) },
+    { name: "fts", run: repo.ftsSearch(ctx, question, o.ftsTopK) },
   ];
   if (modeUsesTrigram(mode)) {
-    searches.push(repo.trigramSearch(ctx, question, o.trigramTopK, o.trigramMinSimilarity));
+    named.push({
+      name: "trigram",
+      run: repo.trigramSearch(ctx, question, o.trigramTopK, o.trigramMinSimilarity),
+    });
   }
-  let results: RetrievedChunk[][];
-  try {
-    results = await Promise.all(searches);
-  } catch (err) {
-    throw new RetrievalError("search", err);
+
+  // `allSettled`, not `all`. The whole point of fusing three independent
+  // searches is that they are independent: if the vector index is slow enough
+  // to hit the statement timeout, FTS and trigram have usually already returned
+  // perfectly good results, and `Promise.all` threw them away along with the
+  // request. Now one failure degrades the ranking instead of ending it, and
+  // only an all-three failure is fatal. Which ones failed is recorded either
+  // way — a silently degraded search is its own kind of bug.
+  const settled = await Promise.allSettled(named.map((s) => s.run));
+  const results: RetrievedChunk[][] = [];
+  const failed: { name: string; reason: unknown }[] = [];
+  settled.forEach((outcome, i) => {
+    if (outcome.status === "fulfilled") {
+      results.push(outcome.value);
+    } else {
+      failed.push({ name: named[i].name, reason: outcome.reason });
+    }
+  });
+  for (const f of failed) {
+    console.error(
+      `retrieval_search_failed:${f.name}`,
+      f.reason instanceof Error ? f.reason.stack ?? f.reason.message : f.reason,
+    );
+  }
+  if (results.length === 0) {
+    throw new RetrievalError("search", failed[0]?.reason, failed.map((f) => f.name));
   }
 
   return reciprocalRankFusion(results, o.rrfK).slice(0, o.finalTopN);

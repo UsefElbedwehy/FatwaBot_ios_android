@@ -104,10 +104,13 @@ export async function handleSearch(
       ? ` (pg ${(cause as { code: string }).code})`
       : "";
     const upstream = cause instanceof UpstreamError ? ` (${cause.provider} ${cause.status})` : pgCode;
+    const which = err instanceof RetrievalError && err.failedSearches.length > 0
+      ? ` [${err.failedSearches.join(",")}]`
+      : "";
     return apiError(
       502,
       stage === "embedding" ? "embedding_failed" : "retrieval_failed",
-      `Could not search the sources${upstream}`,
+      `Could not search the sources${upstream}${which}`,
     );
   }
 

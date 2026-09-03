@@ -339,12 +339,20 @@ Deno.test("POST /v1/search reports retrieval_failed when the SQL search stage th
     embeddingProvider: new DevStubEmbeddingProvider(4),
     answerProvider: new DevStubAnswerProvider(),
   };
-  d.fatwaSearch.vectorSearch = () => Promise.reject(new Error("function fatwa.search_vector does not exist"));
+  // Every search has to fail for retrieval to be fatal — see the degraded-mode
+  // test below.
+  const dead = () => Promise.reject(new Error("function fatwa.search_vector does not exist"));
+  d.fatwaSearch.vectorSearch = dead;
+  d.fatwaSearch.ftsSearch = dead;
+  d.fatwaSearch.trigramSearch = dead;
   const user = await signIn(d);
   const auth = { authorization: `Bearer ${user.access_token}` };
   const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
   assertEquals(res.status, 502);
-  assertEquals((await res.json()).error.code, "retrieval_failed");
+  const body = await res.json();
+  assertEquals(body.error.code, "retrieval_failed");
+  // Names which searches died, so a production failure says where.
+  assertEquals(body.error.message.includes("vector"), true);
 });
 
 Deno.test("POST /v1/search reports answer_failed when the model stage throws", async () => {
@@ -372,6 +380,29 @@ Deno.test("POST /v1/search still returns the answer when only the audit log writ
   };
   d.fatwaSearch.seed([seedChunk()]);
   d.fatwaSearch.logAnswer = () => Promise.reject(new Error("answers_log insert failed"));
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, false);
+  assertEquals(body.citations.length, 1);
+});
+
+Deno.test("POST /v1/search still answers when only one of the three searches fails", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  // The vector index is the one that times out in production; FTS returns fine.
+  // Losing the whole request over that threw away results we already had.
+  d.fatwaSearch.vectorSearch = () =>
+    Promise.reject(new Error("canceling statement due to statement timeout"));
   const user = await signIn(d);
   const auth = { authorization: `Bearer ${user.access_token}` };
   const res = await route(
