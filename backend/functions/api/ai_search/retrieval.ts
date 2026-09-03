@@ -85,6 +85,11 @@ export async function hybridRetrieve(
   question: string,
   mode: FatwaMode,
   opts: RetrievalOptions = {},
+  /** Filled in with per-stage wall-clock, when the caller supplies it. The
+   *  stages have wildly different cost profiles — an outbound HTTPS call to a
+   *  rate-limited provider versus three local index scans — and a single
+   *  end-to-end number cannot tell them apart. */
+  timings?: { embedMs?: number; searchMs?: number },
 ): Promise<RetrievedChunk[]> {
   const o = { ...DEFAULTS, ...opts };
 
@@ -92,10 +97,13 @@ export async function hybridRetrieve(
   // three SQL functions; without knowing which, a production failure is a
   // coin flip between an upstream provider and an unapplied migration.
   let embedding: number[];
+  const embedStart = performance.now();
   try {
     [embedding] = await embedder.embed([question]);
   } catch (err) {
     throw new RetrievalError("embedding", err);
+  } finally {
+    if (timings) timings.embedMs = Math.round(performance.now() - embedStart);
   }
 
   const named: { name: string; run: Promise<RetrievedChunk[]> }[] = [
@@ -116,7 +124,9 @@ export async function hybridRetrieve(
   // request. Now one failure degrades the ranking instead of ending it, and
   // only an all-three failure is fatal. Which ones failed is recorded either
   // way — a silently degraded search is its own kind of bug.
+  const searchStart = performance.now();
   const settled = await Promise.allSettled(named.map((s) => s.run));
+  if (timings) timings.searchMs = Math.round(performance.now() - searchStart);
   const results: RetrievedChunk[][] = [];
   const failed: { name: string; reason: unknown }[] = [];
   settled.forEach((outcome, i) => {

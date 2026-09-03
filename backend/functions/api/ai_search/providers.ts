@@ -206,11 +206,19 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
         throw new UpstreamError("voyage", res.status, `Voyage embeddings failed: ${res.status} ${body}`);
       }
       const retryAfterSeconds = Number(res.headers.get("retry-after"));
+      // A flat 20s for every 429 meant three retries cost exactly 60s even when
+      // the window had freed up after five — measured in production as
+      // `embed;dur=60760` on a `Server-Timing` header, against 242ms for the
+      // same call made after an idle gap. Escalate instead (5s, 10s, then 20s),
+      // which recovers far sooner from a short window without hammering a
+      // provider that has already said no. `Retry-After` still wins outright
+      // when the provider sends one.
       const backoffMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
         ? retryAfterSeconds * 1000
         : res.status === 429
-        ? 20_000
+        ? Math.min(20_000, 5_000 * 2 ** attempt)
         : Math.min(30_000, 1000 * 2 ** attempt);
+      console.warn(`voyage_backoff status=${res.status} attempt=${attempt} waiting=${backoffMs}ms`);
       await this.sleepFn(backoffMs);
     }
   }

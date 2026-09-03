@@ -84,9 +84,11 @@ export async function handleSearch(
   // SQL search functions, and the answer model, and diagnosable only by someone
   // with dashboard access to the stack trace. The codes carry no internal
   // detail; the stack still goes to the log, not to the client.
+  const timings: { embedMs?: number; searchMs?: number } = {};
+  let answerMs = 0;
   let chunks;
   try {
-    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode);
+    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode, {}, timings);
   } catch (err) {
     console.error("search_retrieval_failed", err instanceof Error ? err.stack ?? err.message : err);
     const stage = err instanceof RetrievalError ? err.stage : "unknown";
@@ -115,8 +117,10 @@ export async function handleSearch(
   }
 
   let raw;
+  const answerStart = performance.now();
   try {
     raw = await deps.answerProvider.answer(question, mode, chunks, ctx.locale);
+    answerMs = Math.round(performance.now() - answerStart);
   } catch (err) {
     console.error("search_answer_failed", err instanceof Error ? err.stack ?? err.message : err);
     return apiError(502, "answer_failed", "Could not generate an answer");
@@ -154,17 +158,29 @@ export async function handleSearch(
     console.error("search_logging_failed", err instanceof Error ? err.stack ?? err.message : err);
   }
 
-  return json({
-    answer,
-    citations: verified.citations.map((c) => ({
-      chunk_id: c.chunkId,
-      scholar: c.scholar,
-      source_title: c.sourceTitle,
-      page_number: c.pageNumber ?? null,
-      video_timestamp: c.videoTimestamp ?? null,
-      quoted_text: c.quotedText,
-    })),
-    refused: verified.refused,
-    mode,
-  });
+  // Standard `Server-Timing`, so where a slow search spent its time is visible
+  // from the client instead of only in logs someone has to have access to read.
+  return json(
+    {
+      answer,
+      citations: verified.citations.map((c) => ({
+        chunk_id: c.chunkId,
+        scholar: c.scholar,
+        source_title: c.sourceTitle,
+        page_number: c.pageNumber ?? null,
+        video_timestamp: c.videoTimestamp ?? null,
+        quoted_text: c.quotedText,
+      })),
+      refused: verified.refused,
+      mode,
+    },
+    200,
+    {
+      "server-timing": [
+        `embed;dur=${timings.embedMs ?? 0}`,
+        `search;dur=${timings.searchMs ?? 0}`,
+        `answer;dur=${answerMs}`,
+      ].join(", "),
+    },
+  );
 }

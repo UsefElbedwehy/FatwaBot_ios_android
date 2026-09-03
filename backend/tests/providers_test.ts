@@ -132,7 +132,9 @@ Deno.test("VoyageEmbeddingProvider retries a 429 and succeeds once the throttle 
 
   assertEquals(result, [[0.5]]);
   assertEquals(calls, 3, "should have retried twice before succeeding on the third attempt");
-  assertEquals(sleeps, [20_000, 20_000], "no Retry-After header — falls back to the ~3RPM cadence");
+  // Escalating, not flat: a short throttle window should cost 5s, not 20s.
+  // Three flat 20s waits were measured as a 60s embed stage in production.
+  assertEquals(sleeps, [5_000, 10_000], "no Retry-After header — escalating backoff, capped at 20s");
 });
 
 Deno.test("VoyageEmbeddingProvider honors a Retry-After header when Voyage sends one", async () => {
