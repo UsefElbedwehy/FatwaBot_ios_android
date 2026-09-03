@@ -65,6 +65,15 @@ function modeUsesTrigram(mode: FatwaMode): boolean {
   return mode === "hadith";
 }
 
+/** Which half of retrieval failed: the outbound embedding call, or the SQL
+ *  search functions. */
+export class RetrievalError extends Error {
+  constructor(readonly stage: "embedding" | "search", readonly reason: unknown) {
+    super(`retrieval failed at the ${stage} stage`);
+    this.name = "RetrievalError";
+  }
+}
+
 export async function hybridRetrieve(
   ctx: AppContext,
   repo: FatwaSearchRepo,
@@ -74,7 +83,16 @@ export async function hybridRetrieve(
   opts: RetrievalOptions = {},
 ): Promise<RetrievedChunk[]> {
   const o = { ...DEFAULTS, ...opts };
-  const [embedding] = await embedder.embed([question]);
+
+  // Tagged by stage. "Retrieval failed" spans an outbound embedding call and
+  // three SQL functions; without knowing which, a production failure is a
+  // coin flip between an upstream provider and an unapplied migration.
+  let embedding: number[];
+  try {
+    [embedding] = await embedder.embed([question]);
+  } catch (err) {
+    throw new RetrievalError("embedding", err);
+  }
 
   const searches: Promise<RetrievedChunk[]>[] = [
     repo.vectorSearch(ctx, embedding, o.vectorTopK),
@@ -83,7 +101,12 @@ export async function hybridRetrieve(
   if (modeUsesTrigram(mode)) {
     searches.push(repo.trigramSearch(ctx, question, o.trigramTopK, o.trigramMinSimilarity));
   }
-  const results = await Promise.all(searches);
+  let results: RetrievedChunk[][];
+  try {
+    results = await Promise.all(searches);
+  } catch (err) {
+    throw new RetrievalError("search", err);
+  }
 
   return reciprocalRankFusion(results, o.rrfK).slice(0, o.finalTopN);
 }

@@ -116,6 +116,16 @@ export class DevStubAnswerProvider implements AnswerProvider {
  *     genuine transient 5xx, or TPM rather than RPM pressure): `Retry-After`
  *     is honored when Voyage sends one; otherwise 429 backs off ~20s and
  *     5xx backs off exponentially from 1s. */
+/** Carries the upstream provider's HTTP status so a failure can be reported as
+ *  "the embedding service said 429" rather than an opaque 500. The status alone
+ *  is safe to surface — it names no key and echoes no response body. */
+export class UpstreamError extends Error {
+  constructor(readonly provider: string, readonly status: number, message: string) {
+    super(message);
+    this.name = "UpstreamError";
+  }
+}
+
 export class VoyageEmbeddingProvider implements EmbeddingProvider {
   readonly id: string;
   private readonly requestTimestamps: number[] = [];
@@ -193,7 +203,7 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
       const retryable = res.status === 429 || res.status >= 500;
       const body = await res.text();
       if (!retryable || attempt >= this.maxRetries) {
-        throw new Error(`Voyage embeddings failed: ${res.status} ${body}`);
+        throw new UpstreamError("voyage", res.status, `Voyage embeddings failed: ${res.status} ${body}`);
       }
       const retryAfterSeconds = Number(res.headers.get("retry-after"));
       const backoffMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0

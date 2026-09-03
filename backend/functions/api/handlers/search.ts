@@ -10,8 +10,9 @@ import { apiError, json } from "../http.ts";
 import { resolveRequired } from "../locale_resolve.ts";
 import type { AppContext } from "../types.ts";
 import type { FatwaMode, FatwaSearchRepo } from "../fatwa_types.ts";
+import { UpstreamError } from "../ai_search/providers.ts";
 import type { AnswerProvider, EmbeddingProvider } from "../ai_search/providers.ts";
-import { hybridRetrieve } from "../ai_search/retrieval.ts";
+import { hybridRetrieve, RetrievalError } from "../ai_search/retrieval.ts";
 import { verifyCitations } from "../ai_search/citation_verify.ts";
 import type { SearchHistoryRepo, SearchSource } from "../search_types.ts";
 
@@ -88,7 +89,26 @@ export async function handleSearch(
     chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode);
   } catch (err) {
     console.error("search_retrieval_failed", err instanceof Error ? err.stack ?? err.message : err);
-    return apiError(502, "retrieval_failed", "Could not search the sources");
+    const stage = err instanceof RetrievalError ? err.stage : "unknown";
+    const cause = err instanceof RetrievalError ? err.reason : err;
+    // The upstream HTTP status, when there is one. Naming it turns an opaque
+    // 502 into an actionable one — a 429 is a quota problem on the provider
+    // account, a 401 a bad key, a 404 a wrong model id. No key and no response
+    // body is echoed, only the number.
+    // Postgres/PostgREST error codes are equally actionable and equally safe:
+    // 42883 / PGRST202 mean the function isn't there (an unapplied migration),
+    // 42501 means it is but the API role can't call it, 42704 a missing type or
+    // extension. Only the code travels — never the message, which can quote the
+    // caller's own text back.
+    const pgCode = typeof (cause as { code?: unknown })?.code === "string"
+      ? ` (pg ${(cause as { code: string }).code})`
+      : "";
+    const upstream = cause instanceof UpstreamError ? ` (${cause.provider} ${cause.status})` : pgCode;
+    return apiError(
+      502,
+      stage === "embedding" ? "embedding_failed" : "retrieval_failed",
+      `Could not search the sources${upstream}`,
+    );
   }
 
   let raw;

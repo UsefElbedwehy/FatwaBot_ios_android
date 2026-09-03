@@ -17,7 +17,11 @@ import { InMemoryLeaderboardRepo } from "./in_memory_leaderboard_repo.ts";
 import { InMemorySearchHistoryRepo } from "./in_memory_search_repo.ts";
 import { InMemoryDeliveryLogRepo, InMemoryNotificationPrefsRepo } from "./in_memory_notification_repo.ts";
 import { InMemoryFatwaSearchRepo, type SeedChunk } from "./in_memory_fatwa_repo.ts";
-import { DevStubAnswerProvider, DevStubEmbeddingProvider } from "../functions/api/ai_search/providers.ts";
+import {
+  DevStubAnswerProvider,
+  DevStubEmbeddingProvider,
+  UpstreamError,
+} from "../functions/api/ai_search/providers.ts";
 import type { AnswerProvider } from "../functions/api/ai_search/providers.ts";
 import type { AnswerResult, FatwaMode, RetrievedChunk } from "../functions/api/fatwa_types.ts";
 
@@ -310,15 +314,32 @@ Deno.test("POST /v1/search falls back to the generic refusal message when a self
 // on a deployment whose logs you can't reach, undiagnosable full stop. Each
 // stage now reports which one failed.
 
-Deno.test("POST /v1/search reports retrieval_failed when the search stage throws", async () => {
+Deno.test("POST /v1/search reports embedding_failed, naming the upstream status", async () => {
   const d = {
     ...baseDeps(),
     embeddingProvider: {
-      embed: () => Promise.reject(new Error("voyage 401")),
+      embed: () => Promise.reject(new UpstreamError("voyage", 429, "rate limited")),
       id: "broken",
     } as unknown as DevStubEmbeddingProvider,
     answerProvider: new DevStubAnswerProvider(),
   };
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
+  assertEquals(res.status, 502);
+  const body = await res.json();
+  assertEquals(body.error.code, "embedding_failed");
+  // The status is the whole point — 429 is a quota problem, 401 a bad key.
+  assertEquals(body.error.message.includes("voyage 429"), true);
+});
+
+Deno.test("POST /v1/search reports retrieval_failed when the SQL search stage throws", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.vectorSearch = () => Promise.reject(new Error("function fatwa.search_vector does not exist"));
   const user = await signIn(d);
   const auth = { authorization: `Bearer ${user.access_token}` };
   const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
