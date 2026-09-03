@@ -94,7 +94,10 @@ Deno.test("windowFor: lifetime has no bounds", () => {
 // Calendar halves in UTC: H1 is Jan-Jun, H2 is Jul-Dec.
 
 Deno.test("periodKeyFor: halfyearly key is stable within the same half", () => {
-  const start = periodKeyFor("halfyearly", new Date("2026-01-01T00:00:00Z"), { startsAt: null, endsAt: null });
+  const start = periodKeyFor("halfyearly", new Date("2026-01-01T00:00:00Z"), {
+    startsAt: null,
+    endsAt: null,
+  });
   const mid = periodKeyFor("halfyearly", new Date("2026-04-15T12:00:00Z"), { startsAt: null, endsAt: null });
   const end = periodKeyFor("halfyearly", new Date("2026-06-30T23:59:59Z"), { startsAt: null, endsAt: null });
   assertEquals(start, "2026-H1");
@@ -116,8 +119,14 @@ Deno.test("periodKeyFor: halfyearly key changes exactly at the Jun/Jul boundary"
 });
 
 Deno.test("periodKeyFor: halfyearly key changes at the year boundary too", () => {
-  const decLast = periodKeyFor("halfyearly", new Date("2026-12-31T23:59:59Z"), { startsAt: null, endsAt: null });
-  const janFirst = periodKeyFor("halfyearly", new Date("2027-01-01T00:00:00Z"), { startsAt: null, endsAt: null });
+  const decLast = periodKeyFor("halfyearly", new Date("2026-12-31T23:59:59Z"), {
+    startsAt: null,
+    endsAt: null,
+  });
+  const janFirst = periodKeyFor("halfyearly", new Date("2027-01-01T00:00:00Z"), {
+    startsAt: null,
+    endsAt: null,
+  });
   assertEquals(decLast, "2026-H2");
   assertEquals(janFirst, "2027-H1");
 });
@@ -135,13 +144,19 @@ Deno.test("windowFor: halfyearly window starts Jan 1 in H1, Jul 1 in H2, ends no
 // from windowFor: `end` is the *next* boundary, not `now`.
 
 Deno.test("periodBoundsFor: halfyearly end is the start of the next half, not now", () => {
-  const bounds = periodBoundsFor("halfyearly", new Date("2026-03-20T09:00:00Z"), { startsAt: null, endsAt: null });
+  const bounds = periodBoundsFor("halfyearly", new Date("2026-03-20T09:00:00Z"), {
+    startsAt: null,
+    endsAt: null,
+  });
   assertEquals(bounds.start?.toISOString(), "2026-01-01T00:00:00.000Z");
   assertEquals(bounds.end?.toISOString(), "2026-07-01T00:00:00.000Z");
 });
 
 Deno.test("periodBoundsFor: halfyearly in H2 ends at the start of next year's H1", () => {
-  const bounds = periodBoundsFor("halfyearly", new Date("2026-09-05T00:00:00Z"), { startsAt: null, endsAt: null });
+  const bounds = periodBoundsFor("halfyearly", new Date("2026-09-05T00:00:00Z"), {
+    startsAt: null,
+    endsAt: null,
+  });
   assertEquals(bounds.start?.toISOString(), "2026-07-01T00:00:00.000Z");
   assertEquals(bounds.end?.toISOString(), "2027-01-01T00:00:00.000Z");
 });
@@ -155,7 +170,10 @@ Deno.test("periodBoundsFor: weekly end is 7 days after the week start, not now",
 });
 
 Deno.test("periodBoundsFor: monthly end is the 1st of next month, not now", () => {
-  const bounds = periodBoundsFor("monthly", new Date("2026-02-15T00:00:00Z"), { startsAt: null, endsAt: null });
+  const bounds = periodBoundsFor("monthly", new Date("2026-02-15T00:00:00Z"), {
+    startsAt: null,
+    endsAt: null,
+  });
   assertEquals(bounds.start?.toISOString(), "2026-02-01T00:00:00.000Z");
   assertEquals(bounds.end?.toISOString(), "2026-03-01T00:00:00.000Z");
 });

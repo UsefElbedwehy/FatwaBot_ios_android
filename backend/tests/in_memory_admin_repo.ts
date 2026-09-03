@@ -78,12 +78,19 @@ export class InMemoryAdminUsersRepo implements AdminUsersRepo {
     this.users = users;
   }
 
-  list(_ctx: AppContext, query: string | null, limit: number, before: number | null): Promise<AdminUserRow[]> {
+  list(
+    _ctx: AppContext,
+    query: string | null,
+    limit: number,
+    before: number | null,
+  ): Promise<AdminUserRow[]> {
     let filtered = this.users;
     if (before !== null) filtered = filtered.filter((u) => u.createdAtEpochSeconds < before);
     if (query) {
       const needle = query.toLowerCase();
-      filtered = filtered.filter((u) => u.id === query || (u.displayName?.toLowerCase().includes(needle) ?? false));
+      filtered = filtered.filter((u) =>
+        u.id === query || (u.displayName?.toLowerCase().includes(needle) ?? false)
+      );
     }
     return Promise.resolve(
       [...filtered].sort((a, b) => b.createdAtEpochSeconds - a.createdAtEpochSeconds).slice(0, limit),

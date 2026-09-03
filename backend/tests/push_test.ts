@@ -34,13 +34,19 @@ Deno.test("FcmSender mints a token and posts a well-formed FCM message", async (
   const fakeFetch = ((url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), init: init ?? {} });
     if (String(url) === sa.token_uri) {
-      return Promise.resolve(new Response(JSON.stringify({ access_token: "at-123", expires_in: 3600 }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ access_token: "at-123", expires_in: 3600 }), { status: 200 }),
+      );
     }
     return Promise.resolve(new Response(JSON.stringify({ name: "projects/x/messages/1" }), { status: 200 }));
   }) as typeof fetch;
 
   const sender = new FcmSender(sa, { fetch: fakeFetch, now: () => 1_000_000 });
-  const res = await sender.send("device-token-1", { title: "عنوان", body: "نص", data: { campaign_key: "c1" } });
+  const res = await sender.send("device-token-1", {
+    title: "عنوان",
+    body: "نص",
+    data: { campaign_key: "c1" },
+  });
   assertEquals(res.ok, true);
 
   const fcm = calls.find((c) => c.url.includes("fcm.googleapis.com"))!;
@@ -60,7 +66,9 @@ Deno.test("FcmSender flags an unregistered token", async () => {
   const sa = await fakeServiceAccount();
   const fakeFetch = ((url: string | URL | Request) => {
     if (String(url) === sa.token_uri) {
-      return Promise.resolve(new Response(JSON.stringify({ access_token: "at", expires_in: 3600 }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ access_token: "at", expires_in: 3600 }), { status: 200 }),
+      );
     }
     return Promise.resolve(new Response(JSON.stringify({ error: { status: "NOT_FOUND" } }), { status: 404 }));
   }) as typeof fetch;
@@ -118,10 +126,17 @@ Deno.test("dispatch sends to opted-in devices and skips opted-out", async () => 
     offsetMinutes: null,
   });
   const sender = new FakeSender();
-  const summary = await dispatchCampaign(CTX, h.deps, campaign, [
-    { userId: "user-on", token: "tok-on" },
-    { userId: "user-off", token: "tok-off" },
-  ], sender, SINCE);
+  const summary = await dispatchCampaign(
+    CTX,
+    h.deps,
+    campaign,
+    [
+      { userId: "user-on", token: "tok-on" },
+      { userId: "user-off", token: "tok-off" },
+    ],
+    sender,
+    SINCE,
+  );
 
   assertEquals(summary.sent, 1);
   assertEquals(summary.skipped, 1);
@@ -134,9 +149,16 @@ Deno.test("dispatch enforces the daily cap", async () => {
   await h.deliveryLog.record(CTX, "x", "user-1", "sent");
   await h.deliveryLog.record(CTX, "y", "user-1", "sent");
   const sender = new FakeSender();
-  const summary = await dispatchCampaign(CTX, h.deps, campaign, [
-    { userId: "user-1", token: "tok-1" },
-  ], sender, SINCE);
+  const summary = await dispatchCampaign(
+    CTX,
+    h.deps,
+    campaign,
+    [
+      { userId: "user-1", token: "tok-1" },
+    ],
+    sender,
+    SINCE,
+  );
   assertEquals(summary.capped, 1);
   assertEquals(summary.sent, 0);
   assertEquals(sender.sent.length, 0);
@@ -145,9 +167,16 @@ Deno.test("dispatch enforces the daily cap", async () => {
 Deno.test("dispatch clears a dead token on unregistered failure", async () => {
   const h = dispatchDeps();
   const sender = new FakeSender((t) => (t === "dead" ? { ok: false, unregistered: true } : { ok: true }));
-  const summary = await dispatchCampaign(CTX, h.deps, campaign, [
-    { userId: "user-dead", token: "dead" },
-  ], sender, SINCE);
+  const summary = await dispatchCampaign(
+    CTX,
+    h.deps,
+    campaign,
+    [
+      { userId: "user-dead", token: "dead" },
+    ],
+    sender,
+    SINCE,
+  );
   assertEquals(summary.failed, 1);
   assertEquals(h.cleared, ["user-dead"]);
 });

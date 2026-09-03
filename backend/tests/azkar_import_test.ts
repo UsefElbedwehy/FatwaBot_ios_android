@@ -4,8 +4,8 @@ import {
   buildSql,
   fromHisnCategories,
   fromHisnCategory,
-  type HisnCategoryRaw,
   fromSeenArabic,
+  type HisnCategoryRaw,
   type SeenArabicItem,
   toBundledJson,
   validate,
@@ -19,7 +19,14 @@ const DATASET: AzkarDataset = {
       name: { ar: "أذكار الصباح", en: "Morning Adhkar" },
       sortOrder: 0,
       items: [
-        { arabic: "سُبْحَانَ اللَّهِ", translation: { en: "Glory be to Allah" }, transliteration: { en: "Subhan Allah" }, virtue: { ar: "فضل" }, source: "مسلم", repeatCount: 33 },
+        {
+          arabic: "سُبْحَانَ اللَّهِ",
+          translation: { en: "Glory be to Allah" },
+          transliteration: { en: "Subhan Allah" },
+          virtue: { ar: "فضل" },
+          source: "مسلم",
+          repeatCount: 33,
+        },
         { arabic: "الْحَمْدُ لِلَّهِ", source: "البخاري" },
       ],
     },
@@ -29,9 +36,21 @@ const DATASET: AzkarDataset = {
 Deno.test("validate accepts a good dataset, rejects bad slugs/empty arabic/dupes", () => {
   assertEquals(validate(DATASET), []);
   assert(validate({ categories: [] }).length > 0);
-  assert(validate({ categories: [{ slug: "BAD X", name: { ar: "x" }, items: [{ arabic: "a" }] }] }).some((e) => e.includes("slug")));
-  assert(validate({ categories: [{ slug: "x", name: { en: "no arabic" }, items: [{ arabic: "a" }] }] }).some((e) => e.includes("name.ar")));
-  assert(validate({ categories: [{ slug: "x", name: { ar: "x" }, items: [{ arabic: "   " }] }] }).some((e) => e.includes("arabic")));
+  assert(
+    validate({ categories: [{ slug: "BAD X", name: { ar: "x" }, items: [{ arabic: "a" }] }] }).some((e) =>
+      e.includes("slug")
+    ),
+  );
+  assert(
+    validate({ categories: [{ slug: "x", name: { en: "no arabic" }, items: [{ arabic: "a" }] }] }).some((e) =>
+      e.includes("name.ar")
+    ),
+  );
+  assert(
+    validate({ categories: [{ slug: "x", name: { ar: "x" }, items: [{ arabic: "   " }] }] }).some((e) =>
+      e.includes("arabic")
+    ),
+  );
   const dupe: AzkarDataset = { categories: [DATASET.categories[0], DATASET.categories[0]] };
   assert(validate(dupe).some((e) => e.includes("duplicated")));
 });
@@ -100,7 +119,12 @@ Deno.test("fromHisnCategory maps a Hisn al-Muslim category, Arabic-only + count"
       { id: 3, text: "   " }, // blank dropped
     ],
   };
-  const out = fromHisnCategory(cat, "after_prayer", { ar: "أذكار بعد السلام من الصلاة", en: "After-Prayer" }, 2);
+  const out = fromHisnCategory(
+    cat,
+    "after_prayer",
+    { ar: "أذكار بعد السلام من الصلاة", en: "After-Prayer" },
+    2,
+  );
   assertEquals(out.slug, "after_prayer");
   assertEquals(out.sortOrder, 2);
   assertEquals(out.items.length, 2);
@@ -114,7 +138,11 @@ Deno.test("fromHisnCategory maps a Hisn al-Muslim category, Arabic-only + count"
 Deno.test("fromHisnCategories merges several categories into one, in order", () => {
   const cats: HisnCategoryRaw[] = [
     { id: 95, category: "دعاء الركوب", array: [{ id: 1, text: "بِسْمِ اللَّهِ" }] },
-    { id: 96, category: "دعاء السفر", array: [{ id: 1, text: "اللَّهُ أَكْبَرُ", count: 3 }, { id: 2, text: "سُبْحَانَ" }] },
+    {
+      id: 96,
+      category: "دعاء السفر",
+      array: [{ id: 1, text: "اللَّهُ أَكْبَرُ", count: 3 }, { id: 2, text: "سُبْحَانَ" }],
+    },
   ];
   const out = fromHisnCategories(cats, "travel", { ar: "أذكار السفر", en: "Travel" }, 5);
   assertEquals(out.slug, "travel");

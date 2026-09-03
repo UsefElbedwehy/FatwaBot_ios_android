@@ -19,7 +19,13 @@ const SAMPLE: HadithDataset = {
     sortOrder: 1,
   },
   entries: [
-    { number: 1, arabic: "إنما الأعمال بالنيّات", translation: { en: "Actions are by intentions" }, grading: "صحيح", source: "البخاري" },
+    {
+      number: 1,
+      arabic: "إنما الأعمال بالنيّات",
+      translation: { en: "Actions are by intentions" },
+      grading: "صحيح",
+      source: "البخاري",
+    },
     { number: 2, arabic: "بينما نحن جلوسٌ", grading: "صحيح" },
   ],
 };
@@ -203,6 +209,9 @@ Deno.test("collectionsIndex summarises every collection with a stable id + entry
   const detail = toBundledJson(SAMPLE, "en") as Record<string, unknown>;
   // detail has no top-level id; index id is derived from slug — assert it's UUID-shaped + stable
   assert(/^[0-9a-f-]{36}$/.test(idx.collections[0].id as string));
-  assertEquals(idx.collections[0].id, (collectionsIndex([SAMPLE], "ar") as { collections: Array<Record<string, unknown>> }).collections[0].id);
+  assertEquals(
+    idx.collections[0].id,
+    (collectionsIndex([SAMPLE], "ar") as { collections: Array<Record<string, unknown>> }).collections[0].id,
+  );
   void detail;
 });

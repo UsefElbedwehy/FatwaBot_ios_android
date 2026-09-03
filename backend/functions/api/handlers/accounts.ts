@@ -103,7 +103,11 @@ export async function handleUpdateProfile(deps: AccountDeps, req: Request, body:
 }
 
 /** PATCH /v1/me/push-token — register (or clear) this device's FCM push token. */
-export async function handleUpdatePushToken(deps: AccountDeps, req: Request, body: unknown): Promise<Response> {
+export async function handleUpdatePushToken(
+  deps: AccountDeps,
+  req: Request,
+  body: unknown,
+): Promise<Response> {
   const claims = await bearerClaims(req, deps.jwtSecret);
   if (!claims) return apiError(401, "unauthorized", "Valid bearer token required");
 

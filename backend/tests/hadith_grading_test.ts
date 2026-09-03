@@ -12,8 +12,7 @@ Deno.test("normalizeWithMap indices address the original string", () => {
 
 Deno.test("extracts a takhrij that shares the matn's sentence", () => {
   // The common shape: no period before the attribution.
-  const matn =
-    "قَالَ رَسُولُ اللَّهِ - ﷺ - فِي الْبَحْرِ: «هُوَ الطَّهُورُ مَاؤُهُ» أَخْرَجَهُ الْأَرْبَعَةُ، وَصَحَّحَهُ ابْنُ خُزَيْمَةَ.";
+  const matn = "قَالَ رَسُولُ اللَّهِ - ﷺ - فِي الْبَحْرِ: «هُوَ الطَّهُورُ مَاؤُهُ» أَخْرَجَهُ الْأَرْبَعَةُ، وَصَحَّحَهُ ابْنُ خُزَيْمَةَ.";
   assertEquals(
     extractGrading(matn),
     "أَخْرَجَهُ الْأَرْبَعَةُ، وَصَحَّحَهُ ابْنُ خُزَيْمَةَ.",
@@ -34,8 +33,7 @@ Deno.test("keeps a verdict sentence that follows the attribution", () => {
 });
 
 Deno.test("stops before ibn Hajr's commentary", () => {
-  const matn =
-    "«وَلْيَضَعْ يَدَيْهِ قَبْلَ رُكْبَتَيْهِ» أَخْرَجَهُ الثَّلَاثَةُ. وَهُوَ أَقْوَى مِنْ حَدِيثِ وَائِلٍ.";
+  const matn = "«وَلْيَضَعْ يَدَيْهِ قَبْلَ رُكْبَتَيْهِ» أَخْرَجَهُ الثَّلَاثَةُ. وَهُوَ أَقْوَى مِنْ حَدِيثِ وَائِلٍ.";
   assertEquals(extractGrading(matn), "أَخْرَجَهُ الثَّلَاثَةُ.");
 });
 

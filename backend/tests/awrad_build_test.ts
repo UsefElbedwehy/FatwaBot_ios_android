@@ -22,9 +22,39 @@ Deno.test("the curated set is valid and uses only app-understood vocabulary", ()
 
 Deno.test("validate rejects bad templates", () => {
   assert(validate([]).length > 0);
-  assert(validate([{ slug: "BAD X", type: "dhikr", target: 1, unit: "times", frequency: "daily", name: { ar: "س" }, description: {} }]).some((e) => e.includes("slug")));
-  assert(validate([{ slug: "x", type: "dhikr", target: 0, unit: "times", frequency: "daily", name: { ar: "س" }, description: {} }]).some((e) => e.includes("target")));
-  assert(validate([{ slug: "x", type: "dhikr", target: 1, unit: "times", frequency: "daily", name: { en: "no arabic" }, description: {} }]).some((e) => e.includes("name.ar")));
+  assert(
+    validate([{
+      slug: "BAD X",
+      type: "dhikr",
+      target: 1,
+      unit: "times",
+      frequency: "daily",
+      name: { ar: "س" },
+      description: {},
+    }]).some((e) => e.includes("slug")),
+  );
+  assert(
+    validate([{
+      slug: "x",
+      type: "dhikr",
+      target: 0,
+      unit: "times",
+      frequency: "daily",
+      name: { ar: "س" },
+      description: {},
+    }]).some((e) => e.includes("target")),
+  );
+  assert(
+    validate([{
+      slug: "x",
+      type: "dhikr",
+      target: 1,
+      unit: "times",
+      frequency: "daily",
+      name: { en: "no arabic" },
+      description: {},
+    }]).some((e) => e.includes("name.ar")),
+  );
 });
 
 Deno.test("buildSql is idempotent (upsert on the primary key) and bumps version", () => {

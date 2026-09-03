@@ -220,7 +220,11 @@ export async function handleJoinLeaderboard(
     return apiError(400, "city_required", "city-scope boards require an explicit city (Q2c: opt-in only)");
   }
   if (def.fields.scope === "country" && !country) {
-    return apiError(400, "country_required", "country-scope boards require an explicit country (opt-in only)");
+    return apiError(
+      400,
+      "country_required",
+      "country-scope boards require an explicit country (opt-in only)",
+    );
   }
 
   const membership = await deps.leaderboard.join(

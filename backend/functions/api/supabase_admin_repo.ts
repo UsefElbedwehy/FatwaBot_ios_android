@@ -96,7 +96,9 @@ function toAdminUserRow(row: Record<string, unknown>): AdminUserRow {
     displayName: (row.display_name as string | null) ?? null,
     countryCode: (row.country_code as string | null) ?? null,
     createdAtEpochSeconds: Math.floor(new Date(row.created_at as string).getTime() / 1000),
-    linkedAtEpochSeconds: row.linked_at ? Math.floor(new Date(row.linked_at as string).getTime() / 1000) : null,
+    linkedAtEpochSeconds: row.linked_at
+      ? Math.floor(new Date(row.linked_at as string).getTime() / 1000)
+      : null,
   };
 }
 
