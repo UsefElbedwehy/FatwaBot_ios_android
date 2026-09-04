@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.PersonAddAlt
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -87,7 +89,7 @@ fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
                 // Custom awrad are deliberately unranked (owner decision,
                 // 2026-07). Saying so is the difference between a rule and a
                 // user quietly concluding their effort doesn't register.
-                NoticeCard(stringResource(R.string.leaderboard_scoring_notice), tokens)
+                NoticeCard(stringResource(R.string.leaderboard_scoring_notice), tokens, Icons.Filled.Info)
             }
 
             state.boards.forEach { board ->
@@ -156,10 +158,17 @@ private fun periodSummary(board: LeaderboardBoard): String {
 }
 
 @Composable
-private fun NoticeCard(error: String, tokens: ColorTokens) {
+private fun NoticeCard(
+    error: String,
+    tokens: ColorTokens,
+    // Defaults to the offline glyph for the error case, but the scoring rule
+    // below is informational — it was rendering a "wifi off" icon, so a
+    // deliberate product rule read as a network failure.
+    icon: ImageVector = Icons.Filled.WifiOff,
+) {
     BrandCard(tokens = tokens) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Filled.WifiOff, contentDescription = null, tint = tokens.accent)
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(icon, contentDescription = null, tint = tokens.accent)
             Text(error, style = MaterialTheme.typography.bodySmall, color = tokens.onSurfaceSecondary)
         }
     }

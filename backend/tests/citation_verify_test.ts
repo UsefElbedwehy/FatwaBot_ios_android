@@ -1,7 +1,38 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { verifyCitations } from "../functions/api/ai_search/citation_verify.ts";
 import { normalizeArabic } from "../functions/api/ai_search/text_normalize.ts";
+import { ANSWER_JSON_SCHEMA } from "../functions/api/ai_search/providers.ts";
 import type { AnswerCitation, AnswerResult } from "../functions/api/fatwa_types.ts";
+
+// --- ANSWER_JSON_SCHEMA citation locators ---
+//
+// Asserted directly, not through a stubbed AnswerProvider: the stubs return
+// hand-built AnswerResults and never round-trip the schema, so a regression
+// here would pass every other test in this file.
+
+Deno.test("the citation schema carries BOTH locator fields", () => {
+  const props = ANSWER_JSON_SCHEMA.properties.citations.items.properties;
+  assertEquals("pageNumber" in props, true);
+  assertEquals(
+    "videoTimestamp" in props,
+    true,
+    "a video-sourced citation has no page; without this field, and with " +
+      "additionalProperties:false, it cannot carry its locator at all",
+  );
+});
+
+Deno.test("neither locator is required — exactly one applies per source kind", () => {
+  const required: readonly string[] = ANSWER_JSON_SCHEMA.properties.citations.items.required;
+  assertEquals(
+    required.includes("pageNumber"),
+    false,
+    "a required pageNumber forces a video-sourced citation to invent one",
+  );
+  assertEquals(required.includes("videoTimestamp"), false);
+  // The fields that identify and substantiate a citation stay mandatory.
+  assertEquals(required.includes("chunkId"), true);
+  assertEquals(required.includes("quotedText"), true);
+});
 
 function citation(over: Partial<AnswerCitation> = {}): AnswerCitation {
   return {
@@ -118,10 +149,49 @@ Deno.test("a mix of a valid and a fabricated citation keeps only the valid one, 
   assertEquals(result.droppedCitations.length, 1);
 });
 
-Deno.test("an already-refused answer passes through untouched", () => {
-  const refused = answer({ answer: "", citations: [], refused: true });
+Deno.test("a bare self-refusal with no citations passes through untouched, answer text kept", () => {
+  const refused = answer({
+    answer: "لم يرد الحديث بهذا اللفظ في المقاطع المتاحة.",
+    citations: [],
+    refused: true,
+  });
   const result = verifyCitations(refused, new Map());
   assertEquals(result.refused, true);
+  assertEquals(result.answer, "لم يرد الحديث بهذا اللفظ في المقاطع المتاحة.");
   assertEquals(result.citations.length, 0);
   assertEquals(result.droppedCitations.length, 0);
+});
+
+Deno.test("a self-refused answer's citation is still verified — a real one survives (hadith 'closest match')", () => {
+  const chunkText = "الوسط في الدين: أن لا يغلو الإنسان فيه. ولا يقصر فيه فينقص.";
+  const result = verifyCitations(
+    answer({
+      answer: "لم يرد الحديث بهذا اللفظ، لكن أقرب لفظ صحيح هو ما يلي.",
+      citations: [citation()],
+      refused: true,
+    }),
+    new Map([["chunk-1", chunkText]]),
+  );
+  assertEquals(result.refused, true, "the model's own refusal (exact wording not found) is preserved");
+  assertEquals(result.answer, "لم يرد الحديث بهذا اللفظ، لكن أقرب لفظ صحيح هو ما يلي.");
+  assertEquals(result.citations.length, 1, "a real citation on a self-refusal must not be skipped");
+});
+
+Deno.test("a self-refused answer's fabricated citation is dropped and blanks the answer", () => {
+  const result = verifyCitations(
+    answer({
+      answer: "أقرب لفظ صحيح هو ما يلي.",
+      citations: [citation({ quotedText: "نص ملفّق لا وجود له" })],
+      refused: true,
+    }),
+    new Map([["chunk-1", "نص المقطع الحقيقي المختلف تماماً"]]),
+  );
+  assertEquals(result.refused, true);
+  assertEquals(
+    result.answer,
+    "",
+    "an unverifiable 'closest match' must not reach the user as if it were real",
+  );
+  assertEquals(result.citations.length, 0);
+  assertEquals(result.droppedCitations.length, 1);
 });

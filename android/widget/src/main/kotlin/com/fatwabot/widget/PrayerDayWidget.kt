@@ -48,7 +48,9 @@ class PrayerDayWidget : GlanceAppWidget() {
 private fun PrayerDayContent(context: Context, snapshot: PrayerWidgetSnapshot?) {
     val nowSeconds = System.currentTimeMillis() / 1000
     val next = snapshot?.nextEntry(nowSeconds)
-    val zone = ZoneId.systemDefault()
+    // The location's own zone, not the device's — "today" for a snapshot
+    // computed for Makkah must mean Makkah's civil day.
+    val zone = snapshot?.zoneId ?: ZoneId.systemDefault()
     val today = LocalDate.now(zone)
     val todays = snapshot?.upcoming
         // `LocalDate.ofInstant` is API 34; minSdk here is 26 and core library
@@ -100,7 +102,7 @@ private fun PrayerDayContent(context: Context, snapshot: PrayerWidgetSnapshot?) 
                 )
                 Spacer(GlanceModifier.defaultWeight())
                 Text(
-                    formatTime(item.timeEpochSeconds),
+                    formatTime(item.timeEpochSeconds, zone),
                     style = TextStyle(
                         color = if (isNext) MaroonProvider else InkProvider,
                         fontSize = 15.sp,

@@ -65,6 +65,19 @@ function modeUsesTrigram(mode: FatwaMode): boolean {
   return mode === "hadith";
 }
 
+/** Which half of retrieval failed: the outbound embedding call, or the SQL
+ *  search functions — and for the latter, which of the three. */
+export class RetrievalError extends Error {
+  constructor(
+    readonly stage: "embedding" | "search",
+    readonly reason: unknown,
+    readonly failedSearches: string[] = [],
+  ) {
+    super(`retrieval failed at the ${stage} stage`);
+    this.name = "RetrievalError";
+  }
+}
+
 export async function hybridRetrieve(
   ctx: AppContext,
   repo: FatwaSearchRepo,
@@ -72,18 +85,66 @@ export async function hybridRetrieve(
   question: string,
   mode: FatwaMode,
   opts: RetrievalOptions = {},
+  /** Filled in with per-stage wall-clock, when the caller supplies it. The
+   *  stages have wildly different cost profiles — an outbound HTTPS call to a
+   *  rate-limited provider versus three local index scans — and a single
+   *  end-to-end number cannot tell them apart. */
+  timings?: { embedMs?: number; searchMs?: number },
 ): Promise<RetrievedChunk[]> {
   const o = { ...DEFAULTS, ...opts };
-  const [embedding] = await embedder.embed([question]);
 
-  const searches: Promise<RetrievedChunk[]>[] = [
-    repo.vectorSearch(ctx, embedding, o.vectorTopK),
-    repo.ftsSearch(ctx, question, o.ftsTopK),
+  // Tagged by stage. "Retrieval failed" spans an outbound embedding call and
+  // three SQL functions; without knowing which, a production failure is a
+  // coin flip between an upstream provider and an unapplied migration.
+  let embedding: number[];
+  const embedStart = performance.now();
+  try {
+    [embedding] = await embedder.embed([question]);
+  } catch (err) {
+    throw new RetrievalError("embedding", err);
+  } finally {
+    if (timings) timings.embedMs = Math.round(performance.now() - embedStart);
+  }
+
+  const named: { name: string; run: Promise<RetrievedChunk[]> }[] = [
+    { name: "vector", run: repo.vectorSearch(ctx, embedding, o.vectorTopK) },
+    { name: "fts", run: repo.ftsSearch(ctx, question, o.ftsTopK) },
   ];
   if (modeUsesTrigram(mode)) {
-    searches.push(repo.trigramSearch(ctx, question, o.trigramTopK, o.trigramMinSimilarity));
+    named.push({
+      name: "trigram",
+      run: repo.trigramSearch(ctx, question, o.trigramTopK, o.trigramMinSimilarity),
+    });
   }
-  const results = await Promise.all(searches);
+
+  // `allSettled`, not `all`. The whole point of fusing three independent
+  // searches is that they are independent: if the vector index is slow enough
+  // to hit the statement timeout, FTS and trigram have usually already returned
+  // perfectly good results, and `Promise.all` threw them away along with the
+  // request. Now one failure degrades the ranking instead of ending it, and
+  // only an all-three failure is fatal. Which ones failed is recorded either
+  // way — a silently degraded search is its own kind of bug.
+  const searchStart = performance.now();
+  const settled = await Promise.allSettled(named.map((s) => s.run));
+  if (timings) timings.searchMs = Math.round(performance.now() - searchStart);
+  const results: RetrievedChunk[][] = [];
+  const failed: { name: string; reason: unknown }[] = [];
+  settled.forEach((outcome, i) => {
+    if (outcome.status === "fulfilled") {
+      results.push(outcome.value);
+    } else {
+      failed.push({ name: named[i].name, reason: outcome.reason });
+    }
+  });
+  for (const f of failed) {
+    console.error(
+      `retrieval_search_failed:${f.name}`,
+      f.reason instanceof Error ? f.reason.stack ?? f.reason.message : f.reason,
+    );
+  }
+  if (results.length === 0) {
+    throw new RetrievalError("search", failed[0]?.reason, failed.map((f) => f.name));
+  }
 
   return reciprocalRankFusion(results, o.rrfK).slice(0, o.finalTopN);
 }

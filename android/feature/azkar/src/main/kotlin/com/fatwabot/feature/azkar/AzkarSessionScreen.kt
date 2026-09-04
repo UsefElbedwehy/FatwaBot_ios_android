@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
@@ -39,11 +40,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fatwabot.core.common.expandingArabicHonorifics
 import com.fatwabot.core.content.AzkarCategory
 import com.fatwabot.core.content.AzkarItem
+import com.fatwabot.core.designsystem.AmiriFontFamily
 import com.fatwabot.core.designsystem.ArchIconBadge
 import com.fatwabot.core.designsystem.BrandCard
 import com.fatwabot.core.designsystem.ColorTokens
@@ -91,6 +95,13 @@ fun AzkarSessionScreen(
                 tokens = tokens,
                 onTick = viewModel::tick,
             )
+            // Was a `when` with no else — while the session loaded the screen
+            // rendered nothing at all, which reads as a broken screen rather
+            // than a pending one.
+            else -> CircularProgressIndicator(
+                color = tokens.primary,
+                modifier = Modifier.align(Alignment.Center),
+            )
         }
     }
 }
@@ -125,8 +136,16 @@ private fun SessionView(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(
-                    item.arabicText,
-                    style = MaterialTheme.typography.headlineSmall,
+                    // Expanded like every other Arabic surface in the app: the
+                    // raw text carries U+FD40–FD4F honorific ligatures, which
+                    // most Android fonts render as ▯ tofu boxes. iOS applies
+                    // the same helper here; this call site was missed.
+                    item.arabicText.expandingArabicHonorifics,
+                    // The session's centrepiece runs larger than a card's
+                    // scripture (iOS uses `.title`), but in the same face.
+                    fontFamily = AmiriFontFamily,
+                    fontSize = 28.sp,
+                    lineHeight = 42.sp,
                     fontWeight = FontWeight.Medium,
                     color = tokens.onSurface,
                     textAlign = TextAlign.End,
@@ -278,7 +297,7 @@ private fun CompletionView(tokens: ColorTokens) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        ArchIconBadge(icon = Icons.Filled.Check, size = 84.dp, tokens = tokens)
+        ArchIconBadge(icon = Icons.Filled.Check, width = 92.dp, height = 104.dp, tokens = tokens)
         Spacer(Modifier.height(20.dp))
         Text(
             stringResource(R.string.azkar_completed_title),

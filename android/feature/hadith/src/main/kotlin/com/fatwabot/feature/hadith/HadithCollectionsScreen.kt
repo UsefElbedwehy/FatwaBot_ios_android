@@ -1,6 +1,7 @@
 package com.fatwabot.feature.hadith
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Check
@@ -39,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import com.fatwabot.core.common.HadithDisplay
 import com.fatwabot.core.common.expandingArabicHonorifics
 import com.fatwabot.core.designsystem.ArabicContentCard
@@ -76,12 +80,25 @@ import com.fatwabot.feature.hadith.R
 fun HadithCollectionsScreen(
     viewModel: HadithViewModel = hiltViewModel(),
     locale: String = "ar",
+    /** A specific entry to land on, from a content-reminder tap
+     *  (`ContentReminderScheduler`). `null` for the ordinary "just opened the
+     *  tab" path, which is nearly always. */
+    focusEntryId: String? = null,
+    focusCollectionSlug: String? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     var selectedSlug by remember { mutableStateOf<String?>(null) }
+    var highlightedEntryId by remember { mutableStateOf<String?>(null) }
+    val listState = rememberLazyListState()
 
-    LaunchedEffect(locale) { viewModel.loadCollections(locale) }
+    LaunchedEffect(locale) {
+        viewModel.loadCollections(locale)
+        // Land on the collection the reminder's entry actually belongs to —
+        // `entries` only ever reflects whichever collection is selected, so
+        // without this the entry may never appear at all.
+        if (focusCollectionSlug != null) selectedSlug = focusCollectionSlug
+    }
 
     // The backend serves only reviewed hadith, so a collection still under review
     // arrives with entryCount == 0. The old screen showed those as dimmed,
@@ -145,25 +162,46 @@ fun HadithCollectionsScreen(
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator(color = tokens.primary) }
 
-            else -> LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-            ) {
-                items(entries, key = { it.id }) { entry ->
-                    LaunchedEffect(entry.id) { viewModel.markRead(entry.number) }
-                    ArabicContentCard(
-                        // The stored matn still ends with its own takhrij —
-                        // migration 0029 copied that clause into `grading` rather
-                        // than moving it — so without this the attribution shows
-                        // twice, once as the label and again trailing the text.
-                        // Android rendered it raw until now and did show it twice.
-                        arabic = HadithDisplay.matnWithoutTakhrij(entry.arabicText, entry.grading),
-                        tokens = tokens,
-                        label = entry.grading.expandingArabicHonorifics,
-                        badgeText = "${entry.number}",
-                    )
+            else -> {
+                // Scrolls to and briefly highlights the entry a content-reminder
+                // tap named — a plain jump-to would land the reader on the right
+                // hadith with no sense of why THAT card, among the whole
+                // collection, is the one the notification meant.
+                LaunchedEffect(entries.map { it.id }, focusEntryId) {
+                    val targetId = focusEntryId ?: return@LaunchedEffect
+                    val index = entries.indexOfFirst { it.id == targetId }
+                    if (index < 0) return@LaunchedEffect
+                    listState.animateScrollToItem(index)
+                    highlightedEntryId = targetId
+                    delay(2500)
+                    highlightedEntryId = null
                 }
-                item { Spacer(Modifier.height(24.dp)) }
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                ) {
+                    items(entries, key = { it.id }) { entry ->
+                        LaunchedEffect(entry.id) { viewModel.markRead(entry.number) }
+                        ArabicContentCard(
+                            // The stored matn still ends with its own takhrij —
+                            // migration 0029 copied that clause into `grading` rather
+                            // than moving it — so without this the attribution shows
+                            // twice, once as the label and again trailing the text.
+                            // Android rendered it raw until now and did show it twice.
+                            arabic = HadithDisplay.matnWithoutTakhrij(entry.arabicText, entry.grading),
+                            tokens = tokens,
+                            label = entry.grading.expandingArabicHonorifics,
+                            badgeText = "${entry.number}",
+                            modifier = if (entry.id == highlightedEntryId) {
+                                Modifier.border(2.5.dp, tokens.primary, RoundedCornerShape(20.dp))
+                            } else {
+                                Modifier
+                            },
+                        )
+                    }
+                    item { Spacer(Modifier.height(24.dp)) }
+                }
             }
         }
     }

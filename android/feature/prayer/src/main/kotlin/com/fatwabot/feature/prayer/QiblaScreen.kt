@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -17,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,16 +36,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.fatwabot.core.designsystem.ArchIconBadge
 import com.fatwabot.core.designsystem.BrandCard
+import com.fatwabot.core.designsystem.BrandMark
 import com.fatwabot.core.designsystem.ColorTokens
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.LocalReduceMotion
+import com.fatwabot.core.designsystem.MihrabArchComposeShape
 import com.fatwabot.core.designsystem.MotionTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.motionAnimationSpec
@@ -56,16 +58,31 @@ import kotlinx.coroutines.flow.collect
  * Falls back to a static bearing display when the device has no rotation
  * sensor (matches iOS's staticFallback for sensor-less devices). */
 @Composable
-fun QiblaScreen(location: UserLocation, provider: HeadingProviding = SystemHeadingProvider(LocalContext.current)) {
+fun QiblaScreen(location: UserLocation, provider: HeadingProviding? = null) {
+    val context = LocalContext.current
+    // `remember`ed, and NOT a default parameter value: a default argument is
+    // re-evaluated on every recomposition, so each sensor sample built a new
+    // provider, changed the LaunchedEffect key, and tore down + re-registered
+    // the sensor listener — every frame. That churn is why the compass read as
+    // frozen or wildly jumpy. The location is part of the key because the
+    // provider needs it for the magnetic-declination correction.
+    val headingProvider = remember(provider, context, location.latitude, location.longitude) {
+        provider ?: SystemHeadingProvider(context, location.latitude, location.longitude)
+    }
     val bearing = remember(location) { PrayerCalculator().qiblaBearing(location.latitude, location.longitude) }
     var heading by remember { mutableDoubleStateOf(0.0) }
     var accuracy by remember { mutableStateOf(-1.0) }
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
 
-    LaunchedEffect(provider) {
-        if (provider.supportsHeading) {
-            provider.headings().collect {
-                heading = it.heading
+    LaunchedEffect(headingProvider) {
+        if (headingProvider.supportsHeading) {
+            headingProvider.headings().collect {
+                // Unwrapped HERE, at the source, into a continuously-increasing
+                // value — not in composition. `heading` therefore never jumps
+                // 359° → 1°, so the animation downstream is a plain tween with
+                // no seam to special-case and nothing restarting it per sample.
+                val delta = ((it.heading - heading + 540) % 360) - 180
+                heading += delta
                 accuracy = it.accuracy
             }
         }
@@ -80,7 +97,7 @@ fun QiblaScreen(location: UserLocation, provider: HeadingProviding = SystemHeadi
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            if (!provider.supportsHeading) {
+            if (!headingProvider.supportsHeading) {
                 StaticFallback(bearing, tokens)
             } else {
                 CompassCard(bearing = bearing, heading = heading, tokens = tokens)
@@ -119,13 +136,22 @@ private fun CompassCard(bearing: Double, heading: Double, tokens: ColorTokens) {
 
 @Composable
 private fun Compass(bearing: Double, heading: Double, isAligned: Boolean, tokens: ColorTokens) {
-    val needleAngle = bearing - heading
     val reduceMotion = LocalReduceMotion.current
-    val animatedAngle by animateFloatAsState(
-        targetValue = needleAngle.toFloat(),
+    // Resolved here: stringResource is a @Composable and can't be called from
+    // inside the semantics lambda.
+    val compassDesc = stringResource(R.string.qibla_compass_desc)
+    // ONE animated value drives both the needle and the cardinal ring. They
+    // used to animate off different sources — the needle tweened while the
+    // N/E/S/W letters snapped to the raw heading — so the two visibly lagged
+    // each other while turning.
+    // `heading` arrives already unwrapped (see QiblaScreen), so this is a plain
+    // tween that always takes the short way round.
+    val animatedHeading by animateFloatAsState(
+        targetValue = heading.toFloat(),
         animationSpec = motionAnimationSpec(reduceMotion, MotionTokens.QUICK_MS),
-        label = "qibla-needle",
+        label = "qibla-heading",
     )
+    val needleAngle = bearing.toFloat() - animatedHeading
 
     Box(
         modifier = Modifier
@@ -138,7 +164,7 @@ private fun Compass(bearing: Double, heading: Double, isAligned: Boolean, tokens
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .rotate((index * 90).toFloat() - heading.toFloat()),
+                    .rotate((index * 90).toFloat() - animatedHeading),
                 contentAlignment = Alignment.TopCenter,
             ) {
                 Text(
@@ -150,11 +176,24 @@ private fun Compass(bearing: Double, heading: Double, isAligned: Boolean, tokens
                 )
             }
         }
-        Icon(
-            Icons.Filled.NearMe,
-            contentDescription = stringResource(R.string.qibla_compass_desc),
-            tint = if (isAligned) tokens.accent else tokens.primary,
-            modifier = Modifier.size(64.dp).rotate(animatedAngle),
+        // A faint mihrab arch turning with the needle, as on iOS — it gives the
+        // rotation something to read against besides the mark itself.
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .rotate(needleAngle)
+                .background(tokens.primary.copy(alpha = 0.06f), MihrabArchComposeShape),
+        )
+        // The app's own mark is the pointer (owner request, matching iOS).
+        // This also fixes a real bug: the previous Icons.Filled.NearMe glyph
+        // points to its top-RIGHT corner, i.e. 45° clockwise of vertical, so
+        // every reading was silently rotated 45° off.
+        BrandMark(
+            color = if (isAligned) tokens.accent else tokens.primary,
+            modifier = Modifier
+                .height(76.dp)
+                .rotate(needleAngle)
+                .semantics { contentDescription = compassDesc },
         )
     }
 }
@@ -162,12 +201,22 @@ private fun Compass(bearing: Double, heading: Double, isAligned: Boolean, tokens
 /** Prominent qibla bearing readout below the compass. */
 @Composable
 private fun BearingReadout(bearing: Double, isAligned: Boolean, tokens: ColorTokens) {
-    Text(
-        "${bearing.toInt()}°",
-        style = MaterialTheme.typography.displaySmall,
-        fontWeight = FontWeight.ExtraBold,
-        color = if (isAligned) tokens.accent else tokens.primary,
-    )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "${bearing.toInt()}°",
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = if (isAligned) tokens.accent else tokens.primary,
+        )
+        // The number alone doesn't say what it is or how to use it; iOS carries
+        // the same caption under its readout.
+        Text(
+            stringResource(R.string.qibla_compass_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = tokens.onSurfaceSecondary,
+            textAlign = TextAlign.Center,
+        )
+    }
 }
 
 /** True near 0° or 180° apart (needle pointing at the target within ±5°). */
@@ -206,7 +255,16 @@ private fun StaticFallback(bearing: Double, tokens: ColorTokens) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            ArchIconBadge(icon = Icons.Filled.Explore, tokens = tokens)
+            // The app's mark in the arch, not a generic compass glyph — same
+            // BrandLogoBadge treatment iOS uses on this fallback.
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .background(tokens.primaryContainer, MihrabArchComposeShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                BrandMark(color = tokens.primary, modifier = Modifier.height(38.dp))
+            }
             Text(
                 stringResource(R.string.qibla_direction, bearing.toInt()),
                 style = MaterialTheme.typography.titleMedium,

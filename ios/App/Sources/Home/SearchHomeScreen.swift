@@ -1,32 +1,25 @@
 import DesignSystemKit
+import FatwaSearchFeature
 import SwiftUI
 
 /// Search-first Home (client redesign, 2026-07-24). Pixel-matches the client
 /// mockup (design/homeDesign.jpeg): logo, wordmark, rosette divider, three
 /// neumorphic intent cards, an embossed search field, and the manhaj tagline.
-/// The fatwa/hadith/question search is the M5 AI-search surface (on hold) — the
-/// cards and the search field open a branded "coming soon" sheet for now.
+/// The cards and the search field open the AI-search flow (M5) — `onOpen`
+/// pushes `FatwaSearchScreen` for the tapped mode; RootTabView owns the stack.
 struct SearchHomeScreen: View {
+    let onOpen: (FatwaSearchMode) -> Void
+
     @Environment(\.colorScheme) private var colorScheme
-    @State private var showComingSoon = false
 
     private var tokens: ColorTokens {
         colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
     }
 
     // Declaration order == on-screen order. In the Arabic (RTL) mockup the cards
-    // read fatwa · hadith · question from the right, so list them in that order.
-    private enum Intent: String, Identifiable, CaseIterable {
-        case fatwa, hadith, question
-        var id: String { rawValue }
-        var titleKey: LocalizedStringKey {
-            switch self {
-            case .question: return "home.card.question"
-            case .hadith: return "home.card.hadith"
-            case .fatwa: return "home.card.fatwa"
-            }
-        }
-    }
+    // read fatwa · hadith · question from the right, so list them in that order
+    // (FatwaSearchMode.allCases is already fatwa, hadith, general).
+    private typealias Intent = FatwaSearchMode
 
     var body: some View {
         ScrollView {
@@ -54,7 +47,7 @@ struct SearchHomeScreen: View {
                     .padding(.bottom, 42)
 
                 HStack(spacing: 12) {
-                    ForEach(Intent.allCases) { intent in
+                    ForEach(Intent.allCases, id: \.self) { intent in
                         intentCard(intent)
                     }
                 }
@@ -78,10 +71,6 @@ struct SearchHomeScreen: View {
             .padding(.horizontal, 22)
         }
         .brandScreenBackground(tokens)
-        .sheet(isPresented: $showComingSoon) {
-            ComingSoonSheet(tokens: tokens)
-                .presentationDetents([.medium])
-        }
     }
 
     // MARK: - Divider (rosette between two arrow-tipped rules)
@@ -117,7 +106,7 @@ struct SearchHomeScreen: View {
     // MARK: - Intent cards (neumorphic cream)
 
     private func intentCard(_ intent: Intent) -> some View {
-        Button { showComingSoon = true } label: {
+        Button { onOpen(intent) } label: {
             VStack(spacing: 12) {
                 intentIcon(intent)
                     .frame(height: 26)
@@ -138,7 +127,7 @@ struct SearchHomeScreen: View {
     private func intentIcon(_ intent: Intent) -> some View {
         let color = Color(hexToken: tokens.primary)
         switch intent {
-        case .question:
+        case .general:
             QuestionBubbleIcon(color: color, size: 23)
         case .hadith:
             Image(systemName: "book.fill")
@@ -155,7 +144,7 @@ struct SearchHomeScreen: View {
     // MARK: - Search field (embossed pill, maroon leading cap)
 
     private var searchField: some View {
-        Button { showComingSoon = true } label: {
+        Button { onOpen(.general) } label: {
             HStack(spacing: 0) {
                 HStack {
                     Text("home.search_placeholder")
@@ -260,26 +249,5 @@ struct RosetteMark: View {
                 .frame(width: size * 0.26, height: size * 0.26)
         }
         .frame(width: size, height: size)
-    }
-}
-
-/// Branded "coming soon" sheet for the AI-search surface (M5, on hold).
-struct ComingSoonSheet: View {
-    let tokens: ColorTokens
-
-    var body: some View {
-        VStack(spacing: 16) {
-            BrandLogoBadge(tokens: tokens)
-            Text("home.coming_soon.title")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(Color(hexToken: tokens.onSurface))
-            Text("home.coming_soon.body")
-                .font(.subheadline)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .brandScreenBackground(tokens)
     }
 }

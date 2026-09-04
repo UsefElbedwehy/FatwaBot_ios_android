@@ -25,8 +25,16 @@ const DATASET: DuaDataset = {
 Deno.test("validate accepts good data and rejects bad slug/empty arabic", () => {
   assertEquals(validate(DATASET), []);
   assert(validate({ categories: [] }).length > 0);
-  assert(validate({ categories: [{ slug: "X Y", name: { ar: "x" }, items: [{ arabic: "a" }] }] }).some((e) => e.includes("slug")));
-  assert(validate({ categories: [{ slug: "x", name: { ar: "x" }, items: [{ arabic: " " }] }] }).some((e) => e.includes("arabic")));
+  assert(
+    validate({ categories: [{ slug: "X Y", name: { ar: "x" }, items: [{ arabic: "a" }] }] }).some((e) =>
+      e.includes("slug")
+    ),
+  );
+  assert(
+    validate({ categories: [{ slug: "x", name: { ar: "x" }, items: [{ arabic: " " }] }] }).some((e) =>
+      e.includes("arabic")
+    ),
+  );
 });
 
 Deno.test("buildSql upserts category + rebuilds duas idempotently", () => {

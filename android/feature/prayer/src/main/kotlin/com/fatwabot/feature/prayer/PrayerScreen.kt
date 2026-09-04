@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,11 +70,15 @@ fun PrayerScreen(viewModel: PrayerViewModel) {
 private fun PrayerDayContent(viewModel: PrayerViewModel, state: PrayerViewModel.UiState) {
     var dayOffset by rememberSaveable { mutableIntStateOf(0) }
     val day = viewModel.day(dayOffset)
+    val zone = state.location?.zoneId ?: ZoneId.systemDefault()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            // Six rows plus the header clip on small screens and at large font
+            // scales; iOS has always been a ScrollView here.
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -91,8 +98,20 @@ private fun PrayerDayContent(viewModel: PrayerViewModel, state: PrayerViewModel.
                     Text(
                         "${state.hijri.monthName} ${state.hijri.day}، ${state.hijri.year} هـ",
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
+                // The Gregorian day, in the LOCATION's timezone. Without it,
+                // paging ±7 days changed the times with nothing on screen
+                // saying which day you were looking at. Explicitly formatted
+                // from the resolved zone so it agrees with the times below.
+                Text(
+                    DateTimeFormatter.ofPattern("EEEE d MMMM")
+                        .withZone(zone)
+                        .format(java.time.LocalDate.now(zone).plusDays(dayOffset.toLong())),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 state.location?.let {
                     Text(
                         it.name,
@@ -108,12 +127,21 @@ private fun PrayerDayContent(viewModel: PrayerViewModel, state: PrayerViewModel.
                 )
             }
         }
-        day?.let { TimesCard(day = it, highlight = if (dayOffset == 0) state.nextPrayer?.next else null) }
+        // A spinner, not nothing: `day` is null while the engine computes, and
+        // rendering an empty column read as a broken screen.
+        if (day != null) {
+            TimesCard(day = day, highlight = if (dayOffset == 0) state.nextPrayer?.next else null, zone = zone)
+        } else {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 60.dp),
+            )
+        }
     }
 }
 
 @Composable
-private fun TimesCard(day: PrayerDayUi, highlight: PrayerNameUi?) {
+private fun TimesCard(day: PrayerDayUi, highlight: PrayerNameUi?, zone: ZoneId) {
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -141,7 +169,7 @@ private fun TimesCard(day: PrayerDayUi, highlight: PrayerNameUi?) {
                         else MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        formatTime(time.epochSeconds),
+                        formatTime(time.epochSeconds, zone),
                         style = if (isNext) MaterialTheme.typography.titleMedium
                         else MaterialTheme.typography.bodyLarge,
                         color = if (isNext) MaterialTheme.colorScheme.primary
@@ -220,7 +248,7 @@ private fun ManualCity.titleRes(): Int = when (id) {
     else -> R.string.city_casablanca
 }
 
-fun formatTime(epochSeconds: Long): String =
-    DateTimeFormatter.ofPattern("h:mm a")
-        .withZone(ZoneId.systemDefault())
+fun formatTime(epochSeconds: Long, zone: ZoneId = ZoneId.systemDefault()): String =
+    DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+        .withZone(zone)
         .format(JavaInstant.ofEpochSecond(epochSeconds))

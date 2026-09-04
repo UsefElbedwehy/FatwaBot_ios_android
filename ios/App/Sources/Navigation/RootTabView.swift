@@ -5,6 +5,7 @@ import CoreKit
 import DesignSystemKit
 import DuaFeature
 import Factory
+import FatwaSearchFeature
 import GamificationFeature
 import HadithFeature
 import LeaderboardFeature
@@ -13,6 +14,12 @@ import PrayerKit
 import SearchHistoryFeature
 import SwiftUI
 import TasbeehFeature
+
+/// A single destination: which mode, and any text the search bar already had
+/// typed into it (empty for the three intent cards).
+enum FatwaSearchDestination: Hashable {
+    case ask(mode: FatwaSearchMode, initialQuestion: String)
+}
 
 /// Destinations reachable from the Worship tab's own list *and* by deep link
 /// from Home's quick actions (task 26 wiring) — pushed onto `worshipPath`.
@@ -77,6 +84,9 @@ struct RootTabView: View {
     // Typed rather than `NavigationPath` so the screen on top is readable
     // (NavigationPath is opaque) — needed for screen-view reporting.
     @State private var worshipPath: [WorshipDestination] = []
+    // Home's own stack — pushed by a Search-Home intent card or the search
+    // field, mirrors worshipPath's typed-array approach.
+    @State private var homePath: [FatwaSearchDestination] = []
     // Which specific azkar/hadith item to land on — set only when the tap
     // that opened this path was a content-reminder notification.
     @State private var worshipContentFocus: ContentFocus?
@@ -102,12 +112,13 @@ struct RootTabView: View {
         colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
     }
 
-    /// True once a worship destination is pushed. The bar is a *tab-root*
-    /// control: on a pushed screen you navigate with Back, not by switching
-    /// tabs, so 140pt of maroon band would only crowd content that wants the
-    /// room (the Tasbeeh tap target, the Qibla compass, a hadith being read).
+    /// True once a worship or home destination is pushed. The bar is a
+    /// *tab-root* control: on a pushed screen you navigate with Back, not by
+    /// switching tabs, so 140pt of maroon band would only crowd content that
+    /// wants the room (the Tasbeeh tap target, the Qibla compass, a hadith
+    /// being read, or here, the search answer + citations).
     private var isShowingDetail: Bool {
-        selection == .worship && !worshipPath.isEmpty
+        (selection == .worship && !worshipPath.isEmpty) || (selection == .home && !homePath.isEmpty)
     }
 
     var body: some View {
@@ -216,7 +227,8 @@ struct RootTabView: View {
     /// tab, since that's the screen actually on top.
     private var currentScreenKey: String {
         switch selection {
-        case .home: return AnalyticsEvents.screenHome
+        case .home:
+            return homePath.isEmpty ? AnalyticsEvents.screenHome : AnalyticsEvents.screenFatwaSearch
         case .settings: return AnalyticsEvents.screenSettings
         case .worship:
             guard let destination = worshipPath.last else {
@@ -237,6 +249,7 @@ struct RootTabView: View {
         switch link {
         case .home:
             selection = .home
+            homePath = []
         case .prayer:
             // Prayer is a NavigationLink inside the grid rather than a
             // `WorshipDestination`, so land on the Worship root; the prayer
@@ -254,7 +267,20 @@ struct RootTabView: View {
     private var content: some View {
         switch selection {
         case .home:
-            SearchHomeScreen()
+            NavigationStack(path: $homePath) {
+                SearchHomeScreen(onOpen: { mode in homePath.append(.ask(mode: mode, initialQuestion: "")) })
+                    .bottomBarClearance()
+                    .navigationDestination(for: FatwaSearchDestination.self) { destination in
+                        switch destination {
+                        case .ask(let mode, let initialQuestion):
+                            // No clearance here: the bar hides on push, matching
+                            // the worship stack's pattern immediately below.
+                            FatwaSearchScreen(
+                                viewModel: Container.shared.fatwaSearchViewModel((mode: mode, initialQuestion: initialQuestion))
+                            )
+                        }
+                    }
+            }
         case .worship:
             NavigationStack(path: $worshipPath) {
                 WorshipTabView(prayerViewModel: prayerViewModel)

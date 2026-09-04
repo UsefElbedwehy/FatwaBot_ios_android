@@ -58,6 +58,7 @@ dependencies {
     implementation(project(":feature:leaderboard"))
     implementation(project(":feature:searchhistory"))
     implementation(project(":feature:onboarding"))
+    implementation(project(":feature:fatwasearch"))
 
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)

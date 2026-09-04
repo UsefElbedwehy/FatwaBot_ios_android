@@ -61,7 +61,7 @@ class AuthService(
     private val baseUrl: String,
     private val device: DeviceInfo,
     private val store: AuthTokenStoring,
-    private val http: OkHttpClient = OkHttpClient(),
+    private val http: OkHttpClient = defaultHttpClient(),
     private val nowEpochSeconds: () -> Long,
 ) : AuthTokenProviding {
     private val json = Json { ignoreUnknownKeys = true }

@@ -22,6 +22,11 @@ data class PlannedContentReminder(
     val titleKey: String,
     /** Already-truncated scripture text — content, not a template key. */
     val body: String,
+    /** Which category/collection [contentId] lives in, so a tap can select the
+     *  right chip before scrolling to the item. Azkar carries `category.id`
+     *  (RemembranceScreen selects by id, not slug); hadith carries the
+     *  collection's `slug`. */
+    val categorySlug: String? = null,
 ) {
     enum class Kind(val key: String, val deepLink: DeepLink) {
         AZKAR("azkar", DeepLink.AZKAR),
@@ -37,7 +42,7 @@ data class PlannedContentReminder(
  * pure function over plain data — the app layer decides which field (Arabic text
  * vs. translation) to feed in for the current locale.
  */
-data class ContentSnippet(val id: String, val text: String)
+data class ContentSnippet(val id: String, val text: String, val categorySlug: String? = null)
 
 /**
  * User-facing preferences for the daily azkar/hadith reminders — mirror of iOS
@@ -193,6 +198,7 @@ object ContentReminderPlanner {
                     fireEpochSeconds = fire.epochSeconds,
                     titleKey = "notif.content.${kind.key}.title",
                     body = truncate(item.text),
+                    categorySlug = item.categorySlug,
                 )
             }
         }

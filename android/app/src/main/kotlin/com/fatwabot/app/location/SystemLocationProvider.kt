@@ -12,6 +12,7 @@ import com.fatwabot.feature.prayer.LocationState
 import com.fatwabot.feature.prayer.ManualCity
 import com.fatwabot.feature.prayer.UserLocation
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,7 @@ class SystemLocationProvider @Inject constructor(
         val name: String,
         val country: String?,
         val manual: Boolean,
+        val timeZoneId: String? = null,
     )
 
     private val prefs = context.getSharedPreferences("prayer_location", Context.MODE_PRIVATE)
@@ -44,12 +46,17 @@ class SystemLocationProvider @Inject constructor(
     override fun cached(): UserLocation? =
         prefs.getString(KEY, null)?.let { raw ->
             runCatching { Json.decodeFromString<Cached>(raw) }.getOrNull()?.let {
-                UserLocation(it.lat, it.lng, it.name, it.country, it.manual)
+                UserLocation(it.lat, it.lng, it.name, it.country, it.manual, it.timeZoneId?.let(TimeZone::getTimeZone))
             }
         }
 
     override fun setManualCity(city: ManualCity, displayName: String) {
-        persist(UserLocation(city.latitude, city.longitude, displayName, city.countryCode, isManual = true))
+        persist(
+            UserLocation(
+                city.latitude, city.longitude, displayName, city.countryCode,
+                isManual = true, timeZone = city.timeZone,
+            ),
+        )
     }
 
     override suspend fun resolve(): LocationState {
@@ -64,9 +71,43 @@ class SystemLocationProvider @Inject constructor(
             return cached()?.let { LocationState.Resolved(it) } ?: LocationState.Denied
         }
         val (name, country) = reverseGeocode(raw.latitude, raw.longitude)
-        val location = UserLocation(raw.latitude, raw.longitude, name, country, isManual = false)
+        val location = UserLocation(
+            raw.latitude, raw.longitude, name, country,
+            isManual = false, timeZone = country?.let { timeZoneForCountry(it, raw.longitude) },
+        )
         persist(location)
         return LocationState.Resolved(location)
+    }
+
+    /**
+     * Best-effort timezone for a GPS fix. Android's Geocoder, unlike iOS's
+     * `CLPlacemark`, never returns a timezone, and a boundary-accurate lookup
+     * needs shapefile data this app doesn't bundle.
+     *
+     * A single-timezone country is exact. For a multi-zone one (the US, Russia,
+     * Brazil, ...) we pick the country zone whose standard offset is closest to
+     * the one the longitude implies — 15° of longitude per hour. This was
+     * previously left `null` on the reasoning that a guess is worse than
+     * falling back to the device's timezone. That reasoning was wrong: the
+     * device's timezone is not a neutral default but an unrelated one, and it
+     * is wrong by however far the user has travelled. Observed on a device set
+     * to Africa/Cairo with a Mountain View fix: Fajr rendered at 3:07 PM. The
+     * longitude estimate is off by at most an hour or so within a country;
+     * the device fallback was off by ten.
+     *
+     * Remaining imprecision: two zones sharing a standard offset but differing
+     * in DST rules (America/Phoenix vs America/Denver) can resolve to the wrong
+     * one, an error of at most one hour for part of the year. The device
+     * fallback stays for a country we can't resolve at all.
+     */
+    private fun timeZoneForCountry(countryCode: String, longitude: Double): TimeZone? {
+        val ids = android.icu.util.TimeZone.getAvailableIDs(countryCode)
+        ids.singleOrNull()?.let { return TimeZone.getTimeZone(it) }
+        val solarOffsetMs = (longitude / 15.0 * 3_600_000.0).toLong()
+        val best = ids.minByOrNull { id ->
+            kotlin.math.abs(TimeZone.getTimeZone(id).rawOffset.toLong() - solarOffsetMs)
+        } ?: return null
+        return TimeZone.getTimeZone(best)
     }
 
     private fun hasPermission(): Boolean =
@@ -109,6 +150,7 @@ class SystemLocationProvider @Inject constructor(
     private fun persist(location: UserLocation) {
         val cachedValue = Cached(
             location.latitude, location.longitude, location.name, location.countryCode, location.isManual,
+            location.timeZone?.id,
         )
         prefs.edit().putString(KEY, Json.encodeToString(Cached.serializer(), cachedValue)).apply()
     }

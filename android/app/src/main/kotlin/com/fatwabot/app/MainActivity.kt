@@ -2,9 +2,9 @@ package com.fatwabot.app
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,11 +14,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import com.fatwabot.app.analytics.FirebaseAnalyticsTracker
 import com.fatwabot.core.common.AnalyticsEvents
 import com.fatwabot.core.common.AnalyticsTracking
+import com.fatwabot.core.common.ContentFocus
 import com.fatwabot.core.common.DeepLink
 import com.fatwabot.core.network.BackendAnalyticsRecorder
 import androidx.lifecycle.lifecycleScope
 import com.fatwabot.app.navigation.AppRoot
 import com.fatwabot.app.notifications.ContentReminderAlarmReceiver
+import com.fatwabot.app.notifications.ContentReminderScheduler
 import com.fatwabot.app.push.PushTokenRegistrar
 import com.fatwabot.app.theme.ThemeModeController
 import com.fatwabot.core.designsystem.FatwaBotTheme
@@ -28,7 +30,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     @Inject lateinit var pushRegistrar: PushTokenRegistrar
 
     /** The dual-send composite (Firebase + our own ingest) — what events go through. */
@@ -66,17 +68,22 @@ class MainActivity : ComponentActivity() {
             // Held in state (not read straight off `intent`) so onNewIntent can
             // re-route a warm app, and so consuming it survives recomposition.
             var pendingLink by remember { mutableStateOf(DeepLink.from(intent?.data)) }
-            deepLinkSink = { pendingLink = it }
+            var pendingContentFocus by remember { mutableStateOf(contentFocus(intent)) }
+            deepLinkSink = { link, focus -> pendingLink = link; pendingContentFocus = focus }
             CompositionLocalProvider(LocalConfiguration provides config) {
                 FatwaBotTheme {
-                    AppRoot(deepLink = pendingLink, onDeepLinkHandled = { pendingLink = null })
+                    AppRoot(
+                        deepLink = pendingLink,
+                        contentFocus = pendingContentFocus,
+                        onDeepLinkHandled = { pendingLink = null; pendingContentFocus = null },
+                    )
                 }
             }
         }
     }
 
     /** Set by the composition so a warm-start intent can reach it. */
-    private var deepLinkSink: ((DeepLink?) -> Unit)? = null
+    private var deepLinkSink: ((DeepLink?, ContentFocus?) -> Unit)? = null
 
     /**
      * The activity is `singleTop`-ish in practice: tapping a widget while the
@@ -87,9 +94,17 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         DeepLink.from(intent.data)?.let { link ->
-            deepLinkSink?.invoke(link)
+            deepLinkSink?.invoke(link, contentFocus(intent))
             reportOpen(link, intent)
         }
+    }
+
+    /** Only a content-reminder tap carries a content id — every other deep
+     *  link (widgets, Live Activities) leaves this null. */
+    private fun contentFocus(intent: Intent?): ContentFocus? {
+        val contentId = intent?.getStringExtra(ContentReminderScheduler.EXTRA_CONTENT_ID) ?: return null
+        val categorySlug = intent.getStringExtra(ContentReminderScheduler.EXTRA_CATEGORY_SLUG)
+        return ContentFocus(contentId, categorySlug)
     }
 
     /**

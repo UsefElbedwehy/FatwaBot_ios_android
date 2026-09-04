@@ -10,8 +10,9 @@ import { apiError, json } from "../http.ts";
 import { resolveRequired } from "../locale_resolve.ts";
 import type { AppContext } from "../types.ts";
 import type { FatwaMode, FatwaSearchRepo } from "../fatwa_types.ts";
+import { UpstreamError } from "../ai_search/providers.ts";
 import type { AnswerProvider, EmbeddingProvider } from "../ai_search/providers.ts";
-import { hybridRetrieve } from "../ai_search/retrieval.ts";
+import { hybridRetrieve, RetrievalError } from "../ai_search/retrieval.ts";
 import { verifyCitations } from "../ai_search/citation_verify.ts";
 import type { SearchHistoryRepo, SearchSource } from "../search_types.ts";
 
@@ -77,36 +78,109 @@ export async function handleSearch(
     return apiError(503, "ai_unavailable", "AI search is not configured yet");
   }
 
-  const chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode);
-  const raw = await deps.answerProvider.answer(question, mode, chunks, ctx.locale);
+  // Each stage reports its own failure code. Previously any throw anywhere in
+  // here fell through to the router's blanket `internal_error`, so a 500 said
+  // only "something broke" — indistinguishable between the embedding call, the
+  // SQL search functions, and the answer model, and diagnosable only by someone
+  // with dashboard access to the stack trace. The codes carry no internal
+  // detail; the stack still goes to the log, not to the client.
+  const timings: { embedMs?: number; searchMs?: number } = {};
+  let answerMs = 0;
+  let chunks;
+  try {
+    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode, {}, timings);
+  } catch (err) {
+    console.error("search_retrieval_failed", err instanceof Error ? err.stack ?? err.message : err);
+    const stage = err instanceof RetrievalError ? err.stage : "unknown";
+    const cause = err instanceof RetrievalError ? err.reason : err;
+    // The upstream HTTP status, when there is one. Naming it turns an opaque
+    // 502 into an actionable one — a 429 is a quota problem on the provider
+    // account, a 401 a bad key, a 404 a wrong model id. No key and no response
+    // body is echoed, only the number.
+    // Postgres/PostgREST error codes are equally actionable and equally safe:
+    // 42883 / PGRST202 mean the function isn't there (an unapplied migration),
+    // 42501 means it is but the API role can't call it, 42704 a missing type or
+    // extension. Only the code travels — never the message, which can quote the
+    // caller's own text back.
+    const pgCode = typeof (cause as { code?: unknown })?.code === "string"
+      ? ` (pg ${(cause as { code: string }).code})`
+      : "";
+    const upstream = cause instanceof UpstreamError ? ` (${cause.provider} ${cause.status})` : pgCode;
+    const which = err instanceof RetrievalError && err.failedSearches.length > 0
+      ? ` [${err.failedSearches.join(",")}]`
+      : "";
+    return apiError(
+      502,
+      stage === "embedding" ? "embedding_failed" : "retrieval_failed",
+      `Could not search the sources${upstream}${which}`,
+    );
+  }
+
+  let raw;
+  const answerStart = performance.now();
+  try {
+    raw = await deps.answerProvider.answer(question, mode, chunks, ctx.locale);
+    answerMs = Math.round(performance.now() - answerStart);
+  } catch (err) {
+    console.error("search_answer_failed", err instanceof Error ? err.stack ?? err.message : err);
+    return apiError(502, "answer_failed", "Could not generate an answer");
+  }
+
   const chunkTextById = new Map(chunks.map((c) => [c.chunkId, c.text]));
   const verified = verifyCitations(raw, chunkTextById);
 
-  const answer = verified.refused ? resolveRequired(REFUSAL_MESSAGE, ctx.locale) : verified.answer;
+  // A refusal still carries useful text sometimes — hadith mode is asked to
+  // name the closest authentic wording even while refusing the exact quote.
+  // Only fall back to the generic localized message when there's genuinely
+  // nothing else to show (the common case, and always true when
+  // citation-verify blanked the answer for fabricated evidence).
+  const answer = verified.refused && verified.answer.trim().length === 0
+    ? resolveRequired(REFUSAL_MESSAGE, ctx.locale)
+    : verified.answer;
 
-  await deps.fatwaSearch.logAnswer(ctx, {
-    userId,
-    mode,
-    question,
-    retrievedChunkIds: chunks.map((c) => c.chunkId),
-    citations: verified.citations,
-    answer,
-    refused: verified.refused,
-    model: verified.model,
-  });
-  await deps.searchHistory.record(ctx, userId, MODE_TO_HISTORY_SOURCE[mode], question, ctx.locale);
+  // Bookkeeping, not the product. A failed audit-log or history write used to
+  // throw away an answer that had already been retrieved, generated and
+  // verified — the user paid for the whole pipeline and got a 500 because a
+  // side-table insert failed. Log it and hand over the answer.
+  try {
+    await deps.fatwaSearch.logAnswer(ctx, {
+      userId,
+      mode,
+      question,
+      retrievedChunkIds: chunks.map((c) => c.chunkId),
+      citations: verified.citations,
+      answer,
+      refused: verified.refused,
+      model: verified.model,
+    });
+    await deps.searchHistory.record(ctx, userId, MODE_TO_HISTORY_SOURCE[mode], question, ctx.locale);
+  } catch (err) {
+    console.error("search_logging_failed", err instanceof Error ? err.stack ?? err.message : err);
+  }
 
-  return json({
-    answer,
-    citations: verified.citations.map((c) => ({
-      chunk_id: c.chunkId,
-      scholar: c.scholar,
-      source_title: c.sourceTitle,
-      page_number: c.pageNumber ?? null,
-      video_timestamp: c.videoTimestamp ?? null,
-      quoted_text: c.quotedText,
-    })),
-    refused: verified.refused,
-    mode,
-  });
+  // Standard `Server-Timing`, so where a slow search spent its time is visible
+  // from the client instead of only in logs someone has to have access to read.
+  return json(
+    {
+      answer,
+      citations: verified.citations.map((c) => ({
+        chunk_id: c.chunkId,
+        scholar: c.scholar,
+        source_title: c.sourceTitle,
+        page_number: c.pageNumber ?? null,
+        video_timestamp: c.videoTimestamp ?? null,
+        quoted_text: c.quotedText,
+      })),
+      refused: verified.refused,
+      mode,
+    },
+    200,
+    {
+      "server-timing": [
+        `embed;dur=${timings.embedMs ?? 0}`,
+        `search;dur=${timings.searchMs ?? 0}`,
+        `answer;dur=${answerMs}`,
+      ].join(", "),
+    },
+  );
 }

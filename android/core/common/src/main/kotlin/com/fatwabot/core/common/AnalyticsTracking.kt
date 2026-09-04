@@ -76,6 +76,7 @@ object AnalyticsEvents {
     const val SCREEN_AWRAD = "awrad"
     const val SCREEN_HADITH = "hadith"
     const val SCREEN_JOURNEY = "journey"
+    const val SCREEN_FATWA_SEARCH = "fatwa_search"
 
     // Events
     const val SCREEN_VIEW = "screen_view"

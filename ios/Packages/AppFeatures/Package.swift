@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "LeaderboardFeature", targets: ["LeaderboardFeature"]),
         .library(name: "SearchHistoryFeature", targets: ["SearchHistoryFeature"]),
         .library(name: "OnboardingFeature", targets: ["OnboardingFeature"]),
+        .library(name: "FatwaSearchFeature", targets: ["FatwaSearchFeature"]),
     ],
     dependencies: [
         .package(path: "../FatwaBotKit"),
@@ -134,5 +135,16 @@ let package = Package(
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
         .testTarget(name: "OnboardingFeatureTests", dependencies: ["OnboardingFeature"]),
+        .target(
+            name: "FatwaSearchFeature",
+            dependencies: [
+                .product(name: "CoreKit", package: "FatwaBotKit"),
+                .product(name: "NetworkingKit", package: "FatwaBotKit"),
+                .product(name: "DesignSystemKit", package: "FatwaBotKit"),
+                .product(name: "Factory", package: "Factory"),
+            ],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
+        ),
+        .testTarget(name: "FatwaSearchFeatureTests", dependencies: ["FatwaSearchFeature"]),
     ]
 )

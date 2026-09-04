@@ -17,7 +17,10 @@ interface UserRecord {
 
 export class InMemoryIdentityRepo implements IdentityRepo {
   users = new Map<string, UserRecord>();
-  devices = new Map<string, { userId: string; registration: DeviceRegistration; pushToken?: string | null }>();
+  devices = new Map<
+    string,
+    { userId: string; registration: DeviceRegistration; pushToken?: string | null }
+  >();
   tokens = new Map<string, RefreshTokenRecord & { hash: string }>();
   private providerIndex = new Map<string, string>(); // `${provider}:${subject}` -> userId
   private counter = 0;

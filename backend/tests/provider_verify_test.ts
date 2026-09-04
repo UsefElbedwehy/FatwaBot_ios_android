@@ -1,8 +1,8 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { createLocalJWKSet, exportJWK, generateKeyPair, type KeyLike, SignJWT } from "npm:jose@5";
 import {
-  AppleIdentityVerifier,
   APPLE_ISSUER,
+  AppleIdentityVerifier,
   DevIdentityProviderVerifier,
   GoogleIdentityVerifier,
   RemoteIdentityProviderVerifier,
@@ -56,7 +56,11 @@ Deno.test("Apple: rejects a wrong issuer", async () => {
 
 Deno.test("Apple: rejects an expired token", async () => {
   const { privateKey, keys } = await keyFixture();
-  const jwt = await token(privateKey, { sub: "x" }, { issuer: APPLE_ISSUER, audience: APPLE_AUD, expiresIn: "-1m" });
+  const jwt = await token(privateKey, { sub: "x" }, {
+    issuer: APPLE_ISSUER,
+    audience: APPLE_AUD,
+    expiresIn: "-1m",
+  });
   assertEquals(await new AppleIdentityVerifier(APPLE_AUD, keys).verify(jwt), null);
 });
 
@@ -79,14 +83,20 @@ Deno.test("Google: accepts either configured client id", async () => {
   const { privateKey, keys } = await keyFixture();
   const verifier = new GoogleIdentityVerifier(GOOGLE_AUDS, keys);
   for (const aud of GOOGLE_AUDS) {
-    const jwt = await token(privateKey, { sub: "g-1" }, { issuer: "https://accounts.google.com", audience: aud });
+    const jwt = await token(privateKey, { sub: "g-1" }, {
+      issuer: "https://accounts.google.com",
+      audience: aud,
+    });
     assertEquals(await verifier.verify(jwt), { subject: "g-1" });
   }
 });
 
 Deno.test("Google: accepts the bare issuer spelling", async () => {
   const { privateKey, keys } = await keyFixture();
-  const jwt = await token(privateKey, { sub: "g-2" }, { issuer: "accounts.google.com", audience: GOOGLE_AUDS[0] });
+  const jwt = await token(privateKey, { sub: "g-2" }, {
+    issuer: "accounts.google.com",
+    audience: GOOGLE_AUDS[0],
+  });
   assertEquals(await new GoogleIdentityVerifier(GOOGLE_AUDS, keys).verify(jwt), { subject: "g-2" });
 });
 

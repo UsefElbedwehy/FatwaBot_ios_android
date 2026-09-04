@@ -27,7 +27,7 @@ class AuthenticatedApiClient(
     private val baseUrl: String,
     private val context: ClientContext,
     private val tokens: AuthTokenProviding,
-    private val http: OkHttpClient = OkHttpClient(),
+    private val http: OkHttpClient = defaultHttpClient(),
 ) : AuthenticatedApiClientProtocol {
 
     override suspend fun getRaw(path: String, query: Map<String, String>): String =
@@ -91,7 +91,7 @@ class AuthenticatedApiClient(
 
     private fun okhttp3.Response.consume(): String = use {
         val responseBody = it.body?.string().orEmpty()
-        if (!it.isSuccessful) throw ApiException.Server(it.code, null)
+        if (!it.isSuccessful) throw ApiException.Server(it.code, extractErrorCode(responseBody))
         responseBody
     }
 }

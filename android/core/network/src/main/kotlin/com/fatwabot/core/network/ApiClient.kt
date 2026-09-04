@@ -21,6 +21,21 @@ sealed class ApiException(message: String) : Exception(message) {
     data class Decoding(val detail: String) : ApiException("decoding: $detail")
 }
 
+/** Pulls `error.code` out of the standard `{error:{code,message}}` envelope
+ * (see backend/functions/api/http.ts apiError) — shared by [ApiClient] and
+ * [AuthenticatedApiClient] so a caller can distinguish e.g. `ai_unavailable`
+ * from any other 503/500, mirroring iOS `APIError.server(statusCode:code:)`. */
+internal fun extractErrorCode(body: String): String? =
+    runCatching { Json.parseToJsonElement(body) }.getOrNull()?.let { el ->
+        runCatching {
+            (el as? kotlinx.serialization.json.JsonObject)
+                ?.get("error")?.let { err ->
+                    (err as? kotlinx.serialization.json.JsonObject)?.get("code")
+                        ?.let { c -> (c as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                }
+        }.getOrNull()
+    }
+
 /** Read path of the versioned REST API (ADR-0002) — mirror of iOS APIClient. */
 interface ApiClientProtocol {
     suspend fun getRaw(path: String, query: Map<String, String> = emptyMap()): String
@@ -29,7 +44,7 @@ interface ApiClientProtocol {
 class ApiClient(
     private val baseUrl: String,
     private val context: ClientContext,
-    private val http: OkHttpClient = OkHttpClient(),
+    private val http: OkHttpClient = defaultHttpClient(),
 ) : ApiClientProtocol {
 
     override suspend fun getRaw(path: String, query: Map<String, String>): String =
@@ -55,20 +70,7 @@ class ApiClient(
             }
             response.use {
                 val body = it.body?.string().orEmpty()
-                if (!it.isSuccessful) {
-                    val code = runCatching {
-                        Json.parseToJsonElement(body)
-                    }.getOrNull()?.let { el ->
-                        runCatching {
-                            (el as? kotlinx.serialization.json.JsonObject)
-                                ?.get("error")?.let { err ->
-                                    (err as? kotlinx.serialization.json.JsonObject)?.get("code")
-                                        ?.let { c -> (c as? kotlinx.serialization.json.JsonPrimitive)?.content }
-                                }
-                        }.getOrNull()
-                    }
-                    throw ApiException.Server(it.code, code)
-                }
+                if (!it.isSuccessful) throw ApiException.Server(it.code, extractErrorCode(body))
                 body
             }
         }

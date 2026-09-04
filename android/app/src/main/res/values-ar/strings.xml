@@ -86,8 +86,6 @@
     <string name="home_card_fatwa">ابحث عن فتوى</string>
     <string name="home_search_placeholder">اكتب سؤالك هنا...</string>
     <string name="home_tagline">البحث عن الإجابة على ضوء منهج أهل السنة والجماعة</string>
-    <string name="home_coming_soon_title">قريباً بإذن الله</string>
-    <string name="home_coming_soon_body">البحث الذكي عن الفتاوى والأحاديث قيد الإعداد، وسيصلك قريباً.</string>
     <string name="common_ok">حسناً</string>
     <string name="settings_diagnostics">التشخيص</string>
     <string name="settings_diagnostics_share">مشاركة تقارير الأعطال والاستخدام</string>

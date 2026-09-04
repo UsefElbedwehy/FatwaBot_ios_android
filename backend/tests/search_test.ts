@@ -17,7 +17,11 @@ import { InMemoryLeaderboardRepo } from "./in_memory_leaderboard_repo.ts";
 import { InMemorySearchHistoryRepo } from "./in_memory_search_repo.ts";
 import { InMemoryDeliveryLogRepo, InMemoryNotificationPrefsRepo } from "./in_memory_notification_repo.ts";
 import { InMemoryFatwaSearchRepo, type SeedChunk } from "./in_memory_fatwa_repo.ts";
-import { DevStubAnswerProvider, DevStubEmbeddingProvider } from "../functions/api/ai_search/providers.ts";
+import {
+  DevStubAnswerProvider,
+  DevStubEmbeddingProvider,
+  UpstreamError,
+} from "../functions/api/ai_search/providers.ts";
 import type { AnswerProvider } from "../functions/api/ai_search/providers.ts";
 import type { AnswerResult, FatwaMode, RetrievedChunk } from "../functions/api/fatwa_types.ts";
 
@@ -205,4 +209,208 @@ Deno.test("POST /v1/search drops a fabricated citation and flips to refused, nev
   const body = await res.json();
   assertEquals(body.refused, true, "the only citation failed verification, so the whole answer refuses");
   assertEquals(body.citations.length, 0, "a fabricated citation must never reach the client");
+});
+
+Deno.test("POST /v1/search keeps a self-refusal's own message when it carries a verified citation (hadith closest-match)", async () => {
+  const closestMatchProvider = new FixedAnswerProvider((chunks) => ({
+    answer: "لم يرد الحديث بهذا اللفظ، لكن أقرب لفظ صحيح هو ما يلي.",
+    refused: true,
+    citations: [{
+      chunkId: chunks[0].chunkId,
+      scholar: "ابن عثيمين",
+      sourceTitle: chunks[0].sourceTitle,
+      pageNumber: chunks[0].pageNumber ?? undefined,
+      quotedText: chunks[0].text,
+    }],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: closestMatchProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "نص حديث بصياغة غير دقيقة", mode: "hadith" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, true, "the model's own refusal (exact wording not found) is preserved");
+  assertEquals(
+    body.answer,
+    "لم يرد الحديث بهذا اللفظ، لكن أقرب لفظ صحيح هو ما يلي.",
+    "a self-refusal's own message must reach the user, not the generic fallback, when it has real support",
+  );
+  assertEquals(body.citations.length, 1, "the verified closest-match citation must still be shown");
+});
+
+Deno.test("POST /v1/search returns a video-sourced citation with its timestamp and a null page", async () => {
+  const videoCitingProvider = new FixedAnswerProvider((chunks) => ({
+    answer: "الجواب من مادة مرئية.",
+    refused: false,
+    citations: [{
+      chunkId: chunks[0].chunkId,
+      scholar: "ابن عثيمين",
+      sourceTitle: chunks[0].sourceTitle,
+      videoTimestamp: chunks[0].videoTimestamp ?? undefined,
+      quotedText: chunks[0].text,
+    }],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: videoCitingProvider,
+  };
+  // Exactly one locator, mirroring the DB's chunks_exactly_one_locator check.
+  d.fatwaSearch.seed([seedChunk({ pageNumber: null, videoTimestamp: 930 })]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "general" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, false);
+  assertEquals(body.citations.length, 1);
+  assertEquals(body.citations[0].video_timestamp, 930);
+  assertEquals(body.citations[0].page_number, null, "a video source has no page to report");
+});
+
+Deno.test("POST /v1/search falls back to the generic refusal message when a self-refusal has no verifiable support", async () => {
+  const bareRefusalProvider = new FixedAnswerProvider(() => ({
+    answer: "",
+    refused: true,
+    citations: [],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: bareRefusalProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(post("/v1/search", { question: "سؤال بلا مطابقة", mode: "hadith" }, auth), d);
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, true);
+  assertEquals(
+    body.answer.length > 0,
+    true,
+    "still carries a localized refusal message, not an empty string",
+  );
+});
+
+// A 500 that says only "internal_error" is undiagnosable from the client, and
+// on a deployment whose logs you can't reach, undiagnosable full stop. Each
+// stage now reports which one failed.
+
+Deno.test("POST /v1/search reports embedding_failed, naming the upstream status", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: {
+      embed: () => Promise.reject(new UpstreamError("voyage", 429, "rate limited")),
+      id: "broken",
+    } as unknown as DevStubEmbeddingProvider,
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
+  assertEquals(res.status, 502);
+  const body = await res.json();
+  assertEquals(body.error.code, "embedding_failed");
+  // The status is the whole point — 429 is a quota problem, 401 a bad key.
+  assertEquals(body.error.message.includes("voyage 429"), true);
+});
+
+Deno.test("POST /v1/search reports retrieval_failed when the SQL search stage throws", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  // Every search has to fail for retrieval to be fatal — see the degraded-mode
+  // test below.
+  const dead = () => Promise.reject(new Error("function fatwa.search_vector does not exist"));
+  d.fatwaSearch.vectorSearch = dead;
+  d.fatwaSearch.ftsSearch = dead;
+  d.fatwaSearch.trigramSearch = dead;
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
+  assertEquals(res.status, 502);
+  const body = await res.json();
+  assertEquals(body.error.code, "retrieval_failed");
+  // Names which searches died, so a production failure says where.
+  assertEquals(body.error.message.includes("vector"), true);
+});
+
+Deno.test("POST /v1/search reports answer_failed when the model stage throws", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: {
+      answer: () => Promise.reject(new Error("anthropic 500")),
+      id: "broken",
+    } as unknown as DevStubAnswerProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
+  assertEquals(res.status, 502);
+  assertEquals((await res.json()).error.code, "answer_failed");
+});
+
+Deno.test("POST /v1/search still returns the answer when only the audit log write fails", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  d.fatwaSearch.logAnswer = () => Promise.reject(new Error("answers_log insert failed"));
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, false);
+  assertEquals(body.citations.length, 1);
+});
+
+Deno.test("POST /v1/search still answers when only one of the three searches fails", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  // The vector index is the one that times out in production; FTS returns fine.
+  // Losing the whole request over that threw away results we already had.
+  d.fatwaSearch.vectorSearch = () =>
+    Promise.reject(new Error("canceling statement due to statement timeout"));
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, false);
+  assertEquals(body.citations.length, 1);
 });

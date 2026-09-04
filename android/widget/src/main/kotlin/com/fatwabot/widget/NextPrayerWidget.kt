@@ -77,7 +77,7 @@ private fun NextPrayerContent(context: Context, snapshot: PrayerWidgetSnapshot?)
         )
         Spacer(GlanceModifier.height(2.dp))
         Text(
-            formatTime(next.timeEpochSeconds),
+            formatTime(next.timeEpochSeconds, snapshot?.zoneId ?: ZoneId.systemDefault()),
             style = TextStyle(
                 color = InkProvider,
                 fontSize = 18.sp,
@@ -123,10 +123,16 @@ internal fun prayerLabel(context: Context, raw: String): String = when (raw) {
     else -> raw
 }
 
-internal fun formatTime(epochSeconds: Long): String =
-    DateTimeFormatter.ofPattern("h:mm a")
-        .withZone(ZoneId.systemDefault())
+internal fun formatTime(epochSeconds: Long, zone: ZoneId = ZoneId.systemDefault()): String =
+    DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+        .withZone(zone)
         .format(Instant.ofEpochSecond(epochSeconds))
+
+/** The zone this snapshot's times should render in — the location they were
+ *  computed for, falling back to the device's own timezone if none was
+ *  resolved (mirrors [com.fatwabot.feature.prayer.zoneId]). */
+internal val PrayerWidgetSnapshot.zoneId: ZoneId
+    get() = timeZoneId?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: ZoneId.systemDefault()
 
 class NextPrayerWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = NextPrayerWidget()

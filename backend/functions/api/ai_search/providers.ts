@@ -98,12 +98,49 @@ export class DevStubAnswerProvider implements AnswerProvider {
 // ---------------------------------------------------------------------------
 
 /** Voyage AI's embeddings API — no official Deno/TS SDK, so this follows
- *  FcmSender's raw-fetch + injectable-fetch pattern for testability. */
+ *  FcmSender's raw-fetch + injectable-fetch pattern for testability.
+ *
+ *  Two throttling defenses, not one:
+ *  1. **Proactive pacing** (`requestsPerMinute`) — an account with no payment
+ *     method on file is capped at 3 requests/minute (confirmed against the
+ *     real API, not documentation). Retry-after-the-fact isn't enough on its
+ *     own: every retry attempt is itself another request against that same
+ *     budget, so a burst of calls (load_corpus.ts embedding book after book)
+ *     can keep re-triggering 429 faster than backoff clears it. Tracked as a
+ *     sliding 60s window of request timestamps; `embed()` waits for a free
+ *     slot before ever sending, when a limit is configured. `undefined`
+ *     (the default) means no proactive pacing — the live `/v1/search`
+ *     endpoint sends one request per user query, not a tight bulk loop, so
+ *     it has no reason to self-throttle.
+ *  2. **Reactive retry** for whatever the pacing doesn't fully prevent (a
+ *     genuine transient 5xx, or TPM rather than RPM pressure): `Retry-After`
+ *     is honored when Voyage sends one; otherwise 429 backs off ~20s and
+ *     5xx backs off exponentially from 1s. */
+/** Carries the upstream provider's HTTP status so a failure can be reported as
+ *  "the embedding service said 429" rather than an opaque 500. The status alone
+ *  is safe to surface — it names no key and echoes no response body. */
+export class UpstreamError extends Error {
+  constructor(readonly provider: string, readonly status: number, message: string) {
+    super(message);
+    this.name = "UpstreamError";
+  }
+}
+
 export class VoyageEmbeddingProvider implements EmbeddingProvider {
   readonly id: string;
+  private readonly requestTimestamps: number[] = [];
+
   constructor(
     private readonly apiKey: string,
-    private readonly deps: { model?: string; dimensions?: number; fetch?: typeof fetch } = {},
+    private readonly deps: {
+      model?: string;
+      dimensions?: number;
+      fetch?: typeof fetch;
+      sleep?: (ms: number) => Promise<void>;
+      maxRetries?: number;
+      requestsPerMinute?: number;
+      now?: () => number;
+    } = {},
   ) {
     this.id = deps.model ?? "voyage-4";
     this.dimensions = deps.dimensions ?? 1024;
@@ -114,24 +151,84 @@ export class VoyageEmbeddingProvider implements EmbeddingProvider {
     return this.deps.fetch ?? fetch;
   }
 
+  private get sleepFn() {
+    return this.deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  }
+
+  private get nowFn() {
+    return this.deps.now ?? Date.now;
+  }
+
+  private get maxRetries() {
+    return this.deps.maxRetries ?? 8;
+  }
+
+  /** Blocks until sending another request would keep the trailing 60s window
+   *  at or under `requestsPerMinute`, then records this send. A no-op when
+   *  no limit is configured. */
+  private async waitForRateLimitSlot(): Promise<void> {
+    const limit = this.deps.requestsPerMinute;
+    if (!limit) return;
+    for (;;) {
+      const now = this.nowFn();
+      while (this.requestTimestamps.length > 0 && now - this.requestTimestamps[0] >= 60_000) {
+        this.requestTimestamps.shift();
+      }
+      if (this.requestTimestamps.length < limit) {
+        this.requestTimestamps.push(now);
+        return;
+      }
+      await this.sleepFn(60_000 - (now - this.requestTimestamps[0]) + 250);
+    }
+  }
+
   async embed(texts: string[]): Promise<number[][]> {
-    const res = await this.fetchFn("https://api.voyageai.com/v1/embeddings", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({ input: texts, model: this.id }),
-    });
-    if (!res.ok) throw new Error(`Voyage embeddings failed: ${res.status} ${await res.text()}`);
-    const json = await res.json() as { data: { embedding: number[]; index: number }[] };
-    return json.data
-      .sort((a, b) => a.index - b.index)
-      .map((d) => d.embedding);
+    for (let attempt = 0;; attempt++) {
+      await this.waitForRateLimitSlot();
+      const res = await this.fetchFn("https://api.voyageai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({ input: texts, model: this.id }),
+      });
+      if (res.ok) {
+        const json = await res.json() as { data: { embedding: number[]; index: number }[] };
+        return json.data
+          .sort((a, b) => a.index - b.index)
+          .map((d) => d.embedding);
+      }
+
+      const retryable = res.status === 429 || res.status >= 500;
+      const body = await res.text();
+      if (!retryable || attempt >= this.maxRetries) {
+        throw new UpstreamError("voyage", res.status, `Voyage embeddings failed: ${res.status} ${body}`);
+      }
+      const retryAfterSeconds = Number(res.headers.get("retry-after"));
+      // A flat 20s for every 429 meant three retries cost exactly 60s even when
+      // the window had freed up after five — measured in production as
+      // `embed;dur=60760` on a `Server-Timing` header, against 242ms for the
+      // same call made after an idle gap. Escalate instead (5s, 10s, then 20s),
+      // which recovers far sooner from a short window without hammering a
+      // provider that has already said no. `Retry-After` still wins outright
+      // when the provider sends one.
+      const backoffMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1000
+        : res.status === 429
+        ? Math.min(20_000, 5_000 * 2 ** attempt)
+        : Math.min(30_000, 1000 * 2 ** attempt);
+      console.warn(`voyage_backoff status=${res.status} attempt=${attempt} waiting=${backoffMs}ms`);
+      await this.sleepFn(backoffMs);
+    }
   }
 }
 
-const ANSWER_JSON_SCHEMA = {
+/** Exported for tests: the citation locator fields are easy to regress (a
+ *  `required` entry or a missing property silently forces the model to
+ *  fabricate or drop a locator), and only a direct assertion catches that —
+ *  a stubbed AnswerProvider bypasses the schema entirely. */
+export const ANSWER_JSON_SCHEMA = {
   type: "object",
   properties: {
     answer: { type: "string" },
@@ -144,10 +241,18 @@ const ANSWER_JSON_SCHEMA = {
           chunkId: { type: "string" },
           scholar: { type: "string" },
           sourceTitle: { type: "string" },
+          // Exactly one locator per citation, mirroring the DB's
+          // `chunks_exactly_one_locator` constraint: a book chunk has a page,
+          // a video chunk has a timestamp. BOTH are optional — `pageNumber`
+          // used to be `required` with no `videoTimestamp` property at all,
+          // which (with `additionalProperties: false`) meant a video-sourced
+          // citation could not carry its timestamp *and* was forced to invent
+          // a page number to satisfy the schema.
           pageNumber: { type: "integer" },
+          videoTimestamp: { type: "integer" },
           quotedText: { type: "string" },
         },
-        required: ["chunkId", "scholar", "sourceTitle", "pageNumber", "quotedText"],
+        required: ["chunkId", "scholar", "sourceTitle", "quotedText"],
         additionalProperties: false,
       },
     },
@@ -160,7 +265,9 @@ const MODE_INSTRUCTIONS: Record<FatwaMode, string> = {
   fatwa: "وضع «ابحث عن فتوى»: أجب بفتوى واحدة تعتمد فقط على المقاطع المسترجعة أدناه. " +
     "إن أجاب أكثر من عالِم في المقاطع، لخّص أقوالهم دون خلط أو تلفيق.",
   hadith: "وضع «استخراج الأحاديث»: تحقق من اللفظ الدقيق للحديث من المقاطع المسترجعة فقط. " +
-    "إن لم يرد الحديث بهذا اللفظ بالضبط في المقاطع، صرّح بذلك (refused=true) واذكر أقرب لفظ صحيح موجود إن وُجد.",
+    "إن لم يرد الحديث بهذا اللفظ بالضبط في المقاطع، ضع refused=true. إن وُجد في المقاطع لفظ صحيح مقارب، " +
+    "اذكره في الإجابة، ويجب أن تضيف له استشهاداً حقيقياً في citations[] ينسخ لفظه حرفياً من مقطعه — أي ذكر " +
+    "لأقرب لفظ دون استشهاد حقيقي يدعمه غير موثوق ولن يُقبل.",
   general: "وضع «سؤال ديني عام»: أجب إجابة واحدة مؤصَّلة بالدليل من المقاطع المسترجعة فقط.",
 };
 
@@ -173,6 +280,7 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
     "أنت مساعد يجيب حصراً من نصوص مصدرها موثّق أُرفقت لك أدناه (مقاطع من كتب علماء معتمدين).",
     "لا تستخدم أي معرفة خاصة بك ولا أي مصدر خارج هذه المقاطع. إن لم تُجب المقاطع على السؤال، أعد refused=true وإجابة فارغة، ولا تخترع إجابة.",
     "كل استشهاد في citations[].quotedText يجب أن يكون نصاً حرفياً منسوخاً من المقطع (chunkId) الذي يشير إليه — لا إعادة صياغة.",
+    "ولكل استشهاد موضعٌ واحد فقط: إن كان المقطع من كتاب فضع pageNumber برقم صفحته، وإن كان من مادة مرئية فضع videoTimestamp بدقيقته. لا تضع الحقلين معاً ولا تخمّن رقماً غير المذكور في المقطع.",
     MODE_INSTRUCTIONS[mode],
     `أجب بلغة: ${locale}.`,
   ].join("\n");

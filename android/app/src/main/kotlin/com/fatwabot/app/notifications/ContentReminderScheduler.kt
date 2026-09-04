@@ -116,6 +116,10 @@ class ContentReminderScheduler(
             // Where the tap lands. Carried as the canonical DeepLink host rather
             // than a hand-built URL, so a renamed route can't silently break it.
             putExtra(EXTRA_DEEP_LINK, item.deepLink.host)
+            // Which specific item the notification showed, so the tap can land
+            // on it rather than just the azkar/hadith tab in general.
+            putExtra(EXTRA_CONTENT_ID, item.contentId)
+            putExtra(EXTRA_CATEGORY_SLUG, item.categorySlug)
         }
         return PendingIntent.getBroadcast(
             context, item.id.hashCode(), intent,
@@ -129,27 +133,38 @@ class ContentReminderScheduler(
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
         const val EXTRA_DEEP_LINK = "deep_link"
+        /** Mirrors iOS `ContentReminderScheduler.contentIdKey`/`categorySlugKey`
+         *  — read back by [ContentReminderAlarmReceiver] and forwarded onto the
+         *  tap intent so `MainActivity` can build a `ContentFocus`. */
+        const val EXTRA_CONTENT_ID = "contentId"
+        const val EXTRA_CATEGORY_SLUG = "categorySlug"
         private const val PREFS = "content_reminders"
         private const val KEY_IDS = "scheduled_ids"
 
         /**
-         * Flattens every category's items. Which field is shown follows the app
-         * locale: an English reader gets the translation when there is one, and
-         * the Arabic falls back in when there isn't.
+         * Flattens every category's items, keeping each item's category id
+         * alongside it (`category.id`, not `.slug` — RemembranceScreen selects
+         * by id). Which field is shown follows the app locale: an English
+         * reader gets the translation when there is one, and the Arabic falls
+         * back in when there isn't.
          */
         fun azkarSnippets(collection: AzkarCollection?, locale: String): List<ContentSnippet> =
-            collection?.categories.orEmpty().flatMap { it.items }.mapNotNull { item ->
-                preferredText(item.arabicText, item.translation, locale)
-                    ?.let { ContentSnippet(item.id, it) }
+            collection?.categories.orEmpty().flatMap { category ->
+                category.items.mapNotNull { item ->
+                    preferredText(item.arabicText, item.translation, locale)
+                        ?.let { ContentSnippet(item.id, it, categorySlug = category.id) }
+                }
             }
 
         fun hadithSnippets(
             details: List<HadithCollectionDetail>,
             locale: String,
         ): List<ContentSnippet> =
-            details.flatMap { it.entries }.mapNotNull { entry ->
-                preferredText(entry.arabicText, entry.translation, locale)
-                    ?.let { ContentSnippet(entry.id, it) }
+            details.flatMap { detail ->
+                detail.entries.mapNotNull { entry ->
+                    preferredText(entry.arabicText, entry.translation, locale)
+                        ?.let { ContentSnippet(entry.id, it, categorySlug = detail.slug) }
+                }
             }
 
         fun preferredText(arabic: String, translation: String?, locale: String): String? {

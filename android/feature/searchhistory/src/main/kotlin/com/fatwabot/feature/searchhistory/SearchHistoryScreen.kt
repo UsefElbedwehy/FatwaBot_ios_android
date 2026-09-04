@@ -178,7 +178,7 @@ private fun EntryRow(entry: SearchHistoryEntry, tokens: ColorTokens, onDelete: (
     }
 }
 
-private val dayFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+private val dayFormatter = DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM).withLocale(java.util.Locale.getDefault())
 
 private fun groupByDay(entries: List<SearchHistoryEntry>): List<Pair<String, List<SearchHistoryEntry>>> {
     val zone = ZoneId.systemDefault()

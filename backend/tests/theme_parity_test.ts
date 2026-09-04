@@ -26,7 +26,8 @@ const ROOT = new URL("../../", import.meta.url).pathname;
 
 const SEED = `${ROOT}backend/supabase/seed.sql`;
 const SWIFT = `${ROOT}ios/Packages/FatwaBotKit/Sources/DesignSystemKit/DesignTokens.swift`;
-const KOTLIN = `${ROOT}android/core/designsystem/src/main/kotlin/com/fatwabot/core/designsystem/DesignTokens.kt`;
+const KOTLIN =
+  `${ROOT}android/core/designsystem/src/main/kotlin/com/fatwabot/core/designsystem/DesignTokens.kt`;
 
 /** Maps the seed's wire keys to the clients' field names. */
 const FIELDS: ReadonlyArray<[wire: string, field: string]> = [

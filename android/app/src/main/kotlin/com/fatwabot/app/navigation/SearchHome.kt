@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,19 +23,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +37,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -64,30 +59,40 @@ import com.fatwabot.app.R
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.core.designsystem.neumorphicSurface
+import com.fatwabot.feature.fatwasearch.FatwaSearchMode
 
 /** Search-first Home (client mockup, design/homeDesign.jpeg) — parity with iOS
  * SearchHomeScreen: logo, wordmark, rosette divider, three neumorphic intent
- * cards, an embossed search field, and the manhaj tagline. Cards + search open a
- * "coming soon" dialog (M5 AI search is on hold). */
+ * cards, an embossed search field, and the manhaj tagline. Cards + search open
+ * the AI-search flow (M5) — `onOpen` pushes FatwaSearchScreen for the tapped
+ * mode; RootScaffold owns the destination state. */
 @Composable
-fun SearchHome() {
+fun SearchHome(onOpen: (FatwaSearchMode) -> Unit) {
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     val cs = MaterialTheme.colorScheme
-    var showComingSoon by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .brandScreenBackground(tokens)
             .verticalScroll(rememberScrollState())
-            .padding(22.dp),
+            // Horizontal only, matching iOS: the vertical padding pushed the
+            // whole stack ~22dp down from where iOS starts it.
+            .padding(horizontal = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(48.dp))
         Image(
             painter = painterResource(com.fatwabot.core.designsystem.R.drawable.fatwabot_logo),
             contentDescription = null,
-            modifier = Modifier.width(94.dp).height(132.dp),
+            // 124×174 to match iOS; it was 94×132, which left the mark visibly
+            // smaller and the whole stack sitting higher than iOS's.
+            modifier = Modifier.width(124.dp).height(174.dp),
+            // Tinted like iOS's FatwaMark, which renders the same raster as a
+            // template. Untinted, the raster's baked-in maroon sits on a
+            // near-black surface in dark mode and all but disappears.
+            colorFilter = ColorFilter.tint(cs.primary),
         )
         Text(
             "FATWA",
@@ -103,7 +108,11 @@ fun SearchHome() {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth().widthIn(max = 234.dp).padding(top = 34.dp, bottom = 42.dp),
+            // `widthIn` BEFORE `fillMaxWidth`: the other order makes the cap a
+            // no-op (fillMaxWidth pins min == max == parent width, and widthIn's
+            // max is then coerced back into that), so the rule spanned the whole
+            // screen instead of iOS's 234dp.
+            modifier = Modifier.widthIn(max = 234.dp).fillMaxWidth().padding(top = 34.dp, bottom = 42.dp),
         ) {
             DividerRule(pointsStart = true, color = cs.primary, modifier = Modifier.weight(1f))
             RosetteMark(size = 18.dp, color = cs.primary)
@@ -113,70 +122,76 @@ fun SearchHome() {
         // Cards read fatwa · hadith · question from the start edge (matches the
         // RTL mockup where fatwa is on the right).
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            IntentCard(R.string.home_card_fatwa, Modifier.weight(1f), { showComingSoon = true }) {
+            IntentCard(R.string.home_card_fatwa, Modifier.weight(1f), { onOpen(FatwaSearchMode.FATWA) }) {
                 // Flipped so the magnifier handle points bottom-left, matching the mockup.
                 Icon(Icons.Filled.Search, null, tint = cs.primary, modifier = Modifier.size(21.dp).graphicsLayer(scaleX = -1f))
             }
-            IntentCard(R.string.home_card_hadith, Modifier.weight(1f), { showComingSoon = true }) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = cs.primary, modifier = Modifier.size(21.dp))
+            IntentCard(R.string.home_card_hadith, Modifier.weight(1f), { onOpen(FatwaSearchMode.HADITH) }) {
+                // Filled closed book, matching iOS's `book.fill`. Was
+                // AutoMirrored.MenuBook — an *open outlined* book that also
+                // flipped horizontally in Arabic, which iOS's never does.
+                Icon(Icons.Filled.Book, null, tint = cs.primary, modifier = Modifier.size(21.dp))
             }
-            IntentCard(R.string.home_card_question, Modifier.weight(1f), { showComingSoon = true }) {
+            IntentCard(R.string.home_card_question, Modifier.weight(1f), { onOpen(FatwaSearchMode.GENERAL) }) {
                 QuestionBubbleIcon(cs.primary, 23.dp)
             }
         }
 
         Spacer(Modifier.height(30.dp))
         // Search bar — rounded rect with the maroon magnifier cap pinned to the
-        // left in both languages.
+        // RIGHT in both languages, matching iOS (which pins the row LTR for the
+        // same reason: the cap should not swap sides with the app language).
         val searchShape = RoundedCornerShape(18.dp)
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)
-                    .shadow(5.dp, searchShape)
+                    .neumorphicSurface(cornerRadius = 18.dp, isDark = isSystemInDarkTheme())
                     .clip(searchShape)
                     .background(cs.brandCardFill)
-                    .clickable { showComingSoon = true },
+                    .clickable { onOpen(FatwaSearchMode.GENERAL) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Text(
+                    stringResource(R.string.home_search_placeholder),
+                    fontSize = 15.sp,
+                    color = cs.onSurfaceVariant,
+                    modifier = Modifier.weight(1f).padding(horizontal = 18.dp),
+                )
                 Box(
                     modifier = Modifier.width(60.dp).fillMaxSize().background(cs.primary),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Filled.Search, contentDescription = null, tint = cs.onPrimary) }
-                Text(
-                    stringResource(R.string.home_search_placeholder),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 18.dp),
-                )
+                ) {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = null,
+                        tint = cs.onPrimary,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
             }
         }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 30.dp, start = 8.dp, end = 8.dp),
+            modifier = Modifier.padding(top = 30.dp, start = 12.dp, end = 12.dp),
         ) {
-            RosetteMark(size = 15.dp, color = cs.secondary)
+            // `primary` (maroon), not `secondary` (the gold accent) — iOS draws
+            // both rosettes in maroon, and the gold one was the odd mark out.
+            RosetteMark(size = 15.dp, color = cs.primary)
             Text(
                 stringResource(R.string.home_tagline),
-                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = cs.primary,
                 textAlign = TextAlign.Center,
             )
         }
-    }
-
-    if (showComingSoon) {
-        AlertDialog(
-            onDismissRequest = { showComingSoon = false },
-            confirmButton = { TextButton(onClick = { showComingSoon = false }) { Text(stringResource(R.string.common_ok)) } },
-            icon = { Icon(Icons.Filled.Star, contentDescription = null, tint = cs.primary) },
-            title = { Text(stringResource(R.string.home_coming_soon_title)) },
-            text = { Text(stringResource(R.string.home_coming_soon_body)) },
-        )
+        // iOS closes with a 40pt spacer; without it the tagline sits flush
+        // against the bottom bar's clearance.
+        Spacer(Modifier.height(40.dp))
     }
 }
 
@@ -198,20 +213,30 @@ private fun IntentCard(titleRes: Int, modifier: Modifier, onClick: () -> Unit, i
     val cs = MaterialTheme.colorScheme
     Column(
         modifier = modifier
-            .height(104.dp)
-            .shadow(4.dp, RoundedCornerShape(24.dp))
+            // `heightIn`, not a hard `height`: iOS uses a *minimum* so the card
+            // grows when a label wraps to a third line or the user is on a large
+            // font scale. Fixed at 104 it clipped instead.
+            .heightIn(min = 104.dp)
+            // Two-sided: warm drop + top-left highlight. In light mode the card
+            // fill IS the page colour, so the highlight is the only thing
+            // separating them; Material's single grey shadow left them flat.
+            .neumorphicSurface(cornerRadius = 24.dp, isDark = isSystemInDarkTheme())
             .clip(RoundedCornerShape(24.dp))
             .background(cs.brandCardFill)
             .clickable(onClick = onClick)
-            .padding(10.dp),
+            // Vertical only — the 10dp horizontal inset narrowed the text column
+            // relative to iOS.
+            .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        icon()
+        // Fixed-height icon row so all three labels share a baseline: the icons
+        // are 21/21/23dp, so without it the question card's label sat lower.
+        Box(modifier = Modifier.height(26.dp), contentAlignment = Alignment.Center) { icon() }
         Spacer(Modifier.height(12.dp))
         Text(
             stringResource(titleRes),
-            style = MaterialTheme.typography.bodySmall,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             color = cs.onSurface,
             textAlign = TextAlign.Center,
@@ -264,7 +289,10 @@ fun QuestionBubbleIcon(color: Color, size: Dp) {
 private fun DividerRule(pointsStart: Boolean, color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier.height(9.dp)) {
         val midY = size.height / 2f
-        val tip = 5f
+        // dp, not raw pixels: as a bare `5f` this was 5 *physical* px, so the
+        // arrowheads shrank to ~1.7dp on a 3x screen — effectively invisible,
+        // and a different size on every device.
+        val tip = 5f * density
         // The rule line.
         val lineStart = if (pointsStart) tip * 1.6f else 0f
         val lineEnd = if (pointsStart) size.width else size.width - tip * 1.6f

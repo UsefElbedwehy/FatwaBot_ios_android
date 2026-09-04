@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -104,13 +105,18 @@ fun StreakBadge(
             }
             // The mark sits low in the flame, where the body is widest —
             // centring it in the bounding box would push it into the taper.
-            Canvas(
+            //
+            // The real logo, not the hand-traced arch. This call site was
+            // missed by the BrandMark migration, so the streak badge showed a
+            // near-miss of the brand in exactly the place a user reads as
+            // "the app's icon" — see BrandMark's kdoc. Height-constrained so
+            // the mark keeps its aspect instead of being squashed square.
+            BrandMark(
+                color = tokens.onPrimary,
                 modifier = Modifier
-                    .size(size.flameHeight * 0.40f)
+                    .height(size.flameHeight * 0.40f)
                     .offset(y = size.flameHeight * 0.12f),
-            ) {
-                drawPath(path = mihrabArchPath(this.size), color = tokens.onPrimary)
-            }
+            )
         }
         Text(
             text = "$count",

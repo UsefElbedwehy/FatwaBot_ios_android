@@ -28,6 +28,7 @@ import androidx.glance.text.TextStyle
 import com.fatwabot.core.common.DeepLink
 import com.fatwabot.core.prayer.HijriWeek
 import com.fatwabot.core.prayer.PrayerWidgetSnapshot
+import java.time.ZoneId
 
 private val WideCell = DpSize(250.dp, 110.dp)
 
@@ -87,7 +88,7 @@ private fun Countdown(context: Context, snapshot: PrayerWidgetSnapshot?, week: H
             style = TextStyle(color = MaroonProvider, fontSize = 14.sp, fontWeight = FontWeight.Bold),
         )
         Text(
-            formatTime(next.timeEpochSeconds),
+            formatTime(next.timeEpochSeconds, snapshot?.zoneId ?: ZoneId.systemDefault()),
             style = TextStyle(color = MaroonProvider, fontSize = 20.sp, fontWeight = FontWeight.Bold),
         )
         snapshot.locationName.takeIf { it.isNotBlank() }?.let {

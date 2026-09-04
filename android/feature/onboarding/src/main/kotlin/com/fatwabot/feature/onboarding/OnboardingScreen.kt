@@ -20,6 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -69,14 +72,14 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel(), onFinishe
             OnboardingStep.WELCOME -> WelcomeStep(onContinue = viewModel::advance)
             OnboardingStep.HIGHLIGHTS -> HighlightsStep(onContinue = viewModel::advance)
             OnboardingStep.LOCATION_PRIMING -> PrimingStep(
-                icon = Icons.Filled.Schedule,
+                icon = Icons.Filled.LocationOn,
                 title = stringResource(R.string.onboarding_location_title),
                 body = stringResource(R.string.onboarding_location_body),
                 onAllow = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) },
                 onSkip = viewModel::skip,
             )
             OnboardingStep.NOTIFICATION_PRIMING -> PrimingStep(
-                icon = Icons.Filled.Book,
+                icon = Icons.Filled.Notifications,
                 title = stringResource(R.string.onboarding_notification_title),
                 body = stringResource(R.string.onboarding_notification_body),
                 onAllow = {
@@ -177,7 +180,7 @@ private fun WelcomeStep(onContinue: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        ArchIconBadge(icon = Icons.Filled.LocalFireDepartment, size = 88.dp)
+        ArchIconBadge(icon = Icons.Filled.NightsStay, width = 108.dp, height = 122.dp)
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             stringResource(R.string.onboarding_welcome_title),
@@ -230,7 +233,7 @@ private fun HighlightsStep(onContinue: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                ArchIconBadge(icon = highlight.icon, size = 72.dp)
+                ArchIconBadge(icon = highlight.icon, width = 72.dp, height = 81.dp)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     highlight.title,
@@ -260,7 +263,7 @@ private fun PrimingStep(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        ArchIconBadge(icon = icon, size = 80.dp)
+        ArchIconBadge(icon = icon, width = 92.dp, height = 104.dp)
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             title,

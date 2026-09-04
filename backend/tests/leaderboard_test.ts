@@ -326,8 +326,14 @@ Deno.test("city-scope boards rank within a city, not across all members", async 
 
 Deno.test("admin standings requires an admin token", async () => {
   const d = await deps();
-  assertEquals((await route(new Request(`${BASE}/admin/v1/leaderboards/global_weekly/standings`), d)).status, 401);
-  assertEquals((await route(new Request(`${BASE}/admin/v1/leaderboards/global_weekly/periods`), d)).status, 401);
+  assertEquals(
+    (await route(new Request(`${BASE}/admin/v1/leaderboards/global_weekly/standings`), d)).status,
+    401,
+  );
+  assertEquals(
+    (await route(new Request(`${BASE}/admin/v1/leaderboards/global_weekly/periods`), d)).status,
+    401,
+  );
 });
 
 Deno.test("admin standings 404s for a leaderboard key that doesn't exist", async () => {
@@ -337,7 +343,10 @@ Deno.test("admin standings 404s for a leaderboard key that doesn't exist", async
   ).json();
   const auth = { authorization: `Bearer ${adminLogin.access_token}` };
 
-  const res = await route(new Request(`${BASE}/admin/v1/leaderboards/no_such_board/standings`, { headers: auth }), d);
+  const res = await route(
+    new Request(`${BASE}/admin/v1/leaderboards/no_such_board/standings`, { headers: auth }),
+    d,
+  );
   assertEquals(res.status, 404);
 });
 
@@ -350,7 +359,9 @@ Deno.test("admin standings returns every member ranked, unfiltered by bucket, wi
   // A published display name, so this test also pins that the admin view
   // shows it regardless of the member's own publish_name choice.
   await route(
-    patch("/v1/me/profile", { display_name: "Jakarta Winner" }, { authorization: `Bearer ${jakarta.access_token}` }),
+    patch("/v1/me/profile", { display_name: "Jakarta Winner" }, {
+      authorization: `Bearer ${jakarta.access_token}`,
+    }),
     d,
   );
 
@@ -386,7 +397,10 @@ Deno.test("admin standings returns every member ranked, unfiltered by bucket, wi
   ).json();
   const auth = { authorization: `Bearer ${adminLogin.access_token}` };
 
-  const res = await route(new Request(`${BASE}/admin/v1/leaderboards/city_board/standings`, { headers: auth }), d);
+  const res = await route(
+    new Request(`${BASE}/admin/v1/leaderboards/city_board/standings`, { headers: auth }),
+    d,
+  );
   assertEquals(res.status, 200);
   const body = await res.json();
 
@@ -444,7 +458,9 @@ Deno.test("admin standings serves a past period as stored, without recomputing i
 
   const standings = await (
     await route(
-      new Request(`${BASE}/admin/v1/leaderboards/global_weekly/standings?period_key=lifetime`, { headers: auth }),
+      new Request(`${BASE}/admin/v1/leaderboards/global_weekly/standings?period_key=lifetime`, {
+        headers: auth,
+      }),
       d,
     )
   ).json();

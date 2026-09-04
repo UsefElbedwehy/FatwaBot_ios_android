@@ -1,5 +1,6 @@
 package com.fatwabot.app.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -33,8 +34,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,8 +49,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,11 +68,21 @@ import com.fatwabot.app.notifications.ContentReminderViewModel
 import com.fatwabot.app.notifications.WirdReminderViewModel
 import com.fatwabot.core.common.AnalyticsEvents
 import com.fatwabot.core.common.AnalyticsTracking
+import com.fatwabot.core.common.ContentFocus
 import com.fatwabot.core.common.DeepLink
+import com.fatwabot.core.designsystem.DarkTokens
+import com.fatwabot.core.designsystem.LightTokens
+import com.fatwabot.core.designsystem.brandScreenBackground
+import com.fatwabot.core.designsystem.brandScreenBackgroundEnd
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import com.fatwabot.core.network.AuthenticatedApiClientProtocol
+import com.fatwabot.feature.fatwasearch.FatwaSearchMode
+import com.fatwabot.feature.fatwasearch.FatwaSearchScreen
+import com.fatwabot.feature.fatwasearch.FatwaSearchViewModel
+import com.fatwabot.feature.fatwasearch.titleRes
 import com.fatwabot.feature.prayer.CityPicker
 import com.fatwabot.feature.prayer.PrayerViewModel
 import com.fatwabot.feature.prayer.formatTime
@@ -82,14 +94,36 @@ private interface AnalyticsEntryPoint {
     fun analytics(): AnalyticsTracking
 }
 
+/** Resolves the authenticated client for [FatwaSearchViewModel], which is a
+ * plain (non-Hilt) class — see its kdoc for why. Mirrors [AnalyticsEntryPoint]. */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+private interface FatwaSearchEntryPoint {
+    fun authenticatedClient(): AuthenticatedApiClientProtocol
+}
+
 /**
  * M1 shell: 4 tabs with Home (server-layout sections) and Worship→Prayer live;
  * feature nav-graphs replace inline composition as features multiply (ADR-0005).
  */
 @Composable
-fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {}) {
+fun RootScaffold(
+    deepLink: DeepLink? = null,
+    contentFocus: ContentFocus? = null,
+    onDeepLinkHandled: () -> Unit = {},
+) {
     var selected by rememberSaveable { mutableStateOf(AppTab.HOME) }
     var worshipDestination by rememberSaveable { mutableStateOf<WorshipDestination?>(null) }
+    // Which specific azkar/hadith item to land on — set only when the link
+    // that opened this path was a content-reminder notification. Plain
+    // `remember` (not `rememberSaveable`), mirroring iOS `worshipContentFocus`:
+    // it's re-derived from the intent on every cold start, not persisted.
+    var worshipContentFocus by remember { mutableStateOf<ContentFocus?>(null) }
+    // Home's own single-level "push" — mirrors worshipDestination above. Two
+    // fields rather than one data class so `rememberSaveable` covers each
+    // natively (enum + String), with no custom Saver to write.
+    var homeSearchMode by rememberSaveable { mutableStateOf<FatwaSearchMode?>(null) }
+    var homeSearchQuestion by rememberSaveable { mutableStateOf("") }
     val prayerViewModel: PrayerViewModel = hiltViewModel()
 
     val context = LocalContext.current
@@ -100,8 +134,8 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     }
     // One place that reports "where is the user", rather than an onAppear in
     // every screen — those drift as screens are added and quietly stop firing.
-    LaunchedEffect(selected, worshipDestination) {
-        analytics.screenView(screenKey(selected, worshipDestination))
+    LaunchedEffect(selected, worshipDestination, homeSearchMode) {
+        analytics.screenView(screenKey(selected, worshipDestination, homeSearchMode))
     }
 
     // Route a widget tap to the screen it promised, then clear it so the same
@@ -112,9 +146,11 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
         if (link == DeepLink.HOME) {
             selected = AppTab.HOME
             worshipDestination = null
+            homeSearchMode = null
         } else {
             selected = AppTab.WORSHIP
             worshipDestination = link.worshipDestination()
+            worshipContentFocus = contentFocus
         }
         onDeepLinkHandled()
     }
@@ -150,7 +186,27 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     // wants the room (the Tasbeeh tap target, the Qibla compass, a hadith being
     // read). Mirrors iOS `isShowingDetail`. Scaffold reports zero bottom padding
     // when the slot is empty, so hiding it also releases the reserved space.
-    val isShowingDetail = selected == AppTab.WORSHIP && worshipDestination != null
+    val isShowingDetail = (selected == AppTab.WORSHIP && worshipDestination != null) ||
+        (selected == AppTab.HOME && homeSearchMode != null)
+
+    // System back pops the pushed screen instead of leaving the app. Without
+    // this there was no handler at all for a pushed worship destination or the
+    // Home search flow, so Android fell through to finishing the activity —
+    // pressing back on Prayer or Qibla quit FatwaBot outright. A nested
+    // BackHandler (e.g. RemembranceScreen's session) registers later and takes
+    // priority, so this only fires once the inner levels are unwound.
+    BackHandler(enabled = isShowingDetail) {
+        if (selected == AppTab.HOME) homeSearchMode = null else worshipDestination = null
+    }
+    // The Scaffold paints the flat app background and each screen paints its
+    // own `brandScreenBackground` inside the content slot — as it always did.
+    //
+    // Do NOT hoist that gradient to a root Box: it is a *vertical* gradient
+    // (surface → primaryContainer@35%), so spanning it over the whole window
+    // instead of the content area re-maps which colour lands at which screen
+    // position. In dark mode that turned the lower screen maroon-tinted where
+    // it had been near-black. The band above the bottom bar needs a fix that
+    // doesn't touch screen backgrounds.
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -165,11 +221,17 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selected) {
-                AppTab.HOME -> SearchHome()
+                AppTab.HOME -> HomeTab(
+                    mode = homeSearchMode,
+                    initialQuestion = homeSearchQuestion,
+                    onOpen = { mode -> homeSearchMode = mode; homeSearchQuestion = "" },
+                    onBack = { homeSearchMode = null },
+                )
                 AppTab.WORSHIP -> WorshipTab(
                     prayerViewModel = prayerViewModel,
                     destination = worshipDestination,
                     onDestinationChange = { worshipDestination = it },
+                    contentFocus = worshipContentFocus,
                 )
                 AppTab.SETTINGS -> SettingsScreen(
                     prayerViewModel = prayerViewModel,
@@ -180,9 +242,38 @@ fun RootScaffold(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {})
     }
 }
 
-/** Stable, non-PII screen key for analytics. A pushed worship destination wins
- * over the tab, since that's the screen actually on top. */
-private fun screenKey(tab: AppTab, destination: WorshipDestination?): String = when {
+/** Home tab: the search-first landing screen, with a single-level "push" to
+ * the AI-search flow for the tapped mode — mirrors [WorshipTab]'s
+ * null-destination-means-menu pattern. [FatwaSearchViewModel] is a plain
+ * class (see its kdoc), so it's `remember`'d per (mode, initialQuestion)
+ * rather than obtained via `hiltViewModel()`. */
+@Composable
+private fun HomeTab(
+    mode: FatwaSearchMode?,
+    initialQuestion: String,
+    onOpen: (FatwaSearchMode) -> Unit,
+    onBack: () -> Unit,
+) {
+    if (mode == null) {
+        SearchHome(onOpen = onOpen)
+        return
+    }
+    val context = LocalContext.current
+    val client = remember {
+        EntryPointAccessors
+            .fromApplication(context.applicationContext, FatwaSearchEntryPoint::class.java)
+            .authenticatedClient()
+    }
+    val viewModel = remember(mode, initialQuestion) { FatwaSearchViewModel(client, mode, initialQuestion) }
+    WorshipDetailScaffold(title = stringResource(mode.titleRes()), onBack = onBack) {
+        FatwaSearchScreen(viewModel)
+    }
+}
+
+/** Stable, non-PII screen key for analytics. A pushed worship/home destination
+ * wins over the tab, since that's the screen actually on top. */
+private fun screenKey(tab: AppTab, destination: WorshipDestination?, searchMode: FatwaSearchMode?): String = when {
+    tab == AppTab.HOME && searchMode != null -> AnalyticsEvents.SCREEN_FATWA_SEARCH
     tab == AppTab.WORSHIP && destination != null -> when (destination) {
         WorshipDestination.PRAYER -> AnalyticsEvents.SCREEN_PRAYER
         WorshipDestination.QIBLA -> AnalyticsEvents.SCREEN_QIBLA
@@ -206,6 +297,17 @@ private fun screenKey(tab: AppTab, destination: WorshipDestination?): String = w
 private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
+    val tokens = if (isDark) DarkTokens else LightTokens
+    // What the band must blend into, which is not one colour: the tab roots
+    // don't share a background. Home and Settings paint the warm wash, so the
+    // band continues it. Worship's grid paints none and shows the flat Scaffold
+    // colour — deliberately, since iOS's worship grid is a flat `surface` fill
+    // rather than the wash — so the band has to go flat there too. Using one
+    // fixed colour left a visible seam above the bar on Worship.
+    val bandBackdrop = when (selected) {
+        AppTab.WORSHIP -> cs.background
+        else -> tokens.brandScreenBackgroundEnd
+    }
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val barHeight = 108.dp
     val homeLift = 26.dp
@@ -220,10 +322,30 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                // Continue the screen's wash under the whole band, so the only
+                // shape here is the maroon cradle. The bar slot sits outside the
+                // content area, so the screen's own `brandScreenBackground` can
+                // never reach it — without this the band fell back to the flat
+                // app background and read as a rectangle behind the cradle.
+                // BEFORE the top padding, so it covers the overhang the raised
+                // Home circle is drawn into as well.
+                .background(bandBackdrop)
                 .padding(top = overhang)
                 .height(barHeight + bottomInset)
                 .drawBehind {
                     val path = cradlePath(size, 54.dp.toPx(), 18.dp.toPx(), 22.dp.toPx())
+                    // No drop shadow. iOS does declare one on this shape
+                    // (`.shadow(color: primary.opacity(0.28), radius: 16, y: -4)`
+                    // in RootTabView), and this used to port those numbers
+                    // literally via the framework paint's shadow layer — but the
+                    // two blurs are not the same for the same figure. SwiftUI's
+                    // `radius` is about twice its Gaussian sigma; Skia's
+                    // `setShadowLayer` takes something closer to the sigma
+                    // itself, so 16 there and 16 here are different shadows.
+                    // Against the light cream the Android one was a visible haze
+                    // — measurably ~43px of gradient above the curve — where the
+                    // iOS one reads as nothing. The client's ask is the clean
+                    // shape, so draw the clean shape.
                     drawPath(path, cs.primary)
                     // `primary` is lifted in the dark palette so it can serve as a
                     // foreground on the near-black surface. At the size of this band
@@ -240,7 +362,7 @@ private fun FatwaBottomBar(selected: AppTab, onSelect: (AppTab) -> Unit) {
                     .height(barHeight)
                     .align(Alignment.TopCenter)
                     .offset(y = 6.dp)
-                    .padding(horizontal = 40.dp),
+                    .padding(horizontal = 44.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -285,14 +407,19 @@ private fun cradlePath(size: Size, shoulderHalf: Float, valleyDip: Float, edgeDr
 private fun SideItem(tab: AppTab, icon: ImageVector, selected: AppTab, cs: androidx.compose.material3.ColorScheme, onClick: () -> Unit) {
     val active = tab == selected
     Box(
-        modifier = Modifier.size(54.dp).clickable(onClick = onClick),
+        // 60dp to match iOS's tap frame, and clipped to a circle so the ripple
+        // is a disc rather than a rectangle stamped onto the maroon band (iOS
+        // uses `.buttonStyle(.plain)` — no press chrome at all).
+        modifier = Modifier.size(60.dp).clip(CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             icon,
             contentDescription = stringResource(tab.titleRes),
             tint = cs.onPrimary.copy(alpha = if (active) 1f else 0.78f),
-            modifier = Modifier.size(24.dp),
+            // 28dp, not 24: Material pads its glyphs inside the 24dp box, so at
+            // 24 they read noticeably lighter than iOS's semibold SF Symbols.
+            modifier = Modifier.size(28.dp),
         )
     }
 }
@@ -307,6 +434,9 @@ private fun HomeCircle(
     Column(
         modifier = modifier
             .size(92.dp)
+            // Before the clip, so the shadow falls outside the disc rather than
+            // being clipped away — matches iOS's `.shadow(radius: 9, y: 3)`.
+            .shadow(9.dp, CircleShape)
             .clip(CircleShape)
             // In dark, `surface` is near-black — the same value as the page behind
             // the band, so the disc read as a hole punched through it rather than a
@@ -321,10 +451,14 @@ private fun HomeCircle(
             painter = painterResource(com.fatwabot.core.designsystem.R.drawable.fatwabot_logo),
             contentDescription = null,
             modifier = Modifier.width(30.dp).height(40.dp),
+            // Tinted like iOS's FatwaMark — the raw raster's baked-in colour is
+            // not a brand token and reads poorly inside the cream disc.
+            colorFilter = ColorFilter.tint(cs.primary),
         )
         Text(
             stringResource(AppTab.HOME.titleRes),
             style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
             color = cs.primary,
             modifier = Modifier.padding(top = 1.dp),
         )

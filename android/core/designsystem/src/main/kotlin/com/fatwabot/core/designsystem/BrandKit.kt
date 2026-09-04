@@ -30,12 +30,17 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * Premium, token-driven Compose building blocks — the Android mirror of iOS
@@ -79,6 +84,84 @@ fun Modifier.brandScreenBackground(tokens: ColorTokens): Modifier =
             )
         }
 
+/**
+ * The exact colour [brandScreenBackground]'s vertical gradient ends on —
+ * `primaryContainer @ 35%` composited over `surface`.
+ *
+ * Needed because the bottom-bar band lives OUTSIDE the content area, so no
+ * screen's own background can reach it: the wash stopped at the last content
+ * pixel and the band below it fell back to the flat app background, drawing a
+ * rectangle around the maroon cradle. Painting that band this colour continues
+ * the wash exactly where it left off, so only the cradle reads as a shape.
+ *
+ * iOS gets this for free — `BrandScreenBackground` applies `.ignoresSafeArea()`
+ * to the *background* while the content stays inset, so the gradient bleeds
+ * under the bar. Compose has no equivalent, and hoisting the gradient to the
+ * window instead is what regressed dark mode previously: the screens kept
+ * painting their own, so `primaryContainer @ 35%` composited over itself and
+ * the lower half of every dark screen turned maroon.
+ */
+val ColorTokens.brandScreenBackgroundEnd: Color
+    get() = primaryContainer.copy(alpha = 0.35f).compositeOver(surface)
+
+// MARK: Shadows
+
+/**
+ * A blurred, tinted, offset drop shadow behind a rounded rect.
+ *
+ * Compose's `Modifier.shadow` renders Material's ambient/spot shadow: fixed
+ * alpha, no colour control, and effectively invisible drawn as black on the
+ * dark theme's `#000000` surface. iOS's shadows are all tinted and offset, so
+ * they need the framework paint's `setShadowLayer` — the same technique the
+ * nav cradle already uses.
+ */
+fun Modifier.brandShadow(
+    color: Color,
+    radius: Dp,
+    dy: Dp,
+    cornerRadius: Dp,
+    dx: Dp = 0.dp,
+): Modifier = this.drawBehind {
+    drawIntoCanvas { canvas ->
+        val paint = androidx.compose.ui.graphics.Paint()
+        paint.asFrameworkPaint().apply {
+            this.color = android.graphics.Color.TRANSPARENT
+            setShadowLayer(radius.toPx(), dx.toPx(), dy.toPx(), color.toArgb())
+        }
+        canvas.drawRoundRect(
+            0f,
+            0f,
+            size.width,
+            size.height,
+            cornerRadius.toPx(),
+            cornerRadius.toPx(),
+            paint,
+        )
+    }
+}
+
+/**
+ * The two-sided neumorphic surface from the home mockup: a warm drop shadow
+ * plus a light highlight up and to the left. The highlight is what separates a
+ * cream card from the cream page behind it — without it the home cards read as
+ * flat rectangles of identical colour.
+ */
+fun Modifier.neumorphicSurface(cornerRadius: Dp, isDark: Boolean): Modifier = this
+    .brandShadow(
+        color = Color.White.copy(alpha = if (isDark) 0.05f else 0.7f),
+        radius = 6.dp,
+        dx = (-4).dp,
+        dy = (-4).dp,
+        cornerRadius = cornerRadius,
+    )
+    .brandShadow(
+        color = Color.Black.copy(alpha = if (isDark) 0.35f else 0.05f),
+        radius = 9.dp,
+        dx = 3.dp,
+        dy = 5.dp,
+        cornerRadius = cornerRadius,
+    )
+
 // MARK: Card
 
 /**
@@ -98,7 +181,17 @@ fun BrandCard(
         color = tokens.surfaceElevated,
         modifier = modifier
             .fillMaxWidth()
-            .shadow(elevation = 6.dp, shape = RoundedCornerShape(cornerRadius.dp), clip = false)
+            // A maroon-tinted blur (r12, y6), matching iOS's
+            // `.shadow(primary.opacity(0.06), radius: 12, y: 6)`. Compose's
+            // `Modifier.shadow` draws a black/grey Material shadow whose alpha
+            // can't be set — on the near-black dark surface it was invisible,
+            // so cards had no depth cue at all.
+            .brandShadow(
+                color = tokens.primary.copy(alpha = 0.06f),
+                radius = 12.dp,
+                dy = 6.dp,
+                cornerRadius = cornerRadius.dp,
+            )
             .border(1.dp, tokens.outline.copy(alpha = 0.6f), RoundedCornerShape(cornerRadius.dp)),
     ) {
         Box(modifier = Modifier.padding(contentPadding)) { content() }
@@ -136,7 +229,9 @@ fun BrandSectionHeader(
         }
         Text(
             title,
-            style = MaterialTheme.typography.titleMedium,
+            // 20sp, matching iOS's `.title3.bold`. The M3 `titleMedium` default
+            // is 16sp, so every section header in the app ran 4sp small.
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = tokens.onSurface,
         )
@@ -197,15 +292,21 @@ fun RingProgress(
             size = arcSize,
             style = Stroke(width = stroke, cap = StrokeCap.Round),
         )
+        // Rotated as a whole so the sweep gradient turns WITH the arc. Drawing
+        // the arc from -90° while the gradient stayed anchored at 3 o'clock
+        // put the gold band 90° out of phase with iOS, which rotates the
+        // stroked shape itself.
+        rotate(degrees = -90f) {
         drawArc(
             brush = Brush.sweepGradient(listOf(tokens.primary, tokens.accent, tokens.primary)),
-            startAngle = -90f,
+            startAngle = 0f,
             sweepAngle = 360f * clamped,
             useCenter = false,
             topLeft = Offset(inset, inset),
             size = arcSize,
             style = Stroke(width = stroke, cap = StrokeCap.Round),
         )
+        }
     }
 }
 
@@ -256,7 +357,7 @@ fun BrandEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        ArchIconBadge(icon = icon, size = 74.dp, tokens = tokens)
+        ArchIconBadge(icon = icon, width = 74.dp, height = 84.dp, tokens = tokens)
         Text(
             message,
             style = MaterialTheme.typography.bodyMedium,

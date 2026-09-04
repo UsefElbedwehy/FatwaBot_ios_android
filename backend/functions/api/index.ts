@@ -19,8 +19,10 @@ import { SupabaseLeaderboardRepo } from "./supabase_leaderboard_repo.ts";
 import { SupabaseSearchHistoryRepo } from "./supabase_search_repo.ts";
 import { SupabaseDeliveryLogRepo, SupabaseNotificationPrefsRepo } from "./supabase_notification_repo.ts";
 import { FcmSender, parseServiceAccount } from "./fcm_sender.ts";
-import { SupabaseFatwaSearchRepo } from "./supabase_fatwa_repo.ts";
+import { SupabaseEmbeddingCacheRepo, SupabaseFatwaSearchRepo } from "./supabase_fatwa_repo.ts";
 import { ClaudeAnswerProvider, VoyageEmbeddingProvider } from "./ai_search/providers.ts";
+import { CachingEmbeddingProvider } from "./ai_search/embedding_cache.ts";
+import { PRIMARY_APP_ID } from "./context.ts";
 
 const client = supabaseClientFromEnv();
 const jwtSecret = Deno.env.get("API_JWT_SECRET");
@@ -38,7 +40,16 @@ const pushSender = fcmServiceAccount ? new FcmSender(parseServiceAccount(fcmServ
 // production.
 const voyageApiKey = Deno.env.get("VOYAGE_API_KEY");
 const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
-const embeddingProvider = voyageApiKey ? new VoyageEmbeddingProvider(voyageApiKey) : undefined;
+// Read-through cached, so a question already asked never reaches Voyage. The
+// key is on a free tier whose rate limit costs ~56s on a throttled call, and
+// devotional questions repeat heavily across users — see 0044.
+const embeddingProvider = voyageApiKey
+  ? new CachingEmbeddingProvider(
+    new VoyageEmbeddingProvider(voyageApiKey),
+    new SupabaseEmbeddingCacheRepo(client),
+    PRIMARY_APP_ID,
+  )
+  : undefined;
 const answerProvider = anthropicApiKey ? new ClaudeAnswerProvider(anthropicApiKey) : undefined;
 
 const deps = {

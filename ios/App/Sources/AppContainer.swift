@@ -5,6 +5,7 @@ import ContentKit
 import CoreKit
 import DuaFeature
 import Factory
+import FatwaSearchFeature
 import Foundation
 import GamificationFeature
 import HadithFeature
@@ -373,6 +374,16 @@ extension Container {
     @MainActor
     var searchHistoryViewModel: Factory<SearchHistoryViewModel> {
         self { @MainActor in SearchHistoryViewModel(client: self.authenticatedClient(), haptics: SystemHaptics()) }
+    }
+
+    /// A fresh ViewModel per ask — pushed anew for every `FatwaSearchScreen`
+    /// navigation, never persisted across it (unlike the singleton ViewModels
+    /// above), so a `ParameterFactory` rather than `Factory` fits here.
+    @MainActor
+    var fatwaSearchViewModel: ParameterFactory<(mode: FatwaSearchMode, initialQuestion: String), FatwaSearchViewModel> {
+        self { @MainActor params in
+            FatwaSearchViewModel(mode: params.mode, client: self.authenticatedClient(), initialQuestion: params.initialQuestion)
+        }
     }
 }
 
