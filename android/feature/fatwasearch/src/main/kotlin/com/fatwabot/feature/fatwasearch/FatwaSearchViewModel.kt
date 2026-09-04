@@ -81,6 +81,10 @@ class FatwaSearchViewModel(
                 val phase = if (error is ApiException.Server && error.statusCode == 503 && error.code == "ai_unavailable") {
                     Phase.Unavailable
                 } else {
+                    // The detail is for logs, not for the screen — the UI shows a
+                    // localized message. `error.toString()` was being rendered
+                    // verbatim, so a network timeout surfaced to the user as
+                    // "Transport(detail=timeout)".
                     Phase.Error(error.toString())
                 }
                 _state.update { it.copy(phase = phase) }

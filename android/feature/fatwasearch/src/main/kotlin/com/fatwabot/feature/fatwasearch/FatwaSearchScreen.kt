@@ -99,7 +99,10 @@ fun FatwaSearchScreen(viewModel: FatwaSearchViewModel) {
             is FatwaSearchViewModel.Phase.Loading -> DhikrLoadingView(tokens)
             is FatwaSearchViewModel.Phase.Unavailable -> UnavailableCard(tokens)
             is FatwaSearchViewModel.Phase.Error -> ErrorCard(
-                message = phase.message,
+                // Deliberately not `phase.message`: that is the exception's own
+                // text, which reached users as "Transport(detail=timeout)". It
+                // stays on the phase for logging and is never shown.
+                message = stringResource(R.string.fatwa_search_error_generic),
                 onRetry = { scope.launch { viewModel.submit() } },
                 tokens = tokens,
             )

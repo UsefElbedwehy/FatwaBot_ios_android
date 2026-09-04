@@ -8,7 +8,7 @@
     <string name="fatwa_search_placeholder_hadith">اكتب نص الحديث أو صفه...</string>
     <string name="fatwa_search_placeholder_general">اكتب سؤالك الديني...</string>
 
-    <string name="fatwa_search_hint_fatwa">سنبحث لك عن فتوى موثقة من فتاوى ابن عثيمين رحمه الله.</string>
+    <string name="fatwa_search_hint_fatwa">سنبحث لك عن فتوى موثقة من مصادرنا المعتمدة.</string>
     <string name="fatwa_search_hint_hadith">اكتب نص الحديث كما تتذكره، وسنستخرج لفظه الصحيح ودرجته ومصدره.</string>
     <string name="fatwa_search_hint_general">اسأل سؤالاً دينياً عاماً وسنجيبك بإجابة موثقة بالمصادر.</string>
 

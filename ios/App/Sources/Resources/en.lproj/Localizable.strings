@@ -239,7 +239,7 @@
 "fatwa_search.placeholder.fatwa" = "Ask your fatwa question…";
 "fatwa_search.placeholder.hadith" = "Type the hadith as you remember it…";
 "fatwa_search.placeholder.general" = "Ask a religious question…";
-"fatwa_search.hint.fatwa" = "We'll search for a documented fatwa from Ibn Uthaymeen's rulings.";
+"fatwa_search.hint.fatwa" = "We'll search our vetted sources for a documented fatwa.";
 "fatwa_search.hint.hadith" = "Type the hadith as you remember it, and we'll surface its authentic wording, grading, and source.";
 "fatwa_search.hint.general" = "Ask a general religious question and we'll answer with sourced evidence.";
 "fatwa_search.submit" = "Search";

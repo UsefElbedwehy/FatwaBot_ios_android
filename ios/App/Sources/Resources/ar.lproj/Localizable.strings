@@ -241,7 +241,7 @@
 "fatwa_search.placeholder.fatwa" = "اكتب سؤالك عن الفتوى...";
 "fatwa_search.placeholder.hadith" = "اكتب نص الحديث أو صفه...";
 "fatwa_search.placeholder.general" = "اكتب سؤالك الديني...";
-"fatwa_search.hint.fatwa" = "سنبحث لك عن فتوى موثقة من فتاوى ابن عثيمين رحمه الله.";
+"fatwa_search.hint.fatwa" = "سنبحث لك عن فتوى موثقة من مصادرنا المعتمدة.";
 "fatwa_search.hint.hadith" = "اكتب نص الحديث كما تتذكره، وسنستخرج لفظه الصحيح ودرجته ومصدره.";
 "fatwa_search.hint.general" = "اسأل سؤالاً دينياً عاماً وسنجيبك بإجابة موثقة بالمصادر.";
 "fatwa_search.submit" = "بحث";

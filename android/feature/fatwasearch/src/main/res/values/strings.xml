@@ -9,7 +9,7 @@
     <string name="fatwa_search_placeholder_hadith">Type the hadith as you remember it…</string>
     <string name="fatwa_search_placeholder_general">Ask a religious question…</string>
 
-    <string name="fatwa_search_hint_fatwa">We\'ll search for a documented fatwa from Ibn Uthaymeen\'s rulings.</string>
+    <string name="fatwa_search_hint_fatwa">We\'ll search our vetted sources for a documented fatwa.</string>
     <string name="fatwa_search_hint_hadith">Type the hadith as you remember it, and we\'ll surface its authentic wording, grading, and source.</string>
     <string name="fatwa_search_hint_general">Ask a general religious question and we\'ll answer with sourced evidence.</string>
 

@@ -44,7 +44,7 @@ interface ApiClientProtocol {
 class ApiClient(
     private val baseUrl: String,
     private val context: ClientContext,
-    private val http: OkHttpClient = OkHttpClient(),
+    private val http: OkHttpClient = defaultHttpClient(),
 ) : ApiClientProtocol {
 
     override suspend fun getRaw(path: String, query: Map<String, String>): String =

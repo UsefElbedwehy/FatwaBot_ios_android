@@ -27,7 +27,7 @@ class AuthenticatedApiClient(
     private val baseUrl: String,
     private val context: ClientContext,
     private val tokens: AuthTokenProviding,
-    private val http: OkHttpClient = OkHttpClient(),
+    private val http: OkHttpClient = defaultHttpClient(),
 ) : AuthenticatedApiClientProtocol {
 
     override suspend fun getRaw(path: String, query: Map<String, String>): String =
