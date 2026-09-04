@@ -49,6 +49,7 @@ import com.fatwabot.core.designsystem.BrandEmptyState
 import com.fatwabot.core.designsystem.BrandMark
 import com.fatwabot.core.designsystem.BrandSectionHeader
 import com.fatwabot.core.designsystem.ColorTokens
+import com.fatwabot.core.designsystem.MarkdownText
 import com.fatwabot.core.designsystem.DarkTokens
 import com.fatwabot.core.designsystem.LightTokens
 import com.fatwabot.core.designsystem.brandScreenBackground
@@ -210,11 +211,11 @@ private fun ResultView(response: SearchResponse, onAskAgain: () -> Unit, tokens:
             tokens = tokens,
         )
         BrandCard(tokens = tokens) {
-            Text(
-                response.answer,
-                style = MaterialTheme.typography.bodyLarge,
-                color = tokens.onSurface,
-                textAlign = TextAlign.End,
+            // The model answers in Markdown — bold headings, bullet lists. As a
+            // plain Text those arrived on screen as literal `**...**`.
+            MarkdownText(
+                markdown = response.answer,
+                tokens = tokens,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
