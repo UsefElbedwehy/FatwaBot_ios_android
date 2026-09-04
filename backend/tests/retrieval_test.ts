@@ -18,6 +18,8 @@ function retrieved(chunkId: string, score: number, over: Partial<RetrievedChunk>
     videoTimestamp: null,
     sourceTitle: "كتاب",
     sourceCategory: null,
+    sourceKind: "book",
+    sourceUrl: null,
     scholarName: { ar: "عالم" },
     score,
     ...over,
@@ -35,6 +37,8 @@ function seed(over: Partial<SeedChunk>): SeedChunk {
     videoTimestamp: null,
     sourceTitle: "كتاب",
     sourceCategory: null,
+    sourceKind: "book",
+    sourceUrl: null,
     scholarName: { ar: "عالم" },
     embedding: [0, 0, 0],
     ...over,
@@ -99,51 +103,41 @@ Deno.test("hybridRetrieve only ever returns license-granted, active chunks", asy
     }),
   ]);
 
-  const results = await hybridRetrieve(CTX, repo, embedder, "ما حكم الصلاة", "general");
+  const results = await hybridRetrieve(CTX, repo, embedder, "ما حكم الصلاة");
   const ids = results.map((r) => r.chunkId);
   assert(ids.includes("granted"));
   assert(!ids.includes("not-granted"), "a pending/ungranted source must never be retrievable");
   assert(!ids.includes("inactive-source"), "an inactive source must never be retrievable");
 });
 
-Deno.test("only mode 'hadith' adds trigram search to the fusion", async () => {
+Deno.test("retrieval issues exactly two searches — the trigram leg is retired", async () => {
   const repo = new InMemoryFatwaSearchRepo();
   const embedder = new DevStubEmbeddingProvider(16);
-  // Deliberately dissimilar embedding, and every word carries different
-  // tashkeel than the query so the (exact-string) FTS approximation scores
-  // it 0 — but the underlying letters are unchanged, so char-trigram
-  // similarity stays high. This is exactly mode 2's use case: a hadith
-  // recalled with slightly different wording/vowelling than the source.
   const query = "الحديث بلفظ مقارب لما يحفظه السائل تقريبا";
-  const trigramOnlyText = "الحديثِ بلفظٍ مقاربٍ لَما يحفظهُ السائلُ تقريباً";
 
+  // Asserts on which legs ran rather than on which chunks came back: the point
+  // is that there is no third round-trip, not what it would have returned.
+  const calls: string[] = [];
   const [q] = await embedder.embed([query]);
-  repo.seed([
-    // Occupies vector search's only slot below, so the trigram-only chunk
-    // can't slip in through vector search just because it's the only other
-    // chunk in the (small, unrealistic) test corpus — vectorSearch has no
-    // similarity floor and always returns its top-K, exactly like real
-    // pgvector's `ORDER BY distance LIMIT N`.
-    seed({ chunkId: "vector-decoy", text: "نص لا علاقة له بالسؤال إطلاقاً", embedding: q }),
-    seed({
-      chunkId: "trigram-only",
-      text: trigramOnlyText,
-      embedding: new Array(16).fill(-1), // maximally dissimilar to any real query embedding
-    }),
-  ]);
+  repo.seed([seed({ chunkId: "only", text: query, embedding: q })]);
+  const vector = repo.vectorSearch.bind(repo);
+  const fts = repo.ftsSearch.bind(repo);
+  repo.vectorSearch = (...args) => {
+    calls.push("vector");
+    return vector(...args);
+  };
+  repo.ftsSearch = (...args) => {
+    calls.push("fts");
+    return fts(...args);
+  };
 
-  const searchOpts = { vectorTopK: 1, ftsTopK: 1 };
-  const hadithResults = await hybridRetrieve(CTX, repo, embedder, query, "hadith", searchOpts);
-  const generalResults = await hybridRetrieve(CTX, repo, embedder, query, "general", searchOpts);
+  await hybridRetrieve(CTX, repo, embedder, query);
 
-  assert(
-    hadithResults.some((r) => r.chunkId === "trigram-only"),
-    "mode 'hadith' should surface a trigram-only match",
-  );
-  assert(
-    !generalResults.some((r) => r.chunkId === "trigram-only"),
-    "mode 'general' must not run trigram search, so this chunk should be unreachable",
-  );
+  // Retired in the database on 2026-09-04: whole-chunk trigram similarity had
+  // to scan every chunk (30-60s) and its 70 MB index was dropped, so calling
+  // it would be a guaranteed empty round-trip. Arabic recall is carried by
+  // `fatwa.normalize_ar` inside FTS instead (0047).
+  assertEquals(calls, ["vector", "fts"]);
 });
 
 Deno.test("hybridRetrieve truncates to finalTopN after fusion", async () => {
@@ -160,6 +154,6 @@ Deno.test("hybridRetrieve truncates to finalTopN after fusion", async () => {
       })),
   );
 
-  const results = await hybridRetrieve(CTX, repo, embedder, "سؤال", "general", { finalTopN: 3 });
+  const results = await hybridRetrieve(CTX, repo, embedder, "سؤال", { finalTopN: 3 });
   assertEquals(results.length, 3);
 });

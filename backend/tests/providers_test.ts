@@ -18,6 +18,8 @@ function chunk(over: Partial<RetrievedChunk> = {}): RetrievedChunk {
     videoTimestamp: null,
     sourceTitle: "فتاوى أركان الإسلام",
     sourceCategory: "الفتاوى واللقاءات",
+    sourceKind: "book",
+    sourceUrl: null,
     scholarName: { ar: "ابن عثيمين", en: "Ibn Uthaymeen" },
     score: 0.9,
     ...over,

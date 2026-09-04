@@ -117,7 +117,7 @@ export async function handleSearch(
   let answerMs = 0;
   let chunks;
   try {
-    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode, {}, timings);
+    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, {}, timings);
   } catch (err) {
     console.error("search_retrieval_failed", err instanceof Error ? err.stack ?? err.message : err);
     const stage = err instanceof RetrievalError ? err.stage : "unknown";

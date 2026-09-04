@@ -4,8 +4,8 @@ import type { AnswerLogInput, FatwaSearchRepo, RetrievedChunk } from "./fatwa_ty
 import type { EmbeddingCacheRepo } from "./ai_search/embedding_cache.ts";
 import type { AnswerCacheRepo } from "./ai_search/answer_cache.ts";
 
-/** Snake-case row shape shared by all three of fatwa.search_vector /
- *  fatwa.search_fts / fatwa.search_trigram (0042_fatwa_schema.sql) — each
+/** Snake-case row shape shared by fatwa.search_vector /
+ *  fatwa.search_fts (0042, columns extended in 0048) — each
  *  already enforces license_status='granted' + active in SQL. */
 interface SearchRow {
   chunk_id: string;
@@ -17,6 +17,8 @@ interface SearchRow {
   video_timestamp: number | null;
   source_title: string;
   source_category: string | null;
+  source_kind: string;
+  source_url: string | null;
   scholar_name: Record<string, string>;
   score: number;
 }
@@ -32,6 +34,8 @@ function toRetrievedChunk(row: SearchRow): RetrievedChunk {
     videoTimestamp: row.video_timestamp,
     sourceTitle: row.source_title,
     sourceCategory: row.source_category,
+    sourceKind: row.source_kind,
+    sourceUrl: row.source_url,
     scholarName: row.scholar_name,
     score: row.score,
   };
@@ -55,22 +59,6 @@ export class SupabaseFatwaSearchRepo implements FatwaSearchRepo {
       p_app_id: ctx.appId,
       p_query: query,
       p_match_count: matchCount,
-    });
-    if (error) throw error;
-    return ((data ?? []) as SearchRow[]).map(toRetrievedChunk);
-  }
-
-  async trigramSearch(
-    ctx: AppContext,
-    query: string,
-    matchCount: number,
-    minSimilarity?: number,
-  ): Promise<RetrievedChunk[]> {
-    const { data, error } = await this.db.schema("fatwa").rpc("search_trigram", {
-      p_app_id: ctx.appId,
-      p_query: query,
-      p_match_count: matchCount,
-      ...(minSimilarity !== undefined ? { p_min_similarity: minSimilarity } : {}),
     });
     if (error) throw error;
     return ((data ?? []) as SearchRow[]).map(toRetrievedChunk);

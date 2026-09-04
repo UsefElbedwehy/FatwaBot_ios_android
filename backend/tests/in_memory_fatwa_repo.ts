@@ -11,6 +11,8 @@ export interface SeedChunk {
   videoTimestamp: number | null;
   sourceTitle: string;
   sourceCategory: string | null;
+  sourceKind?: string;
+  sourceUrl?: string | null;
   scholarName: Record<string, string>;
   embedding: number[];
   /** Defaults to true — set false to exercise the license/active filter. */
@@ -45,25 +47,6 @@ function ftsScore(query: string, text: string): number {
   return hits / queryWords.size;
 }
 
-function trigrams(text: string): Set<string> {
-  const padded = `  ${text}  `;
-  const grams = new Set<string>();
-  for (let i = 0; i < padded.length - 2; i++) grams.add(padded.slice(i, i + 3));
-  return grams;
-}
-
-/** Jaccard similarity over character trigrams — approximates pg_trgm's
- *  `similarity()` closely enough for RRF-fusion and threshold tests. */
-function trigramScore(query: string, text: string): number {
-  const a = trigrams(query);
-  const b = trigrams(text);
-  if (a.size === 0 || b.size === 0) return 0;
-  let intersection = 0;
-  for (const g of a) if (b.has(g)) intersection++;
-  const union = a.size + b.size - intersection;
-  return union === 0 ? 0 : intersection / union;
-}
-
 function toRetrievedChunk(seed: SeedChunk, score: number): RetrievedChunk {
   return {
     chunkId: seed.chunkId,
@@ -75,6 +58,10 @@ function toRetrievedChunk(seed: SeedChunk, score: number): RetrievedChunk {
     videoTimestamp: seed.videoTimestamp,
     sourceTitle: seed.sourceTitle,
     sourceCategory: seed.sourceCategory,
+    // Defaults match the corpus as it stands: every source is a book with no
+    // canonical url. A seed can override to exercise video/website badges.
+    sourceKind: seed.sourceKind ?? "book",
+    sourceUrl: seed.sourceUrl ?? null,
     scholarName: seed.scholarName,
     score,
   };
@@ -106,20 +93,6 @@ export class InMemoryFatwaSearchRepo implements FatwaSearchRepo {
     const ranked = this.eligible()
       .map((c) => ({ c, score: ftsScore(query, c.text) }))
       .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, matchCount);
-    return Promise.resolve(ranked.map(({ c, score }) => toRetrievedChunk(c, score)));
-  }
-
-  trigramSearch(
-    _ctx: AppContext,
-    query: string,
-    matchCount: number,
-    minSimilarity = 0.15,
-  ): Promise<RetrievedChunk[]> {
-    const ranked = this.eligible()
-      .map((c) => ({ c, score: trigramScore(query, c.text) }))
-      .filter((r) => r.score >= minSimilarity)
       .sort((a, b) => b.score - a.score)
       .slice(0, matchCount);
     return Promise.resolve(ranked.map(({ c, score }) => toRetrievedChunk(c, score)));

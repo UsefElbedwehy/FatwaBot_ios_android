@@ -341,10 +341,10 @@ Deno.test("POST /v1/search reports retrieval_failed when the SQL search stage th
   };
   // Every search has to fail for retrieval to be fatal — see the degraded-mode
   // test below.
+  // Both legs — there is no third since the trigram leg was retired (0047).
   const dead = () => Promise.reject(new Error("function fatwa.search_vector does not exist"));
   d.fatwaSearch.vectorSearch = dead;
   d.fatwaSearch.ftsSearch = dead;
-  d.fatwaSearch.trigramSearch = dead;
   const user = await signIn(d);
   const auth = { authorization: `Bearer ${user.access_token}` };
   const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
