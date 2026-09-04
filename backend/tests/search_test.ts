@@ -414,3 +414,128 @@ Deno.test("POST /v1/search still answers when only one of the three searches fai
   assertEquals(body.refused, false);
   assertEquals(body.citations.length, 1);
 });
+
+// --- Whole-answer cache (0046) -------------------------------------------
+
+/** Keyed exactly as the Postgres table is, so a test that passes here is
+ *  testing the same key the production repo uses. */
+class FakeAnswerCache {
+  readonly store = new Map<string, unknown>();
+  generation = 1;
+  private readonly generationAtWrite = new Map<string, number>();
+  failReads = false;
+
+  private key(ctx: { appId: string }, hash: string, mode: string, model: string) {
+    return [ctx.appId, hash, mode, model].join("|");
+  }
+
+  get(ctx: { appId: string }, hash: string, mode: string, model: string): Promise<unknown | null> {
+    if (this.failReads) return Promise.reject(new Error("cache down"));
+    const k = this.key(ctx, hash, mode, model);
+    if (this.generationAtWrite.get(k) !== this.generation) return Promise.resolve(null);
+    return Promise.resolve(this.store.get(k) ?? null);
+  }
+
+  put(ctx: { appId: string }, hash: string, mode: string, model: string, response: unknown): Promise<void> {
+    const k = this.key(ctx, hash, mode, model);
+    this.store.set(k, response);
+    this.generationAtWrite.set(k, this.generation);
+    return Promise.resolve();
+  }
+}
+
+function cachingDeps() {
+  const answerCache = new FakeAnswerCache();
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+    answerCache,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  return { d, answerCache };
+}
+
+Deno.test("a repeated question is served from cache without re-running the pipeline", async () => {
+  const { d } = cachingDeps();
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const ask = () =>
+    route(post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth), d);
+
+  const first = await ask();
+  const firstBody = await first.json();
+  const second = await ask();
+
+  assertEquals(second.status, 200);
+  assertEquals(await second.json(), firstBody, "a hit must be byte-identical to the miss");
+  // The expensive stages ran exactly once.
+  assertEquals(d.fatwaSearch.loggedAnswers.length, 1);
+  assertEquals(second.headers.get("server-timing"), "cache;dur=0");
+});
+
+Deno.test("a cache hit still records the ask in search history", async () => {
+  const { d } = cachingDeps();
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const ask = () => route(post("/v1/search", { question: "سؤال متكرر", mode: "fatwa" }, auth), d);
+
+  await ask();
+  await ask();
+
+  // Two asks, two history rows — a user's history should not have holes in it
+  // exactly where they repeated themselves.
+  const history = await d.searchHistory.list(
+    { appId: "app", platform: "all", appVersion: null, locale: "ar" },
+    user.user_id,
+    null,
+    10,
+    null,
+  );
+  assertEquals(history.length, 2);
+});
+
+Deno.test("the same question in another mode is a different cache entry", async () => {
+  const { d } = cachingDeps();
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  await route(post("/v1/search", { question: "س", mode: "fatwa" }, auth), d);
+  await route(post("/v1/search", { question: "س", mode: "hadith" }, auth), d);
+
+  // A different mode is a different prompt, so it must not reuse the answer.
+  assertEquals(d.fatwaSearch.loggedAnswers.length, 2);
+});
+
+Deno.test("ingesting more corpus invalidates cached answers", async () => {
+  const { d, answerCache } = cachingDeps();
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const ask = () => route(post("/v1/search", { question: "س", mode: "fatwa" }, auth), d);
+
+  await ask();
+  await ask();
+  assertEquals(d.fatwaSearch.loggedAnswers.length, 1);
+
+  // The ingester bumps the generation. A question refused against the old
+  // corpus must be re-asked against the new one rather than serving the
+  // refusal forever.
+  answerCache.generation = 2;
+  await ask();
+  assertEquals(d.fatwaSearch.loggedAnswers.length, 2);
+});
+
+Deno.test("a broken answer cache degrades to slow, never to broken", async () => {
+  const { d, answerCache } = cachingDeps();
+  answerCache.failReads = true;
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).citations.length, 1);
+});

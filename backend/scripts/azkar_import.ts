@@ -128,7 +128,9 @@ end $$;`;
   });
 
   const total = dataset.categories.reduce((n, c) => n + c.items.length, 0);
-  return generatedHeader(`Azkar: ${dataset.categories.length} categories, ${total} items, published=${published}`) +
+  return generatedHeader(
+    `Azkar: ${dataset.categories.length} categories, ${total} items, published=${published}`,
+  ) +
     "\n" + blocks.join("\n\n") + "\n";
 }
 
@@ -193,8 +195,18 @@ export function fromSeenArabic(ar: SeenArabicItem[], en: SeenArabicItem[]): Azka
 
   return {
     categories: [
-      { slug: "morning", name: { ar: "أذكار الصباح", en: "Morning Adhkar" }, sortOrder: 0, items: build([0, 1]) },
-      { slug: "evening", name: { ar: "أذكار المساء", en: "Evening Adhkar" }, sortOrder: 1, items: build([0, 2]) },
+      {
+        slug: "morning",
+        name: { ar: "أذكار الصباح", en: "Morning Adhkar" },
+        sortOrder: 0,
+        items: build([0, 1]),
+      },
+      {
+        slug: "evening",
+        name: { ar: "أذكار المساء", en: "Evening Adhkar" },
+        sortOrder: 1,
+        items: build([0, 2]),
+      },
     ],
   };
 }
@@ -258,7 +270,9 @@ if (import.meta.main) {
   const input = get("--in");
   const publish = args.includes("--publish");
   if (!input) {
-    console.error("Usage: deno run -A scripts/azkar_import.ts --in <dataset.json> [--sql <out.sql>] [--bundled-dir <dir>] [--publish]");
+    console.error(
+      "Usage: deno run -A scripts/azkar_import.ts --in <dataset.json> [--sql <out.sql>] [--bundled-dir <dir>] [--publish]",
+    );
     Deno.exit(1);
   }
   const dataset = JSON.parse(await Deno.readTextFile(input)) as AzkarDataset;
@@ -269,7 +283,10 @@ if (import.meta.main) {
   }
   const sqlOut = get("--sql");
   if (sqlOut) {
-    await Deno.writeTextFile(sqlOut, buildSql(dataset, { published: publish, sourceDataset: get("--source-dataset") }));
+    await Deno.writeTextFile(
+      sqlOut,
+      buildSql(dataset, { published: publish, sourceDataset: get("--source-dataset") }),
+    );
     console.error(`Wrote SQL → ${sqlOut} (published=${publish})`);
   }
   const bundledDir = get("--bundled-dir");

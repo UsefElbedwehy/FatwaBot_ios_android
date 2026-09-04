@@ -174,7 +174,9 @@ begin
   insert into content.hadith_collections
     (slug, name_translations, description_translations, sort_order, published)
   values
-    (${sqlString(c.slug)}, ${jsonbLiteral(c.name)}, ${jsonbLiteral(c.description ?? {})}, ${c.sortOrder ?? 0}, ${published})
+    (${sqlString(c.slug)}, ${jsonbLiteral(c.name)}, ${jsonbLiteral(c.description ?? {})}, ${
+    c.sortOrder ?? 0
+  }, ${published})
   on conflict (app_id, slug) do update set
     name_translations = excluded.name_translations,
     description_translations = excluded.description_translations,
@@ -197,7 +199,9 @@ end $fb$;
  * matn) and optionally an English edition to merge as the translation. */
 export interface FawazEdition {
   metadata?: { name?: string };
-  hadiths?: Array<{ hadithnumber?: number; arabicnumber?: number; text?: string; grades?: Array<{ grade?: string }> }>;
+  hadiths?: Array<
+    { hadithnumber?: number; arabicnumber?: number; text?: string; grades?: Array<{ grade?: string }> }
+  >;
 }
 
 export function fromFawazEdition(
@@ -286,8 +290,12 @@ export function collectionsIndex(
 
 // --- CLI ---------------------------------------------------------------------
 
-function parseArgs(args: string[]): { input?: string; out?: string; publish: boolean; sourceDataset?: string } {
-  const result: { input?: string; out?: string; publish: boolean; sourceDataset?: string } = { publish: false };
+function parseArgs(
+  args: string[],
+): { input?: string; out?: string; publish: boolean; sourceDataset?: string } {
+  const result: { input?: string; out?: string; publish: boolean; sourceDataset?: string } = {
+    publish: false,
+  };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--publish") result.publish = true;
@@ -315,10 +323,16 @@ if (import.meta.main) {
   }
   const sql = buildSql(dataset, { published: publish, sourceDataset });
   const outPath = out ?? `supabase/imports/hadith_${dataset.collection.slug}.sql`;
-  await Deno.mkdir(new URL("./", `file://${Deno.cwd()}/${outPath}`).pathname, { recursive: true }).catch(() => {});
+  await Deno.mkdir(new URL("./", `file://${Deno.cwd()}/${outPath}`).pathname, { recursive: true }).catch(
+    () => {},
+  );
   await Deno.writeTextFile(outPath, sql);
   console.error(
     `Wrote ${dataset.entries.length} entries for '${dataset.collection.slug}' → ${outPath}` +
-      `${publish ? " (published)" : " (unpublished — review, then re-run with --publish or flip in the dashboard)"}`,
+      `${
+        publish
+          ? " (published)"
+          : " (unpublished — review, then re-run with --publish or flip in the dashboard)"
+      }`,
   );
 }

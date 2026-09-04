@@ -115,7 +115,9 @@ end $$;`;
   });
 
   const total = dataset.categories.reduce((n, c) => n + c.items.length, 0);
-  return generatedHeader(`Duas: ${dataset.categories.length} categories, ${total} duas, published=${published}`) +
+  return generatedHeader(
+    `Duas: ${dataset.categories.length} categories, ${total} duas, published=${published}`,
+  ) +
     "\n" + blocks.join("\n\n") + "\n";
 }
 
@@ -177,7 +179,9 @@ if (import.meta.main) {
   const input = get("--in");
   const publish = args.includes("--publish");
   if (!input) {
-    console.error("Usage: deno run -A scripts/dua_import.ts --in <dataset.json> [--sql <out.sql>] [--bundled-dir <dir>] [--publish]");
+    console.error(
+      "Usage: deno run -A scripts/dua_import.ts --in <dataset.json> [--sql <out.sql>] [--bundled-dir <dir>] [--publish]",
+    );
     Deno.exit(1);
   }
   const dataset = JSON.parse(await Deno.readTextFile(input)) as DuaDataset;
@@ -188,7 +192,10 @@ if (import.meta.main) {
   }
   const sqlOut = get("--sql");
   if (sqlOut) {
-    await Deno.writeTextFile(sqlOut, buildSql(dataset, { published: publish, sourceDataset: get("--source-dataset") }));
+    await Deno.writeTextFile(
+      sqlOut,
+      buildSql(dataset, { published: publish, sourceDataset: get("--source-dataset") }),
+    );
     console.error(`Wrote SQL → ${sqlOut} (published=${publish})`);
   }
   const bundledDir = get("--bundled-dir");

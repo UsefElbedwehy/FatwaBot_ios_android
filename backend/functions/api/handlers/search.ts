@@ -13,6 +13,8 @@ import type { FatwaMode, FatwaSearchRepo } from "../fatwa_types.ts";
 import { UpstreamError } from "../ai_search/providers.ts";
 import type { AnswerProvider, EmbeddingProvider } from "../ai_search/providers.ts";
 import { hybridRetrieve, RetrievalError } from "../ai_search/retrieval.ts";
+import type { AnswerCacheRepo } from "../ai_search/answer_cache.ts";
+import { questionHash } from "../ai_search/embedding_cache.ts";
 import { verifyCitations } from "../ai_search/citation_verify.ts";
 import type { SearchHistoryRepo, SearchSource } from "../search_types.ts";
 
@@ -25,6 +27,9 @@ export interface SearchDeps {
   embeddingProvider?: EmbeddingProvider;
   answerProvider?: AnswerProvider;
   searchHistory: SearchHistoryRepo;
+  /** Optional: without it every search runs the full pipeline, which is the
+   *  pre-0046 behaviour and still correct, only slower. */
+  answerCache?: AnswerCacheRepo;
   jwtSecret: string;
 }
 
@@ -76,6 +81,30 @@ export async function handleSearch(
 
   if (!deps.embeddingProvider || !deps.answerProvider) {
     return apiError(503, "ai_unavailable", "AI search is not configured yet");
+  }
+
+  // A repeat costs one indexed lookup instead of ~15s (0046). Read before
+  // anything expensive, and fail open — a cache that is down must make search
+  // slow, never broken.
+  const hash = await questionHash(question);
+  const answerModelId = deps.answerProvider.id;
+  if (deps.answerCache) {
+    try {
+      const hit = await deps.answerCache.get(ctx, hash, mode, answerModelId);
+      if (hit) {
+        // History still records the ask: a cached answer is still the user
+        // asking, and their history would otherwise have holes in it exactly
+        // where they repeated themselves.
+        try {
+          await deps.searchHistory.record(ctx, userId, MODE_TO_HISTORY_SOURCE[mode], question, ctx.locale);
+        } catch (err) {
+          console.error("search_logging_failed", err instanceof Error ? err.stack ?? err.message : err);
+        }
+        return json(hit, 200, { "server-timing": "cache;dur=0" });
+      }
+    } catch (err) {
+      console.warn("answer_cache_read_failed", err instanceof Error ? err.message : err);
+    }
   }
 
   // Each stage reports its own failure code. Previously any throw anywhere in
@@ -158,22 +187,34 @@ export async function handleSearch(
     console.error("search_logging_failed", err instanceof Error ? err.stack ?? err.message : err);
   }
 
+  const responseBody = {
+    answer,
+    citations: verified.citations.map((c) => ({
+      chunk_id: c.chunkId,
+      scholar: c.scholar,
+      source_title: c.sourceTitle,
+      page_number: c.pageNumber ?? null,
+      video_timestamp: c.videoTimestamp ?? null,
+      quoted_text: c.quotedText,
+    })),
+    refused: verified.refused,
+    mode,
+  };
+
+  // Written after the answer is assembled, and a failure here costs the user
+  // nothing — they already have their answer.
+  if (deps.answerCache) {
+    try {
+      await deps.answerCache.put(ctx, hash, mode, answerModelId, responseBody);
+    } catch (err) {
+      console.warn("answer_cache_write_failed", err instanceof Error ? err.message : err);
+    }
+  }
+
   // Standard `Server-Timing`, so where a slow search spent its time is visible
   // from the client instead of only in logs someone has to have access to read.
   return json(
-    {
-      answer,
-      citations: verified.citations.map((c) => ({
-        chunk_id: c.chunkId,
-        scholar: c.scholar,
-        source_title: c.sourceTitle,
-        page_number: c.pageNumber ?? null,
-        video_timestamp: c.videoTimestamp ?? null,
-        quoted_text: c.quotedText,
-      })),
-      refused: verified.refused,
-      mode,
-    },
+    responseBody,
     200,
     {
       "server-timing": [

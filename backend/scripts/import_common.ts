@@ -53,7 +53,9 @@ export function deterministicUuid(seed: string): string {
     .map((n) => n.toString(16).padStart(8, "0")).join("");
   // xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx  (version 4, variant 8..b)
   const variant = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${
+    hex.slice(20, 32)
+  }`;
 }
 
 /** Standard header for a generated import file. */
