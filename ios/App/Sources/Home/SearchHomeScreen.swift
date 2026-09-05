@@ -251,3 +251,76 @@ struct RosetteMark: View {
         .frame(width: size, height: size)
     }
 }
+
+/// The arrow-tipped rule either side of the rosette. A free function so both
+/// `SearchHomeScreen` and `SearchHomeHeader` draw the same mark — it was a
+/// private method on the former before the header was split out.
+@ViewBuilder
+func headerDividerRule(pointsLeft: Bool, color: Color) -> some View {
+    HStack(spacing: 0) {
+        if pointsLeft {
+            Image(systemName: "arrowtriangle.left.fill").font(.system(size: 7)).foregroundStyle(color)
+        }
+        Rectangle().fill(color.opacity(0.6)).frame(height: 1.2)
+        if !pointsLeft {
+            Image(systemName: "arrowtriangle.right.fill").font(.system(size: 7)).foregroundStyle(color)
+        }
+    }
+}
+
+/// The Home brand header — mihrab mark, FATWA wordmark, rosette divider — and
+/// the tagline, split apart so the search screen can place them separately:
+/// the header above the chips, the tagline below the field where the submit
+/// button used to be. Mirrors Android's SearchHomeHeader / SearchHomeTagline.
+public struct SearchHomeHeader: View {
+    @Environment(\.colorScheme) private var colorScheme
+    public init() {}
+
+    private var tokens: ColorTokens {
+        colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
+    }
+
+    public var body: some View {
+        VStack(spacing: 0) {
+            FatwaMark(color: Color(hexToken: tokens.primary))
+                .frame(width: 124, height: 174)
+                .accessibilityHidden(true)
+            Text(verbatim: "FATWA")
+                .font(.system(size: 28, weight: .medium, design: .serif))
+                .tracking(3)
+                .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
+                .padding(.top, 8)
+            HStack(spacing: 12) {
+                headerDividerRule(pointsLeft: true, color: Color(hexToken: tokens.primary))
+                RosetteMark(size: 18, color: Color(hexToken: tokens.primary))
+                headerDividerRule(pointsLeft: false, color: Color(hexToken: tokens.primary))
+            }
+            .frame(maxWidth: 234)
+            .accessibilityHidden(true)
+            .padding(.top, 34)
+            .padding(.bottom, 10)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+public struct SearchHomeTagline: View {
+    @Environment(\.colorScheme) private var colorScheme
+    public init() {}
+
+    private var tokens: ColorTokens {
+        colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
+    }
+
+    public var body: some View {
+        HStack(spacing: 8) {
+            RosetteMark(size: 15, color: Color(hexToken: tokens.primary))
+            Text("home.tagline")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Color(hexToken: tokens.primary))
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 12)
+    }
+}

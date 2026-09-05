@@ -12,9 +12,10 @@ import SwiftUI
 /// are. Pressing بحث *does* navigate — to `FatwaSearchResultScreen` — because
 /// the complaint was being pushed to a second *search* page, not about results
 /// having a page of their own. The host watches `phase` to decide which is up.
-public struct FatwaSearchScreen<Header: View>: View {
+public struct FatwaSearchScreen<Header: View, BelowField: View>: View {
     @State private var viewModel: FatwaSearchViewModel
     private let header: Header
+    private let belowField: BelowField
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var isFocused: Bool
 
@@ -26,11 +27,15 @@ public struct FatwaSearchScreen<Header: View>: View {
     public init(
         viewModel: FatwaSearchViewModel,
         onSubmitted: @escaping () -> Void = {},
-        @ViewBuilder header: () -> Header = { EmptyView() }
+        @ViewBuilder header: () -> Header = { EmptyView() },
+        /// Sits directly under the field, in the space the submit button used
+        /// to occupy — Home puts its tagline here.
+        @ViewBuilder belowField: () -> BelowField = { EmptyView() }
     ) {
         _viewModel = State(initialValue: viewModel)
         self.onSubmitted = onSubmitted
         self.header = header()
+        self.belowField = belowField()
     }
 
     private var tokens: ColorTokens {
@@ -43,6 +48,7 @@ public struct FatwaSearchScreen<Header: View>: View {
                 header
                 modeChips
                 questionField
+                belowField
                 BrandEmptyState(
                     systemImage: viewModel.mode.systemImage,
                     messageKey: viewModel.mode.hintKey,
@@ -106,15 +112,22 @@ public struct FatwaSearchScreen<Header: View>: View {
 
     // MARK: - Question field
 
+    /// No submit button: the field's own search key runs the search. A second
+    /// control for one action was a duplicate, and the space it took is where
+    /// the tagline belongs.
     private var questionField: some View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: viewModel.mode.systemImage)
                     .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-                TextField(viewModel.mode.placeholderKey, text: $viewModel.question, axis: .vertical)
+                // Single-line on purpose. With `axis: .vertical` SwiftUI treats
+                // Return as "insert a newline" and never calls `onSubmit`, so
+                // with the submit button gone the keyboard's search key would
+                // have been the only way to search and would have done nothing.
+                // Long questions scroll within the field instead of wrapping.
+                TextField(viewModel.mode.placeholderKey, text: $viewModel.question)
                     .textFieldStyle(.plain)
                     .foregroundStyle(Color(hexToken: tokens.onSurface))
-                    .lineLimit(1...4)
                     .focused($isFocused)
                     .submitLabel(.search)
                     .onSubmit { startSearch() }
@@ -123,21 +136,6 @@ public struct FatwaSearchScreen<Header: View>: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
             .background(RoundedRectangle(cornerRadius: 14).fill(Color(hexToken: tokens.surfaceElevated)))
-
-            Button {
-                isFocused = false
-                startSearch()
-            } label: {
-                Text("fatwa_search.submit")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(hexToken: tokens.primary), in: RoundedRectangle(cornerRadius: 14))
-                    .foregroundStyle(Color(hexToken: tokens.onPrimary))
-            }
-            .buttonStyle(.plain)
-            .disabled(isLoading || viewModel.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .opacity(isLoading || viewModel.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
         }
     }
 
