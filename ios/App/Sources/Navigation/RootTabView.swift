@@ -18,7 +18,10 @@ import TasbeehFeature
 /// A single destination: which mode, and any text the search bar already had
 /// typed into it (empty for the three intent cards).
 enum FatwaSearchDestination: Hashable {
-    case ask(mode: FatwaSearchMode, initialQuestion: String)
+    /// M5.1: the only Home destination is the *result*. Choosing a mode and
+    /// typing both stay on the root screen — being pushed to a second search
+    /// page was the client's complaint.
+    case result
 }
 
 /// Destinations reachable from the Worship tab's own list *and* by deep link
@@ -97,6 +100,9 @@ struct RootTabView: View {
     @State private var gamificationViewModel = Container.shared.gamificationViewModel()
     @State private var leaderboardViewModel = Container.shared.leaderboardViewModel()
     @State private var searchHistoryViewModel = Container.shared.searchHistoryViewModel()
+    // One per Home tab, not one per ask: mode is state now, so rebuilding on
+    // every chip tap would throw away the result being read.
+    @State private var fatwaSearchViewModel = Container.shared.fatwaSearchViewModel((mode: .fatwa, initialQuestion: ""))
     // Hoisted like the others: the merged Azkar/Du'a screen switches between
     // them, and recreating a view model on every segment flip would re-run its
     // content load.
@@ -268,18 +274,26 @@ struct RootTabView: View {
         switch selection {
         case .home:
             NavigationStack(path: $homePath) {
-                SearchHomeScreen(onOpen: { mode in homePath.append(.ask(mode: mode, initialQuestion: "")) })
-                    .bottomBarClearance()
-                    .navigationDestination(for: FatwaSearchDestination.self) { destination in
-                        switch destination {
-                        case .ask(let mode, let initialQuestion):
-                            // No clearance here: the bar hides on push, matching
-                            // the worship stack's pattern immediately below.
-                            FatwaSearchScreen(
-                                viewModel: Container.shared.fatwaSearchViewModel((mode: mode, initialQuestion: initialQuestion))
-                            )
-                        }
+                FatwaSearchScreen(
+                    viewModel: fatwaSearchViewModel,
+                    onSubmitted: { homePath.append(.result) }
+                )
+                .bottomBarClearance()
+                .navigationDestination(for: FatwaSearchDestination.self) { destination in
+                    switch destination {
+                    case .result:
+                        // No clearance here: the bar hides on push, matching
+                        // the worship stack's pattern immediately below.
+                        FatwaSearchResultScreen(
+                            viewModel: fatwaSearchViewModel,
+                            onContact: { selection = .settings }
+                        )
+                        // Popping is the user going back to edit their
+                        // question, so reset the phase — that is what makes the
+                        // search screen's own state consistent again.
+                        .onDisappear { fatwaSearchViewModel.backToSearch() }
                     }
+                }
             }
         case .worship:
             NavigationStack(path: $worshipPath) {
