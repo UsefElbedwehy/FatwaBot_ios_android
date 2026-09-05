@@ -16,4 +16,33 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "21" }
       - uses: gradle/actions/setup-gradle@v4
+      # The real google-services.json is gitignored — it belongs to whoever owns
+      # the Firebase project. A placeholder keeps `./gradlew build` (which
+      # assembles the release variant too) exercising the Google Services plugin
+      # path rather than skipping it, so a build that would break with Firebase
+      # applied still fails here. The values are structurally valid and point at
+      # nothing.
+      - name: Placeholder Firebase config
+        run: |
+          test -f app/google-services.json || cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "fatwabot-ci-placeholder",
+              "storage_bucket": "fatwabot-ci-placeholder.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": { "package_name": "com.fatwabot.app" }
+                },
+                "oauth_client": [],
+                "api_key": [{ "current_key": "AIzaSyCI00000000000000000000000000000000" }],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
       - run: ./gradlew build --stacktrace

@@ -26,16 +26,20 @@ if (firebaseConfig.exists()) {
     apply(plugin = libs.plugins.crashlytics.get().pluginId)
 }
 
-// Guard rail for the conditional above: analytics and crash reporting quietly
-// missing from a shipped build is exactly what nobody notices until they need
-// a crash report that was never sent.
-tasks.matching { it.name.startsWith("assemble") && it.name.contains("Release") }.configureEach {
-    doFirst {
-        require(firebaseConfig.exists()) {
-            "google-services.json is missing — a release build must not ship without Firebase. " +
-                "Restore it from the Firebase console before building a release."
-        }
-    }
+// A release build with Firebase silently absent is exactly what nobody notices
+// until they need a crash report that was never sent — so say so loudly.
+//
+// A configuration-time warning rather than a task-level `require`: `./gradlew
+// build` assembles the release variant too, so failing there breaks CI and any
+// fresh clone, and the `doFirst` closure needed to scope it to release tasks
+// captured a script reference the configuration cache cannot serialize. CI
+// writes a placeholder config (see .github/workflows/android.yml) so the plugin
+// path is still exercised there.
+if (!firebaseConfig.exists()) {
+    logger.warn(
+        "google-services.json is missing — Firebase analytics and Crashlytics are NOT in this build. " +
+            "Restore it from the Firebase console before building anything you intend to ship.",
+    )
 }
 
 
