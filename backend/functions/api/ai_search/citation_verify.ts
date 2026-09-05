@@ -49,6 +49,11 @@ export function verifyCitations(
   // verified) is left as-is, including whatever `answer` text the model
   // wrote — handlers/search.ts decides what to actually show for that.
   if (result.citations.length > 0 && verified.length === 0) {
+    // Everything structured goes with the answer, not just `answer` itself.
+    // The summary, the per-scholar cards and the hadith grading were all
+    // written on the strength of citations that turned out to be fabricated —
+    // keeping any of them would leave the fabrication on screen in a different
+    // shape, and the ruling would still colour a status dot.
     return {
       answer: "",
       citations: [],

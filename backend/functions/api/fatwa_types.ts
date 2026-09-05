@@ -37,11 +37,39 @@ export interface AnswerCitation {
   quotedText: string;
 }
 
+/** The five-fold fiqh scale, plus a general "permitted" and an explicit
+ *  "no ruling applies". `none` is not a synonym for uncertainty — it means the
+ *  question has none to give (a hadith's grading, a du'a's wording), and the
+ *  client shows no status dot at all. */
+export type Ruling = "wajib" | "mustahabb" | "halal" | "mubah" | "makruh" | "haram" | "none";
+
+/** One scholar's position, rendered as its own card. Citations are NOT nested
+ *  here: they stay one flat list on AnswerResult so verification can check them
+ *  exhaustively, and each already names its scholar for the client to group by. */
+export interface ScholarAnswer {
+  scholar: string;
+  answer: string;
+  evidence?: string;
+}
+
+/** Hadith mode's takhrij fields, laid out as separate rows rather than one
+ *  paragraph. Absent in the other modes. */
+export interface HadithVerdict {
+  text: string;
+  grade: string;
+  source?: string;
+  scholarVerdicts?: string;
+}
+
 export interface AnswerResult {
   answer: string;
   citations: AnswerCitation[];
   refused: boolean;
   model: string;
+  summary?: string;
+  ruling?: Ruling;
+  scholarAnswers?: ScholarAnswer[];
+  hadith?: HadithVerdict;
 }
 
 export interface AnswerLogInput {

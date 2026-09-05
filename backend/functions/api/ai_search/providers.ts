@@ -84,11 +84,17 @@ export class DevStubAnswerProvider implements AnswerProvider {
       ...(top.pageNumber !== null ? { pageNumber: top.pageNumber } : {}),
       ...(top.videoTimestamp !== null ? { videoTimestamp: top.videoTimestamp } : {}),
     };
+    const scholar = citation.scholar;
     return Promise.resolve({
       answer: `[dev-stub answer for: ${question}]\n\n${top.text}`,
       citations: [citation],
       refused: false,
       model: this.id,
+      // Structured fields too, so tests exercise the same shape production
+      // returns rather than only the flat `answer` a stub used to give.
+      summary: `[dev-stub summary for: ${question}]`,
+      ruling: "halal" as const,
+      scholarAnswers: [{ scholar, answer: top.text, evidence: top.text }],
     });
   }
 }
@@ -233,6 +239,51 @@ export const ANSWER_JSON_SCHEMA = {
   properties: {
     answer: { type: "string" },
     refused: { type: "boolean" },
+    // The M5.1 result card leads with a short "خلاصة الأقوال" before the
+    // per-scholar detail. Asked for explicitly rather than derived by
+    // truncating `answer`, which would cut mid-sentence and mid-ruling.
+    summary: { type: "string" },
+    // The five-fold fiqh scale plus a general "permitted" and an explicit
+    // "none". `none` is not a fallback for uncertainty — it means the question
+    // has no ruling to give (a hadith's grading, a du'a's wording), and the
+    // client shows no status dot at all. The model is told to prefer `none`
+    // over guessing, because a wrong colour here is a wrong fatwa.
+    ruling: {
+      type: "string",
+      enum: ["wajib", "mustahabb", "halal", "mubah", "makruh", "haram", "none"],
+    },
+    // One card per scholar in the result. `citations` stays a single flat list
+    // rather than nesting inside each card: every citation already names its
+    // scholar, so the client groups by that, and citation verification keeps
+    // operating on one list it can check exhaustively.
+    scholarAnswers: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          scholar: { type: "string" },
+          answer: { type: "string" },
+          // The inset "الدليل" block — the evidence itself, kept apart from the
+          // ruling so the UI can present it as the reference design does.
+          evidence: { type: "string" },
+        },
+        required: ["scholar", "answer"],
+        additionalProperties: false,
+      },
+    },
+    // Hadith mode only: the takhrij fields the reference screen lays out as
+    // separate rows rather than one paragraph.
+    hadith: {
+      type: "object",
+      properties: {
+        text: { type: "string" },
+        grade: { type: "string" },
+        source: { type: "string" },
+        scholarVerdicts: { type: "string" },
+      },
+      required: ["text", "grade"],
+      additionalProperties: false,
+    },
     citations: {
       type: "array",
       items: {
@@ -257,6 +308,10 @@ export const ANSWER_JSON_SCHEMA = {
       },
     },
   },
+  // `summary`/`ruling`/`scholarAnswers`/`hadith` are optional: a refusal has no
+  // ruling to report, and hadith fields are meaningless outside hadith mode.
+  // Requiring them would push the model to invent values to satisfy the schema
+  // — the same failure that once forced a page number onto video citations.
   required: ["answer", "refused", "citations"],
   additionalProperties: false,
 } as const;
@@ -275,6 +330,13 @@ const MODE_INSTRUCTIONS: Record<FatwaMode, string> = {
  *  traceable to a retrieved chunk. This system prompt states that as a hard
  *  rule, but the actual enforcement is citation_verify.ts checking every
  *  `quotedText` against the real chunk text — never trust the model alone. */
+/** Exported under a test-only name so the prompt's safety rules can be
+ *  asserted directly. The prompt is the only thing standing between a guessed
+ *  ruling and a coloured status dot, so it is worth pinning. */
+export function buildSystemPromptForTest(mode: FatwaMode, locale: string): string {
+  return buildSystemPrompt(mode, locale);
+}
+
 function buildSystemPrompt(mode: FatwaMode, locale: string): string {
   return [
     "أنت مساعد يجيب حصراً من نصوص مصدرها موثّق أُرفقت لك أدناه (مقاطع من كتب علماء معتمدين).",
@@ -282,8 +344,23 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
     "كل استشهاد في citations[].quotedText يجب أن يكون نصاً حرفياً منسوخاً من المقطع (chunkId) الذي يشير إليه — لا إعادة صياغة.",
     "ولكل استشهاد موضعٌ واحد فقط: إن كان المقطع من كتاب فضع pageNumber برقم صفحته، وإن كان من مادة مرئية فضع videoTimestamp بدقيقته. لا تضع الحقلين معاً ولا تخمّن رقماً غير المذكور في المقطع.",
     MODE_INSTRUCTIONS[mode],
+    // Structure. The M5.1 result card is a summary, a status, and one block per
+    // scholar — not one essay. Asking for the parts directly also keeps the
+    // answer shorter, which is most of the request's latency.
+    "اكتب summary: خلاصة موجزة للأقوال في فقرة واحدة تصلح لتكون رأس البطاقة.",
+    "واكتب scholarAnswers[]: عنصراً لكل عالِم ورد قوله في المقاطع، فيه اسمه وقوله، و evidence بدليله إن ذُكر. " +
+    "لا تُدرج عالِماً لم يرد له نص في المقاطع، ولا تنسب إلى عالِم قولاً ليس له.",
+    // The ruling drives a coloured status dot in the UI, so a guess here is a
+    // wrong fatwa shown with confidence. Refusing to classify is always
+    // available and always safer.
+    "وضع ruling بحكم المسألة إن كان بيّناً في المقاطع: wajib أو mustahabb أو halal أو mubah أو makruh أو haram. " +
+    "وإن كان السؤال لا حكم له (كتخريج حديث أو بيان لفظ) أو لم يتبيّن الحكم من المقاطع، فضع none. " +
+    "لا تخمّن الحكم أبداً: none أسلم من حكمٍ غير مؤكَّد.",
+    mode === "hadith"
+      ? "واملأ hadith: text بلفظ الحديث، و grade بدرجته، و source بمصدره، و scholarVerdicts بأقوال العلماء فيه."
+      : "",
     `أجب بلغة: ${locale}.`,
-  ].join("\n");
+  ].filter((line) => line.length > 0).join("\n");
 }
 
 function buildUserPrompt(question: string, chunks: RetrievedChunk[]): string {

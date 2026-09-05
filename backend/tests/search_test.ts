@@ -539,3 +539,122 @@ Deno.test("a broken answer cache degrades to slow, never to broken", async () =>
   assertEquals(res.status, 200);
   assertEquals((await res.json()).citations.length, 1);
 });
+
+// --- Structured result contract (M5.1) -----------------------------------
+
+Deno.test("a search returns the structured card fields, not just prose", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  const body = await res.json();
+
+  assertEquals(typeof body.summary, "string");
+  assertEquals(body.ruling, "halal");
+  assertEquals(body.scholar_answers.length, 1);
+  assertEquals(body.scholar_answers[0].scholar, "ابن عثيمين");
+  // `answer` stays populated so a client built against the old shape still
+  // renders something.
+  assertEquals(typeof body.answer, "string");
+});
+
+Deno.test("resources report every kind, so 'not available' is stated rather than omitted", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  const body = await res.json();
+
+  assertEquals(body.resources.map((r: { kind: string }) => r.kind), ["book", "video", "website"]);
+  // The corpus is books only, so the honest answer for the other two is "no".
+  assertEquals(body.resources.find((r: { kind: string }) => r.kind === "book").available, true);
+  assertEquals(body.resources.find((r: { kind: string }) => r.kind === "video").available, false);
+  assertEquals(body.resources.find((r: { kind: string }) => r.kind === "website").available, false);
+});
+
+Deno.test("a video source makes the video resource available, with its url", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([{
+    ...seedChunk(),
+    pageNumber: null,
+    videoTimestamp: 512,
+    sourceKind: "video",
+    sourceUrl: "https://example.test/lecture",
+  }]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  const body = await res.json();
+
+  const video = body.resources.find((r: { kind: string }) => r.kind === "video");
+  assertEquals(video.available, true);
+  assertEquals(video.url, "https://example.test/lecture");
+  // Derived from the source row, never from the model — a model asked whether
+  // something is on YouTube will happily say yes.
+  assertEquals(body.resources.find((r: { kind: string }) => r.kind === "book").available, false);
+});
+
+Deno.test("fabricated evidence blanks the structured fields too, not just the prose", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: {
+      id: "fabricator",
+      answer: () =>
+        Promise.resolve({
+          answer: "إجابة مبنية على استشهاد مختلق",
+          summary: "خلاصة مبنية على استشهاد مختلق",
+          ruling: "haram" as const,
+          scholarAnswers: [{ scholar: "ابن عثيمين", answer: "قول منسوب زوراً" }],
+          citations: [{
+            chunkId: "chunk-1",
+            scholar: "ابن عثيمين",
+            sourceTitle: "كتاب",
+            quotedText: "نص لا وجود له في أي مقطع",
+          }],
+          refused: false,
+          model: "fabricator",
+        }),
+    } as unknown as DevStubAnswerProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
+  const body = await res.json();
+
+  // Keeping the summary or the scholar card would leave the fabrication on
+  // screen in a different shape, and `haram` would still colour a status dot.
+  assertEquals(body.refused, true);
+  assertEquals(body.citations.length, 0);
+  assertEquals(body.summary, null);
+  assertEquals(body.scholar_answers.length, 0);
+  assertEquals(body.ruling, "none");
+});

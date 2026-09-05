@@ -1,5 +1,7 @@
 import { assert, assertEquals, assertNotEquals } from "jsr:@std/assert@1";
 import {
+  ANSWER_JSON_SCHEMA,
+  buildSystemPromptForTest,
   ClaudeAnswerProvider,
   DevStubAnswerProvider,
   DevStubEmbeddingProvider,
@@ -335,4 +337,43 @@ Deno.test("ClaudeAnswerProvider honors a per-instance model override", async () 
   });
   await provider.answer("سؤال", "general", [chunk()], "ar");
   assertEquals(calls[0].model, "claude-sonnet-5");
+});
+
+Deno.test("the answer schema describes the structured card, with nothing forced", () => {
+  const props = ANSWER_JSON_SCHEMA.properties as Record<string, Record<string, unknown>>;
+  const required = ANSWER_JSON_SCHEMA.required as readonly string[];
+
+  // A stubbed provider bypasses the schema entirely, so only a direct
+  // assertion catches a regression here.
+  assertEquals(props.ruling.enum, [
+    "wajib",
+    "mustahabb",
+    "halal",
+    "mubah",
+    "makruh",
+    "haram",
+    "none",
+  ]);
+  assert("summary" in props);
+  assert("scholarAnswers" in props);
+  assert("hadith" in props);
+
+  // None of them required: a refusal has no ruling, and hadith fields are
+  // meaningless outside hadith mode. Requiring them would push the model to
+  // invent values to satisfy the schema — the same failure that once forced a
+  // page number onto video-sourced citations.
+  assertEquals(required.includes("summary"), false);
+  assertEquals(required.includes("ruling"), false);
+  assertEquals(required.includes("scholarAnswers"), false);
+  assertEquals(required.includes("hadith"), false);
+});
+
+Deno.test("the system prompt tells the model to refuse to classify rather than guess", () => {
+  // The ruling colours a status dot, so a guessed ruling is a wrong fatwa shown
+  // with confidence.
+  const prompt = buildSystemPromptForTest("fatwa", "ar");
+  assert(prompt.includes("none أسلم من حكمٍ غير مؤكَّد"));
+  // Hadith-only instructions must not leak into the other modes.
+  assert(!prompt.includes("scholarVerdicts"));
+  assert(buildSystemPromptForTest("hadith", "ar").includes("scholarVerdicts"));
 });

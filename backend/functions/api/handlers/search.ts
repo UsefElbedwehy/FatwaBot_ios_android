@@ -9,7 +9,7 @@ import { verifyAccessToken } from "../auth/jwt.ts";
 import { apiError, json } from "../http.ts";
 import { resolveRequired } from "../locale_resolve.ts";
 import type { AppContext } from "../types.ts";
-import type { FatwaMode, FatwaSearchRepo } from "../fatwa_types.ts";
+import type { FatwaMode, FatwaSearchRepo, RetrievedChunk } from "../fatwa_types.ts";
 import { UpstreamError } from "../ai_search/providers.ts";
 import type { AnswerProvider, EmbeddingProvider } from "../ai_search/providers.ts";
 import { hybridRetrieve, RetrievalError } from "../ai_search/retrieval.ts";
@@ -56,6 +56,42 @@ async function requireUser(req: Request, jwtSecret: string): Promise<string | Re
   const claims = await verifyAccessToken(header.slice("Bearer ".length), jwtSecret);
   if (!claims) return apiError(401, "unauthorized", "Valid bearer token required");
   return claims.sub;
+}
+
+/** What the answer is also available as, derived from the *verified* citations
+ *  rather than asked of the model.
+ *
+ *  The reference design shows an availability badge per scholar card. A model
+ *  asked "is this on YouTube?" will happily say yes, so the only trustworthy
+ *  source is the `kind`/`url` on the sources those citations actually came from
+ *  (0048). Every source is a book today, so `video` and `website` will report
+ *  `available: false` until such sources are ingested — which is the honest
+ *  answer, not a gap.
+ */
+function deriveResources(
+  citations: readonly { chunkId: string }[],
+  chunks: readonly RetrievedChunk[],
+): { kind: string; available: boolean; url: string | null }[] {
+  const byChunk = new Map(chunks.map((c) => [c.chunkId, c]));
+  const found = new Map<string, string | null>();
+  for (const citation of citations) {
+    const chunk = byChunk.get(citation.chunkId);
+    if (!chunk) continue;
+    // First url wins, but a later citation with a url beats an earlier one
+    // without: a kind is "available" if any cited source of that kind exists,
+    // and a link is better than none.
+    const existing = found.get(chunk.sourceKind);
+    if (existing === undefined || (existing === null && chunk.sourceUrl !== null)) {
+      found.set(chunk.sourceKind, chunk.sourceUrl);
+    }
+  }
+  // Always report all three, so the UI can render "غير متاح" rather than
+  // silently omitting a row and leaving the user unsure whether it was checked.
+  return ["book", "video", "website"].map((kind) => ({
+    kind,
+    available: found.has(kind),
+    url: found.get(kind) ?? null,
+  }));
 }
 
 /** POST /v1/search */
@@ -189,6 +225,26 @@ export async function handleSearch(
 
   const responseBody = {
     answer,
+    // Structured fields for the M5.1 result card. All optional: a refusal has
+    // no ruling and no scholar cards, and hadith fields exist only in that
+    // mode. `answer` stays populated so a client built against the old shape
+    // still renders something.
+    summary: verified.summary ?? null,
+    ruling: verified.ruling ?? "none",
+    scholar_answers: (verified.scholarAnswers ?? []).map((a) => ({
+      scholar: a.scholar,
+      answer: a.answer,
+      evidence: a.evidence ?? null,
+    })),
+    hadith: verified.hadith
+      ? {
+        text: verified.hadith.text,
+        grade: verified.hadith.grade,
+        source: verified.hadith.source ?? null,
+        scholar_verdicts: verified.hadith.scholarVerdicts ?? null,
+      }
+      : null,
+    resources: deriveResources(verified.citations, chunks),
     citations: verified.citations.map((c) => ({
       chunk_id: c.chunkId,
       scholar: c.scholar,
