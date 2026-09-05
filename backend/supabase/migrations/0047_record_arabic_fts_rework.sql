@@ -94,7 +94,13 @@ create or replace function fatwa.search_trigram(
     p_app_id uuid,
     p_query text,
     p_match_count integer,
-    p_min_similarity double precision
+    -- Keeps 0042's `default 0.15`. Postgres refuses to *remove* a parameter
+    -- default via `create or replace` ("cannot remove parameter defaults from
+    -- existing function", 42P13), and dropping the default here is not what the
+    -- 2026-09-04 change did — production's function had already been replaced by
+    -- then, so this only ever failed on a from-scratch apply, where 0042's
+    -- version with the default is what exists.
+    p_min_similarity double precision default 0.15
 )
 returns table (
     chunk_id uuid,
