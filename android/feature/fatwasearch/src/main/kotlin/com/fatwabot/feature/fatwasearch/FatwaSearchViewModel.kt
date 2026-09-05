@@ -121,4 +121,12 @@ class FatwaSearchViewModel(
     fun reset() {
         _state.update { UiState(question = "", mode = it.mode) }
     }
+
+    /** System/toolbar back from the result page. Keeps the question and mode so
+     *  the search screen comes back as it was left — the user is returning to
+     *  edit their question, not to start over. `Idle` is what the host uses to
+     *  decide the result page is dismissed, so this is the whole navigation. */
+    fun backToSearch() {
+        _state.update { it.copy(phase = Phase.Idle) }
+    }
 }

@@ -64,19 +64,21 @@ private fun FatwaSearchMode.icon(): ImageVector = when (this) {
     FatwaSearchMode.GENERAL -> Icons.Filled.QuestionAnswer
 }
 
-/** The search screen: mode chips, the question field, and the result, all in
- * one place (docs/features/search-redesign-m5.1.md §Workstream B).
+/** The search screen: brand header, mode chips, question field.
  *
- * M5.1 replaced a push-to-a-second-page flow on the client's feedback. Choosing
- * a mode is now selecting a chip, and tapping the field opens the keyboard
- * where you already are rather than navigating somewhere first. */
+ * M5.1, from the client's feedback: choosing a mode is selecting a chip and
+ * never navigates, and tapping the field opens the keyboard where you already
+ * are. Pressing بحث *does* navigate — to [FatwaSearchResultScreen] — because the
+ * complaint was about being pushed to a second *search* page, not about results
+ * having a page of their own.
+ *
+ * The host decides which of the two is on screen by watching `phase`.
+ */
 @Composable
 fun FatwaSearchScreen(
     viewModel: FatwaSearchViewModel,
-    onContact: () -> Unit = {},
-    /** Optional branding above the chips. Home passes its logo/wordmark header
-     *  through here rather than wrapping this screen, so the whole page scrolls
-     *  as one and the header cannot fight the result list for the scroll. */
+    /** Branding above the chips. Home passes its logo/wordmark header through
+     *  here rather than wrapping this screen, so the whole page scrolls as one. */
     header: @Composable () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -99,17 +101,42 @@ fun FatwaSearchScreen(
         QuestionField(
             mode = state.mode,
             question = state.question,
-            isLoading = state.phase is FatwaSearchViewModel.Phase.Loading,
+            isLoading = false,
             onQuestionChange = viewModel::updateQuestion,
             onSubmit = { scope.launch { viewModel.submit() } },
             tokens = tokens,
         )
+        BrandEmptyState(
+            icon = state.mode.icon(),
+            message = stringResource(state.mode.hintRes()),
+            tokens = tokens,
+        )
+    }
+}
+
+/** The result page — everything after بحث: the dhikr loading view, the M5.1
+ *  result card, or the failure states. Its own page, with its own back. */
+@Composable
+fun FatwaSearchResultScreen(
+    viewModel: FatwaSearchViewModel,
+    onContact: () -> Unit = {},
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
+    val scope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .brandScreenBackground(tokens)
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
         when (val phase = state.phase) {
-            is FatwaSearchViewModel.Phase.Idle -> BrandEmptyState(
-                icon = state.mode.icon(),
-                message = stringResource(state.mode.hintRes()),
-                tokens = tokens,
-            )
+            // Idle never renders here — the host swaps back to the search
+            // screen the moment the phase returns to it.
+            is FatwaSearchViewModel.Phase.Idle -> Unit
             is FatwaSearchViewModel.Phase.Loading -> DhikrLoadingView(tokens)
             is FatwaSearchViewModel.Phase.Unavailable -> UnavailableCard(tokens)
             is FatwaSearchViewModel.Phase.Error -> ErrorCard(
