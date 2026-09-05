@@ -243,6 +243,7 @@
 "fatwa_search.hint.hadith" = "Type the hadith as you remember it, and we'll surface its authentic wording, grading, and source.";
 "fatwa_search.hint.general" = "Ask a general religious question and we'll answer with sourced evidence.";
 "fatwa_search.submit" = "Search";
+"fatwa_search.error_generic" = "Something went wrong. Please try again.";
 "fatwa_search.retry" = "Retry";
 "fatwa_search.answer" = "Answer";
 "fatwa_search.no_answer" = "No answer found";
@@ -306,3 +307,24 @@
 
 "leaderboard.city" = "City";
 "leaderboard.region_unavailable" = "We could not determine your location yet. Open the Prayer screen once, then come back.";
+
+"fatwa_search.summary" = "Summary of rulings";
+"fatwa_search.evidence" = "Evidence";
+"fatwa_search.hadith.text" = "Hadith text";
+"fatwa_search.hadith.grade" = "Grading";
+"fatwa_search.hadith.source" = "Source";
+"fatwa_search.hadith.verdicts" = "Scholars' verdicts";
+"fatwa_search.available_on" = "Available on";
+"fatwa_search.resource.book" = "Books";
+"fatwa_search.resource.video" = "YouTube";
+"fatwa_search.resource.website" = "Website";
+"fatwa_search.not_available" = "Not available";
+"fatwa_search.new_search" = "New search";
+"fatwa_search.disclaimer" = "Note: this tool is educational guidance only and does not replace consulting scholars directly on important matters.";
+"fatwa_search.contact_us" = "Contact us with your suggestions";
+"fatwa_search.ruling.wajib" = "Obligatory";
+"fatwa_search.ruling.mustahabb" = "Recommended";
+"fatwa_search.ruling.halal" = "Permitted";
+"fatwa_search.ruling.mubah" = "Neutral";
+"fatwa_search.ruling.makruh" = "Disliked";
+"fatwa_search.ruling.haram" = "Forbidden";

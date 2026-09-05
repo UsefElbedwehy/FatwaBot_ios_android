@@ -335,6 +335,15 @@ if (import.meta.main) {
   await Deno.mkdir(new URL(".", `file://${Deno.cwd()}/${args.out}`).pathname, { recursive: true }).catch(
     () => {},
   );
+  // Bump the corpus revision in the same script that inserts the chunks, so
+  // applying an ingest invalidates every cached answer generated against the
+  // previous corpus (0046_answer_cache.sql). Without this a question refused
+  // before a book was ingested would keep serving that refusal from cache,
+  // and the new book would look like it had never been loaded.
+  outParts.push(
+    "\n-- Invalidate cached answers: they were generated against the previous corpus.\n" +
+      "update fatwa.corpus_state set generation = generation + 1, updated_at = now();\n",
+  );
   await Deno.writeTextFile(args.out, outParts.join("\n"));
   console.error(
     `\nWrote ${entries.length - skipped} book(s) (${skipped} skipped), ${totalChunks} chunks → ${args.out}`,

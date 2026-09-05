@@ -1,17 +1,19 @@
 // Hybrid retrieval (docs/features/ai-search-m5.0-spec.md §Retrieval): embed
-// the question, run vector ∥ FTS ∥ trigram (mode "hadith" only) searches in
-// parallel, merge with Reciprocal Rank Fusion, return the top N. Each of the
-// three searches enforces license_status='granted' + active in SQL — this
-// module trusts that and never re-checks it.
+// the question, run vector ∥ FTS in parallel, merge with Reciprocal Rank
+// Fusion, return the top N. Both searches enforce license_status='granted' +
+// active in SQL — this module trusts that and never re-checks it.
+//
+// A trigram leg used to run for hadith mode; it was retired in 0047 (see the
+// note where the legs are built). Retrieval is therefore mode-independent, and
+// no longer takes a mode — only the answer prompt varies by mode now, and a
+// parameter kept "just in case" would imply otherwise to the next reader.
 import type { AppContext } from "../types.ts";
-import type { FatwaMode, FatwaSearchRepo, RetrievedChunk } from "../fatwa_types.ts";
+import type { FatwaSearchRepo, RetrievedChunk } from "../fatwa_types.ts";
 import type { EmbeddingProvider } from "./providers.ts";
 
 export interface RetrievalOptions {
   vectorTopK?: number;
   ftsTopK?: number;
-  trigramTopK?: number;
-  trigramMinSimilarity?: number;
   finalTopN?: number;
   /** RRF's smoothing constant — 60 is the standard default from the
    *  original Reciprocal Rank Fusion paper, dampening the influence of any
@@ -22,8 +24,6 @@ export interface RetrievalOptions {
 const DEFAULTS: Required<RetrievalOptions> = {
   vectorTopK: 20,
   ftsTopK: 20,
-  trigramTopK: 20,
-  trigramMinSimilarity: 0.15,
   finalTopN: 8,
   rrfK: 60,
 };
@@ -57,14 +57,6 @@ export function reciprocalRankFusion(lists: RetrievedChunk[][], k: number = DEFA
     .map(({ chunk, score }) => ({ ...chunk, score }));
 }
 
-/** Mode 2 (استخراج الأحاديث) is the only one that adds trigram search — a
- *  user paraphrasing/misremembering a hadith's wording rarely matches FTS's
- *  exact tokens, but shares enough substrings for trigram similarity to
- *  still find it. */
-function modeUsesTrigram(mode: FatwaMode): boolean {
-  return mode === "hadith";
-}
-
 /** Which half of retrieval failed: the outbound embedding call, or the SQL
  *  search functions — and for the latter, which of the three. */
 export class RetrievalError extends Error {
@@ -83,7 +75,6 @@ export async function hybridRetrieve(
   repo: FatwaSearchRepo,
   embedder: EmbeddingProvider,
   question: string,
-  mode: FatwaMode,
   opts: RetrievalOptions = {},
   /** Filled in with per-stage wall-clock, when the caller supplies it. The
    *  stages have wildly different cost profiles — an outbound HTTPS call to a
@@ -106,16 +97,18 @@ export async function hybridRetrieve(
     if (timings) timings.embedMs = Math.round(performance.now() - embedStart);
   }
 
+  // Two legs, not three. The trigram leg was retired in the database on
+  // 2026-09-04 — whole-chunk similarity had to scan every chunk (30-60s) and
+  // returned nothing useful, since similarity between a short question and a
+  // multi-paragraph chunk is close to meaningless. Its index (70 MB) was
+  // dropped with it, so calling it now would be a guaranteed empty round-trip.
+  // Arabic recall is carried instead by `fatwa.normalize_ar` in FTS (0047),
+  // which folds diacritics and alef/ya variants — the thing trigram was
+  // really being asked to do.
   const named: { name: string; run: Promise<RetrievedChunk[]> }[] = [
     { name: "vector", run: repo.vectorSearch(ctx, embedding, o.vectorTopK) },
     { name: "fts", run: repo.ftsSearch(ctx, question, o.ftsTopK) },
   ];
-  if (modeUsesTrigram(mode)) {
-    named.push({
-      name: "trigram",
-      run: repo.trigramSearch(ctx, question, o.trigramTopK, o.trigramMinSimilarity),
-    });
-  }
 
   // `allSettled`, not `all`. The whole point of fusing three independent
   // searches is that they are independent: if the vector index is slow enough

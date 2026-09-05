@@ -71,7 +71,8 @@ export const TEMPLATES: WirdTemplateInput[] = [
     name: { ar: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", en: "Subhan Allah wa bi-hamdihi" },
     description: {
       ar: "«من قالها مئة مرة في اليوم حُطَّت خطاياه وإن كانت مثل زبد البحر». رواه مسلم.",
-      en: "“Whoever says it 100 times a day, his sins are wiped away even if like the foam of the sea.” (Muslim)",
+      en:
+        "“Whoever says it 100 times a day, his sins are wiped away even if like the foam of the sea.” (Muslim)",
     },
   },
   {
@@ -83,7 +84,8 @@ export const TEMPLATES: WirdTemplateInput[] = [
     name: { ar: "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ", en: "Tahlil — Declaring Allah's Oneness" },
     description: {
       ar: "قولها مئة مرة تعدل عتق عشر رقاب، وتُكتب مئة حسنة، وتُمحى مئة سيئة. متفق عليه.",
-      en: "Said 100 times: equals freeing ten slaves, a hundred good deeds recorded, a hundred sins erased. (Bukhari & Muslim)",
+      en:
+        "Said 100 times: equals freeing ten slaves, a hundred good deeds recorded, a hundred sins erased. (Bukhari & Muslim)",
     },
   },
   {
@@ -95,7 +97,8 @@ export const TEMPLATES: WirdTemplateInput[] = [
     name: { ar: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ", en: "Two phrases beloved to the Most Merciful" },
     description: {
       ar: "«كلمتان خفيفتان على اللسان، ثقيلتان في الميزان، حبيبتان إلى الرحمن». متفق عليه.",
-      en: "“Two phrases light on the tongue, heavy on the scale, beloved to the Most Merciful.” (Bukhari & Muslim)",
+      en:
+        "“Two phrases light on the tongue, heavy on the scale, beloved to the Most Merciful.” (Bukhari & Muslim)",
     },
   },
   {
@@ -155,14 +158,21 @@ export function validate(templates: WirdTemplateInput[]): string[] {
   if (!Array.isArray(templates) || templates.length === 0) return ["templates must be a non-empty array"];
   const slugs = new Set<string>();
   for (const [i, t] of templates.entries()) {
-    if (typeof t.slug !== "string" || !SLUG_RE.test(t.slug)) errors.push(`templates[${i}].slug must match ${SLUG_RE}`);
-    else if (slugs.has(t.slug)) errors.push(`templates[${i}].slug '${t.slug}' is duplicated`);
+    if (typeof t.slug !== "string" || !SLUG_RE.test(t.slug)) {
+      errors.push(`templates[${i}].slug must match ${SLUG_RE}`);
+    } else if (slugs.has(t.slug)) errors.push(`templates[${i}].slug '${t.slug}' is duplicated`);
     else slugs.add(t.slug);
-    if (!t.name || typeof t.name.ar !== "string" || t.name.ar.trim() === "") errors.push(`templates[${i}].name.ar is required`);
+    if (!t.name || typeof t.name.ar !== "string" || t.name.ar.trim() === "") {
+      errors.push(`templates[${i}].name.ar is required`);
+    }
     if (typeof t.type !== "string" || t.type.trim() === "") errors.push(`templates[${i}].type is required`);
-    if (!Number.isInteger(t.target) || t.target < 1) errors.push(`templates[${i}].target must be a positive integer`);
+    if (!Number.isInteger(t.target) || t.target < 1) {
+      errors.push(`templates[${i}].target must be a positive integer`);
+    }
     if (typeof t.unit !== "string" || t.unit.trim() === "") errors.push(`templates[${i}].unit is required`);
-    if (typeof t.frequency !== "string" || t.frequency.trim() === "") errors.push(`templates[${i}].frequency is required`);
+    if (typeof t.frequency !== "string" || t.frequency.trim() === "") {
+      errors.push(`templates[${i}].frequency is required`);
+    }
   }
   return errors;
 }
@@ -210,7 +220,11 @@ on conflict (id) do update set
 
 /** The apps' bundled offline JSON for one locale (resolved single-locale strings,
  * matching the WirdTemplatesCollection API shape). */
-export function toBundledJson(templates: WirdTemplateInput[], locale: string, version = AWRAD_VERSION): unknown {
+export function toBundledJson(
+  templates: WirdTemplateInput[],
+  locale: string,
+  version = AWRAD_VERSION,
+): unknown {
   return {
     version,
     templates: templates.map((t) => ({

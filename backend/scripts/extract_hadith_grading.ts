@@ -21,8 +21,7 @@
 // directly, matching hadith_import.ts.
 
 /** Openers of a takhrij clause, matched on diacritic-stripped text. */
-const OPENERS =
-  /(متفق علي|رواه|رواها|رواهما|اخرجه|اخرجها|اخرجاه|اخرجهما)/g;
+const OPENERS = /(متفق علي|رواه|رواها|رواهما|اخرجه|اخرجها|اخرجاه|اخرجهما)/g;
 
 /**
  * Sentence openers that *continue* a takhrij once one has started — a verdict,

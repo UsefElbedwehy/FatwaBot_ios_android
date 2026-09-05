@@ -134,3 +134,64 @@ final class FatwaSearchViewModelTests: XCTestCase {
         XCTAssertFalse(response.answer.isEmpty)
     }
 }
+
+// MARK: - M5.1 structured contract
+
+extension FatwaSearchViewModelTests {
+    private func decode(_ json: String) throws -> SearchResponse {
+        try JSONDecoder().decode(SearchResponse.self, from: Data(json.utf8))
+    }
+
+    func testStructuredResponseDecodes() throws {
+        let response = try decode("""
+        {"answer":"نص","summary":"خلاصة","ruling":"haram",
+         "scholar_answers":[{"scholar":"ابن عثيمين","answer":"قول","evidence":"دليل"}],
+         "resources":[{"kind":"book","available":true,"url":null}],
+         "citations":[],"refused":false,"mode":"fatwa"}
+        """)
+
+        XCTAssertEqual(response.ruling, .haram)
+        XCTAssertEqual(response.summary, "خلاصة")
+        XCTAssertEqual(response.scholarAnswers.first?.scholar, "ابن عثيمين")
+        XCTAssertEqual(response.scholarAnswers.first?.evidence, "دليل")
+        XCTAssertEqual(response.resources.first?.available, true)
+    }
+
+    func testUnknownRulingDecodesToNoneRatherThanThrowing() throws {
+        // A ruling value added server-side must never break an older build —
+        // it should simply draw no status dot.
+        let response = try decode("""
+        {"answer":"نص","ruling":"wudu_status","citations":[],"refused":false,"mode":"fatwa"}
+        """)
+
+        XCTAssertEqual(response.ruling, .none)
+    }
+
+    func testPreM51ResponseStillDecodes() throws {
+        // The apps ship independently of the backend; one built against the new
+        // contract must not break against a server that has not deployed it.
+        let response = try decode("""
+        {"answer":"نص","citations":[],"refused":false,"mode":"fatwa"}
+        """)
+
+        XCTAssertEqual(response.answer, "نص")
+        XCTAssertEqual(response.ruling, .none)
+        XCTAssertTrue(response.scholarAnswers.isEmpty)
+        XCTAssertTrue(response.resources.isEmpty)
+    }
+
+    func testSelectingAnotherModeClearsAPendingResult() async {
+        let client = FakeSearchClient()
+        client.postHandler = { _, _ in SearchResponse(answer: "نص") }
+        let viewModel = FatwaSearchViewModel(mode: .fatwa, client: client, initialQuestion: "سؤال")
+        await viewModel.submit()
+        guard case .result = viewModel.phase else { return XCTFail("expected a result to clear") }
+
+        viewModel.select(mode: .hadith)
+
+        // A فتوى answer left under the حديث chip reads as an answer to the mode
+        // now selected, and it is not.
+        XCTAssertEqual(viewModel.phase, .idle)
+        XCTAssertEqual(viewModel.mode, .hadith)
+    }
+}

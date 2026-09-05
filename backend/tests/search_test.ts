@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
 import { route } from "../functions/api/router.ts";
 import { InMemoryConfigRepo } from "./in_memory_repo.ts";
 import { InMemoryIdentityRepo } from "./in_memory_identity_repo.ts";
@@ -341,10 +341,10 @@ Deno.test("POST /v1/search reports retrieval_failed when the SQL search stage th
   };
   // Every search has to fail for retrieval to be fatal — see the degraded-mode
   // test below.
+  // Both legs — there is no third since the trigram leg was retired (0047).
   const dead = () => Promise.reject(new Error("function fatwa.search_vector does not exist"));
   d.fatwaSearch.vectorSearch = dead;
   d.fatwaSearch.ftsSearch = dead;
-  d.fatwaSearch.trigramSearch = dead;
   const user = await signIn(d);
   const auth = { authorization: `Bearer ${user.access_token}` };
   const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
@@ -413,4 +413,271 @@ Deno.test("POST /v1/search still answers when only one of the three searches fai
   const body = await res.json();
   assertEquals(body.refused, false);
   assertEquals(body.citations.length, 1);
+});
+
+// --- Whole-answer cache (0046) -------------------------------------------
+
+/** Keyed exactly as the Postgres table is, so a test that passes here is
+ *  testing the same key the production repo uses. */
+class FakeAnswerCache {
+  readonly store = new Map<string, unknown>();
+  generation = 1;
+  private readonly generationAtWrite = new Map<string, number>();
+  failReads = false;
+
+  private key(ctx: { appId: string }, hash: string, mode: string, model: string) {
+    return [ctx.appId, hash, mode, model].join("|");
+  }
+
+  get(ctx: { appId: string }, hash: string, mode: string, model: string): Promise<unknown | null> {
+    if (this.failReads) return Promise.reject(new Error("cache down"));
+    const k = this.key(ctx, hash, mode, model);
+    if (this.generationAtWrite.get(k) !== this.generation) return Promise.resolve(null);
+    return Promise.resolve(this.store.get(k) ?? null);
+  }
+
+  put(ctx: { appId: string }, hash: string, mode: string, model: string, response: unknown): Promise<void> {
+    const k = this.key(ctx, hash, mode, model);
+    this.store.set(k, response);
+    this.generationAtWrite.set(k, this.generation);
+    return Promise.resolve();
+  }
+}
+
+function cachingDeps() {
+  const answerCache = new FakeAnswerCache();
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+    answerCache,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  return { d, answerCache };
+}
+
+Deno.test("a repeated question is served from cache without re-running the pipeline", async () => {
+  const { d } = cachingDeps();
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const ask = () =>
+    route(post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth), d);
+
+  const first = await ask();
+  const firstBody = await first.json();
+  const second = await ask();
+
+  assertEquals(second.status, 200);
+  assertEquals(await second.json(), firstBody, "a hit must be byte-identical to the miss");
+  // The expensive stages ran exactly once.
+  assertEquals(d.fatwaSearch.loggedAnswers.length, 1);
+  assertEquals(second.headers.get("server-timing"), "cache;dur=0");
+});
+
+Deno.test("a cache hit still records the ask in search history", async () => {
+  const { d } = cachingDeps();
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const ask = () => route(post("/v1/search", { question: "سؤال متكرر", mode: "fatwa" }, auth), d);
+
+  await ask();
+  await ask();
+
+  // Two asks, two history rows — a user's history should not have holes in it
+  // exactly where they repeated themselves.
+  const history = await d.searchHistory.list(
+    { appId: "app", platform: "all", appVersion: null, locale: "ar" },
+    user.user_id,
+    null,
+    10,
+    null,
+  );
+  assertEquals(history.length, 2);
+});
+
+Deno.test("the same question in another mode is a different cache entry", async () => {
+  const { d } = cachingDeps();
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  await route(post("/v1/search", { question: "س", mode: "fatwa" }, auth), d);
+  await route(post("/v1/search", { question: "س", mode: "hadith" }, auth), d);
+
+  // A different mode is a different prompt, so it must not reuse the answer.
+  assertEquals(d.fatwaSearch.loggedAnswers.length, 2);
+});
+
+Deno.test("ingesting more corpus invalidates cached answers", async () => {
+  const { d, answerCache } = cachingDeps();
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const ask = () => route(post("/v1/search", { question: "س", mode: "fatwa" }, auth), d);
+
+  await ask();
+  await ask();
+  assertEquals(d.fatwaSearch.loggedAnswers.length, 1);
+
+  // The ingester bumps the generation. A question refused against the old
+  // corpus must be re-asked against the new one rather than serving the
+  // refusal forever.
+  answerCache.generation = 2;
+  await ask();
+  assertEquals(d.fatwaSearch.loggedAnswers.length, 2);
+});
+
+Deno.test("a broken answer cache degrades to slow, never to broken", async () => {
+  const { d, answerCache } = cachingDeps();
+  answerCache.failReads = true;
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).citations.length, 1);
+});
+
+// --- Structured result contract (M5.1) -----------------------------------
+
+Deno.test("a search returns the structured card fields, not just prose", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  const body = await res.json();
+
+  assertEquals(typeof body.summary, "string");
+  assertEquals(body.ruling, "halal");
+  assertEquals(body.scholar_answers.length, 1);
+  assertEquals(body.scholar_answers[0].scholar, "ابن عثيمين");
+  // `answer` stays populated so a client built against the old shape still
+  // renders something.
+  assertEquals(typeof body.answer, "string");
+});
+
+Deno.test("resources report every kind, so 'not available' is stated rather than omitted", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  const body = await res.json();
+
+  assertEquals(body.resources.map((r: { kind: string }) => r.kind), ["book", "video", "website"]);
+  // The corpus is books only, so the honest answer for the other two is "no".
+  assertEquals(body.resources.find((r: { kind: string }) => r.kind === "book").available, true);
+  assertEquals(body.resources.find((r: { kind: string }) => r.kind === "video").available, false);
+  assertEquals(body.resources.find((r: { kind: string }) => r.kind === "website").available, false);
+});
+
+Deno.test("a video source makes the video resource available, with its url", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([{
+    ...seedChunk(),
+    pageNumber: null,
+    videoTimestamp: 512,
+    sourceKind: "video",
+    sourceUrl: "https://example.test/lecture",
+  }]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(
+    post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "fatwa" }, auth),
+    d,
+  );
+  const body = await res.json();
+
+  const video = body.resources.find((r: { kind: string }) => r.kind === "video");
+  assertEquals(video.available, true);
+  assertEquals(video.url, "https://example.test/lecture");
+  // Derived from the source row, never from the model — a model asked whether
+  // something is on YouTube will happily say yes.
+  assertEquals(body.resources.find((r: { kind: string }) => r.kind === "book").available, false);
+});
+
+Deno.test("fabricated evidence blanks the structured fields too, not just the prose", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: {
+      id: "fabricator",
+      answer: () =>
+        Promise.resolve({
+          answer: "إجابة مبنية على استشهاد مختلق",
+          summary: "خلاصة مبنية على استشهاد مختلق",
+          ruling: "haram" as const,
+          scholarAnswers: [{ scholar: "ابن عثيمين", answer: "قول منسوب زوراً" }],
+          citations: [{
+            chunkId: "chunk-1",
+            scholar: "ابن عثيمين",
+            sourceTitle: "كتاب",
+            quotedText: "نص لا وجود له في أي مقطع",
+          }],
+          refused: false,
+          model: "fabricator",
+        }),
+    } as unknown as DevStubAnswerProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+
+  const res = await route(post("/v1/search", { question: "سؤال", mode: "fatwa" }, auth), d);
+  const body = await res.json();
+
+  // Keeping the summary or the scholar card would leave the fabrication on
+  // screen in a different shape, and `haram` would still colour a status dot.
+  assertEquals(body.refused, true);
+  assertEquals(body.citations.length, 0);
+  assertEquals(body.summary, null);
+  assertEquals(body.scholar_answers.length, 0);
+  assertEquals(body.ruling, "none");
+});
+
+Deno.test("a refusal is never cached — it is more often an accident than a fact", async () => {
+  // Built without seeding — `seed` appends, so there is no way to un-seed the
+  // chunk cachingDeps() adds. Nothing retrievable means the provider refuses.
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+    answerCache: new FakeAnswerCache(),
+  };
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const ask = () => route(post("/v1/search", { question: "سؤال بلا مصدر", mode: "fatwa" }, auth), d);
+
+  const first = await ask();
+  assertEquals((await first.json()).refused, true);
+  const second = await ask();
+
+  // Re-run, not served from cache: a truncated generation or a timed-out
+  // retrieval leg would otherwise freeze a spurious "no answer" in place for
+  // the whole corpus generation.
+  assertNotEquals(second.headers.get("server-timing"), "cache;dur=0");
 });

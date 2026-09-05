@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@1";
 import { extractGrading, normalizeWithMap } from "../scripts/extract_hadith_grading.ts";
 
 Deno.test("normalizeWithMap indices address the original string", () => {

@@ -36,7 +36,9 @@ public final class FatwaSearchViewModel {
         case result(SearchResponse)
     }
 
-    public let mode: FatwaSearchMode
+    /// State, not a constant: M5.1 turned the three modes into chips on the
+    /// search screen, so this changes between asks without rebuilding anything.
+    public var mode: FatwaSearchMode
     public var question: String
     public private(set) var phase: Phase = .idle
 
@@ -44,7 +46,7 @@ public final class FatwaSearchViewModel {
     private let searchEnabled: Bool
 
     public init(
-        mode: FatwaSearchMode,
+        mode: FatwaSearchMode = .fatwa,
         client: AuthenticatedAPIClientProtocol,
         initialQuestion: String = "",
         searchEnabled: Bool = FatwaSearchFeatureFlags.searchEnabled
@@ -83,6 +85,23 @@ public final class FatwaSearchViewModel {
     /// Back to a blank ask — used by "ask again" after a result or refusal.
     public func reset() {
         question = ""
+        phase = .idle
+    }
+
+    /// Selecting a chip clears a pending result. A فتوى answer left on screen
+    /// under the حديث chip reads as an answer to the mode now selected, and it
+    /// is not — the modes ask the corpus different questions.
+    public func select(mode newMode: FatwaSearchMode) {
+        guard newMode != mode else { return }
+        mode = newMode
+        phase = .idle
+    }
+
+    /// Back from the result page. Keeps the question and the mode so the search
+    /// screen returns as it was left — the user is coming back to edit their
+    /// question, not to start over. `.idle` is what the host watches to decide
+    /// the result page is dismissed, so this is the whole navigation.
+    public func backToSearch() {
         phase = .idle
     }
 }

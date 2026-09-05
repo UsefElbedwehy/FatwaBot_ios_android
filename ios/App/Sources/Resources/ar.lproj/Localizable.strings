@@ -245,6 +245,7 @@
 "fatwa_search.hint.hadith" = "اكتب نص الحديث كما تتذكره، وسنستخرج لفظه الصحيح ودرجته ومصدره.";
 "fatwa_search.hint.general" = "اسأل سؤالاً دينياً عاماً وسنجيبك بإجابة موثقة بالمصادر.";
 "fatwa_search.submit" = "بحث";
+"fatwa_search.error_generic" = "حدث خطأ ما، حاول مرة أخرى.";
 "fatwa_search.retry" = "إعادة المحاولة";
 "fatwa_search.answer" = "الإجابة";
 "fatwa_search.no_answer" = "لم نجد إجابة";
@@ -308,3 +309,24 @@
 
 "leaderboard.city" = "المدينة";
 "leaderboard.region_unavailable" = "لم نتمكن من تحديد موقعك بعد. افتح شاشة الصلاة مرة واحدة ثم عد إلى هنا.";
+
+"fatwa_search.summary" = "خلاصة الأقوال";
+"fatwa_search.evidence" = "الدليل";
+"fatwa_search.hadith.text" = "نص الحديث";
+"fatwa_search.hadith.grade" = "درجة الحديث";
+"fatwa_search.hadith.source" = "المصدر";
+"fatwa_search.hadith.verdicts" = "أقوال العلماء";
+"fatwa_search.available_on" = "متاح على";
+"fatwa_search.resource.book" = "الكتب";
+"fatwa_search.resource.video" = "يوتيوب";
+"fatwa_search.resource.website" = "الموقع";
+"fatwa_search.not_available" = "غير متاح";
+"fatwa_search.new_search" = "بحث جديد";
+"fatwa_search.disclaimer" = "تنبيه: هذه الأداة استرشادية تعليمية فقط، ولا تُغني عن مراجعة العلماء مباشرةً في المسائل الشرعية المهمة.";
+"fatwa_search.contact_us" = "تواصل معنا واقتراحاتكم";
+"fatwa_search.ruling.wajib" = "واجب";
+"fatwa_search.ruling.mustahabb" = "مستحب";
+"fatwa_search.ruling.halal" = "حلال";
+"fatwa_search.ruling.mubah" = "مباح";
+"fatwa_search.ruling.makruh" = "مكروه";
+"fatwa_search.ruling.haram" = "حرام";

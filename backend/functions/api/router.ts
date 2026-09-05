@@ -23,6 +23,7 @@ import type { FatwaSearchRepo } from "./fatwa_types.ts";
 import type { AnswerProvider, EmbeddingProvider } from "./ai_search/providers.ts";
 import { handleSendCampaign } from "./handlers/send_campaign.ts";
 import { handleSearch } from "./handlers/search.ts";
+import type { AnswerCacheRepo } from "./ai_search/answer_cache.ts";
 import { handleAnonymousAuth, handleRefresh } from "./handlers/auth.ts";
 import {
   handleLinkProvider,
@@ -110,6 +111,8 @@ export interface Deps {
    *  dev-stub embedding/echo in production. */
   embeddingProvider?: EmbeddingProvider;
   answerProvider?: AnswerProvider;
+  /** Optional: absent means every search runs the full pipeline (0046). */
+  answerCache?: AnswerCacheRepo;
 }
 
 /** Extracts the API path suffix beginning at "/v1/..." or "/admin/v1/...".

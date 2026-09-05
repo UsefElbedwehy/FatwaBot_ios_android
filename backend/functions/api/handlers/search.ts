@@ -9,10 +9,12 @@ import { verifyAccessToken } from "../auth/jwt.ts";
 import { apiError, json } from "../http.ts";
 import { resolveRequired } from "../locale_resolve.ts";
 import type { AppContext } from "../types.ts";
-import type { FatwaMode, FatwaSearchRepo } from "../fatwa_types.ts";
+import type { FatwaMode, FatwaSearchRepo, RetrievedChunk } from "../fatwa_types.ts";
 import { UpstreamError } from "../ai_search/providers.ts";
 import type { AnswerProvider, EmbeddingProvider } from "../ai_search/providers.ts";
 import { hybridRetrieve, RetrievalError } from "../ai_search/retrieval.ts";
+import type { AnswerCacheRepo } from "../ai_search/answer_cache.ts";
+import { questionHash } from "../ai_search/embedding_cache.ts";
 import { verifyCitations } from "../ai_search/citation_verify.ts";
 import type { SearchHistoryRepo, SearchSource } from "../search_types.ts";
 
@@ -25,6 +27,9 @@ export interface SearchDeps {
   embeddingProvider?: EmbeddingProvider;
   answerProvider?: AnswerProvider;
   searchHistory: SearchHistoryRepo;
+  /** Optional: without it every search runs the full pipeline, which is the
+   *  pre-0046 behaviour and still correct, only slower. */
+  answerCache?: AnswerCacheRepo;
   jwtSecret: string;
 }
 
@@ -53,6 +58,42 @@ async function requireUser(req: Request, jwtSecret: string): Promise<string | Re
   return claims.sub;
 }
 
+/** What the answer is also available as, derived from the *verified* citations
+ *  rather than asked of the model.
+ *
+ *  The reference design shows an availability badge per scholar card. A model
+ *  asked "is this on YouTube?" will happily say yes, so the only trustworthy
+ *  source is the `kind`/`url` on the sources those citations actually came from
+ *  (0048). Every source is a book today, so `video` and `website` will report
+ *  `available: false` until such sources are ingested — which is the honest
+ *  answer, not a gap.
+ */
+function deriveResources(
+  citations: readonly { chunkId: string }[],
+  chunks: readonly RetrievedChunk[],
+): { kind: string; available: boolean; url: string | null }[] {
+  const byChunk = new Map(chunks.map((c) => [c.chunkId, c]));
+  const found = new Map<string, string | null>();
+  for (const citation of citations) {
+    const chunk = byChunk.get(citation.chunkId);
+    if (!chunk) continue;
+    // First url wins, but a later citation with a url beats an earlier one
+    // without: a kind is "available" if any cited source of that kind exists,
+    // and a link is better than none.
+    const existing = found.get(chunk.sourceKind);
+    if (existing === undefined || (existing === null && chunk.sourceUrl !== null)) {
+      found.set(chunk.sourceKind, chunk.sourceUrl);
+    }
+  }
+  // Always report all three, so the UI can render "غير متاح" rather than
+  // silently omitting a row and leaving the user unsure whether it was checked.
+  return ["book", "video", "website"].map((kind) => ({
+    kind,
+    available: found.has(kind),
+    url: found.get(kind) ?? null,
+  }));
+}
+
 /** POST /v1/search */
 export async function handleSearch(
   ctx: AppContext,
@@ -78,6 +119,30 @@ export async function handleSearch(
     return apiError(503, "ai_unavailable", "AI search is not configured yet");
   }
 
+  // A repeat costs one indexed lookup instead of ~15s (0046). Read before
+  // anything expensive, and fail open — a cache that is down must make search
+  // slow, never broken.
+  const hash = await questionHash(question);
+  const answerModelId = deps.answerProvider.id;
+  if (deps.answerCache) {
+    try {
+      const hit = await deps.answerCache.get(ctx, hash, mode, answerModelId);
+      if (hit) {
+        // History still records the ask: a cached answer is still the user
+        // asking, and their history would otherwise have holes in it exactly
+        // where they repeated themselves.
+        try {
+          await deps.searchHistory.record(ctx, userId, MODE_TO_HISTORY_SOURCE[mode], question, ctx.locale);
+        } catch (err) {
+          console.error("search_logging_failed", err instanceof Error ? err.stack ?? err.message : err);
+        }
+        return json(hit, 200, { "server-timing": "cache;dur=0" });
+      }
+    } catch (err) {
+      console.warn("answer_cache_read_failed", err instanceof Error ? err.message : err);
+    }
+  }
+
   // Each stage reports its own failure code. Previously any throw anywhere in
   // here fell through to the router's blanket `internal_error`, so a 500 said
   // only "something broke" — indistinguishable between the embedding call, the
@@ -88,7 +153,7 @@ export async function handleSearch(
   let answerMs = 0;
   let chunks;
   try {
-    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, mode, {}, timings);
+    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, {}, timings);
   } catch (err) {
     console.error("search_retrieval_failed", err instanceof Error ? err.stack ?? err.message : err);
     const stage = err instanceof RetrievalError ? err.stage : "unknown";
@@ -158,22 +223,63 @@ export async function handleSearch(
     console.error("search_logging_failed", err instanceof Error ? err.stack ?? err.message : err);
   }
 
+  const responseBody = {
+    answer,
+    // Structured fields for the M5.1 result card. All optional: a refusal has
+    // no ruling and no scholar cards, and hadith fields exist only in that
+    // mode. `answer` stays populated so a client built against the old shape
+    // still renders something.
+    summary: verified.summary ?? null,
+    ruling: verified.ruling ?? "none",
+    scholar_answers: (verified.scholarAnswers ?? []).map((a) => ({
+      scholar: a.scholar,
+      answer: a.answer,
+      evidence: a.evidence ?? null,
+    })),
+    hadith: verified.hadith
+      ? {
+        text: verified.hadith.text,
+        grade: verified.hadith.grade,
+        source: verified.hadith.source ?? null,
+        scholar_verdicts: verified.hadith.scholarVerdicts ?? null,
+      }
+      : null,
+    resources: deriveResources(verified.citations, chunks),
+    citations: verified.citations.map((c) => ({
+      chunk_id: c.chunkId,
+      scholar: c.scholar,
+      source_title: c.sourceTitle,
+      page_number: c.pageNumber ?? null,
+      video_timestamp: c.videoTimestamp ?? null,
+      quoted_text: c.quotedText,
+    })),
+    refused: verified.refused,
+    mode,
+  };
+
+  // Written after the answer is assembled, and a failure here costs the user
+  // nothing — they already have their answer.
+  //
+  // Refusals are deliberately NOT cached. A refusal is far more often a
+  // transient symptom than a stable fact about the corpus — a truncated
+  // generation, a model hiccup, a retrieval leg that timed out — and caching
+  // one freezes that accident in place for the whole corpus generation. This
+  // was not hypothetical: a truncated response cached "لم نجد" for a question
+  // the corpus answers well, and every later ask served the accident in under
+  // a second. The cost of not caching them is that a genuinely unanswerable
+  // question re-runs, which is the cheaper mistake.
+  if (deps.answerCache && !verified.refused) {
+    try {
+      await deps.answerCache.put(ctx, hash, mode, answerModelId, responseBody);
+    } catch (err) {
+      console.warn("answer_cache_write_failed", err instanceof Error ? err.message : err);
+    }
+  }
+
   // Standard `Server-Timing`, so where a slow search spent its time is visible
   // from the client instead of only in logs someone has to have access to read.
   return json(
-    {
-      answer,
-      citations: verified.citations.map((c) => ({
-        chunk_id: c.chunkId,
-        scholar: c.scholar,
-        source_title: c.sourceTitle,
-        page_number: c.pageNumber ?? null,
-        video_timestamp: c.videoTimestamp ?? null,
-        quoted_text: c.quotedText,
-      })),
-      refused: verified.refused,
-      mode,
-    },
+    responseBody,
     200,
     {
       "server-timing": [

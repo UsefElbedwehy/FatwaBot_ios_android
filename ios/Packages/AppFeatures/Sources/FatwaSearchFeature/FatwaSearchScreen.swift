@@ -5,13 +5,32 @@ import SwiftUI
 /// ai-search-m5.0-spec.md §App wiring) — one screen, mode decides the title,
 /// placeholder and idle hint. Citations show the quote + page + book title
 /// (v1: no deep-linking to an in-app reader, per spec).
-public struct FatwaSearchScreen: View {
+/// The search screen: brand header, mode chips, question field.
+///
+/// M5.1, from the client's feedback: choosing a mode is selecting a chip and
+/// never navigates, and tapping the field opens the keyboard where you already
+/// are. Pressing بحث *does* navigate — to `FatwaSearchResultScreen` — because
+/// the complaint was being pushed to a second *search* page, not about results
+/// having a page of their own. The host watches `phase` to decide which is up.
+public struct FatwaSearchScreen<Header: View>: View {
     @State private var viewModel: FatwaSearchViewModel
+    private let header: Header
     @Environment(\.colorScheme) private var colorScheme
     @FocusState private var isFocused: Bool
 
-    public init(viewModel: FatwaSearchViewModel) {
+    /// Called when the user submits, so the host can push the result page. The
+    /// search itself is still driven from here — this only reports that one
+    /// started, keeping navigation the host's concern.
+    private let onSubmitted: () -> Void
+
+    public init(
+        viewModel: FatwaSearchViewModel,
+        onSubmitted: @escaping () -> Void = {},
+        @ViewBuilder header: () -> Header = { EmptyView() }
+    ) {
         _viewModel = State(initialValue: viewModel)
+        self.onSubmitted = onSubmitted
+        self.header = header()
     }
 
     private var tokens: ColorTokens {
@@ -21,8 +40,14 @@ public struct FatwaSearchScreen: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .trailing, spacing: 20) {
+                header
+                modeChips
                 questionField
-                content
+                BrandEmptyState(
+                    systemImage: viewModel.mode.systemImage,
+                    messageKey: viewModel.mode.hintKey,
+                    tokens: tokens
+                )
             }
             .padding(20)
         }
@@ -32,6 +57,51 @@ public struct FatwaSearchScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
         #endif
+    }
+
+
+    /// Push first, then run: the result page owns the loading state, so the
+    /// user sees the dhikr view immediately rather than a frozen search screen.
+    private func startSearch() {
+        guard !viewModel.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        onSubmitted()
+        Task { await viewModel.submit() }
+    }
+
+    // MARK: - Mode chips
+
+    /// The three modes as chips. Selecting one never navigates — that was the
+    /// client's complaint about the old flow — and فتوى is selected by default
+    /// because it is what most people come here for.
+    private var modeChips: some View {
+        HStack(spacing: 8) {
+            ForEach(FatwaSearchMode.allCases, id: \.self) { mode in
+                let isSelected = mode == viewModel.mode
+                Button { viewModel.select(mode: mode) } label: {
+                    VStack(spacing: 6) {
+                        Image(systemName: mode.systemImage)
+                            .font(.system(size: 18, weight: .semibold))
+                        Text(mode.titleKey)
+                            .font(.caption)
+                            .fontWeight(isSelected ? .bold : .regular)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 8)
+                    .foregroundStyle(Color(hexToken: isSelected ? tokens.onPrimary : tokens.primary))
+                    .background(
+                        Color(hexToken: isSelected ? tokens.primary : tokens.surfaceElevated),
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
+                }
+                .buttonStyle(.plain)
+                // Announced as a selectable, not a button, so VoiceOver says
+                // whether it is on — the fill is the only other cue.
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
     }
 
     // MARK: - Question field
@@ -47,7 +117,7 @@ public struct FatwaSearchScreen: View {
                     .lineLimit(1...4)
                     .focused($isFocused)
                     .submitLabel(.search)
-                    .onSubmit { Task { await viewModel.submit() } }
+                    .onSubmit { startSearch() }
                     .disabled(isLoading)
             }
             .padding(.horizontal, 14)
@@ -56,7 +126,7 @@ public struct FatwaSearchScreen: View {
 
             Button {
                 isFocused = false
-                Task { await viewModel.submit() }
+                startSearch()
             } label: {
                 Text("fatwa_search.submit")
                     .font(.subheadline.weight(.semibold))
@@ -73,25 +143,69 @@ public struct FatwaSearchScreen: View {
 
     private var isLoading: Bool { viewModel.phase == .loading }
 
-    // MARK: - Content
 
-    @ViewBuilder
-    private var content: some View {
-        switch viewModel.phase {
-        case .idle:
-            BrandEmptyState(systemImage: viewModel.mode.systemImage, messageKey: viewModel.mode.hintKey, tokens: tokens)
-        case .loading:
-            DhikrLoadingView(tokens: tokens)
-        case .unavailable:
-            unavailableCard
-        case .error(let message):
-            errorCard(message)
-        case .result(let response):
-            resultView(response)
-        }
+
+}
+
+/// The result page — everything after بحث: the dhikr loading view, the M5.1
+/// result card, or the failure states. Its own page, with its own back.
+public struct FatwaSearchResultScreen: View {
+    @State private var viewModel: FatwaSearchViewModel
+    private let onContact: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    public init(viewModel: FatwaSearchViewModel, onContact: @escaping () -> Void = {}) {
+        _viewModel = State(initialValue: viewModel)
+        self.onContact = onContact
     }
 
-    private var unavailableCard: some View {
+    private var tokens: ColorTokens {
+        colorScheme == .dark ? DesignTokens.bundledDefault.dark : DesignTokens.bundledDefault.light
+    }
+
+    public var body: some View {
+        ScrollView {
+            VStack(alignment: .trailing, spacing: 20) {
+                switch viewModel.phase {
+                // Never rendered: the host swaps back to the search screen the
+                // moment the phase returns to idle.
+                case .idle:
+                    EmptyView()
+                case .loading:
+                    DhikrLoadingView(tokens: tokens)
+                case .unavailable:
+                    UnavailableCard(tokens: tokens)
+                case .error:
+                    // Deliberately not the error's own text — that is how
+                    // "Transport(detail=timeout)" reached a user's screen on
+                    // Android. It stays on the phase for logging.
+                    ErrorCard(tokens: tokens) { Task { await viewModel.submit() } }
+                case .result(let response):
+                    SearchResultView(
+                        response: response,
+                        tokens: tokens,
+                        onAskAgain: viewModel.reset,
+                        onContact: onContact
+                    )
+                }
+            }
+            .padding(20)
+        }
+        .brandScreenBackground(tokens)
+        .navigationTitle(viewModel.mode.titleKey)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+    }
+}
+
+/// Shared by the search screen (which never shows them) and the result screen
+/// (which does) — extracted when M5.1 split the two, so neither owns a state
+/// the other also needs to render.
+struct UnavailableCard: View {
+    let tokens: ColorTokens
+
+    var body: some View {
         VStack(spacing: 16) {
             BrandLogoBadge(tokens: tokens)
             Text("home.coming_soon.title")
@@ -106,16 +220,21 @@ public struct FatwaSearchScreen: View {
         .padding(.vertical, 40)
         .padding(.horizontal, 16)
     }
+}
 
-    private func errorCard(_ message: String) -> some View {
+struct ErrorCard: View {
+    let tokens: ColorTokens
+    let onRetry: () -> Void
+
+    var body: some View {
         VStack(spacing: 14) {
-            Text(message)
+            // A localized message, never the exception's own text — that is how
+            // "Transport(detail=timeout)" reached a user's screen on Android.
+            Text("fatwa_search.error_generic")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Color(hexToken: tokens.onSurfaceSecondary))
-            Button {
-                Task { await viewModel.submit() }
-            } label: {
+            Button(action: onRetry) {
                 Text("fatwa_search.retry")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color(hexToken: tokens.primary))
@@ -124,51 +243,5 @@ public struct FatwaSearchScreen: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-    }
-
-    private func resultView(_ response: SearchResponse) -> some View {
-        VStack(alignment: .trailing, spacing: 16) {
-            BrandSectionHeader(
-                response.refused ? "fatwa_search.no_answer" : "fatwa_search.answer",
-                systemImage: response.refused ? "questionmark.circle" : "text.bubble.fill",
-                tokens: tokens
-            )
-            BrandCard(tokens) {
-                Text(response.answer)
-                    .font(.body)
-                    .foregroundStyle(Color(hexToken: tokens.onSurface))
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-
-            if !response.citations.isEmpty {
-                BrandSectionHeader("fatwa_search.sources", systemImage: "books.vertical.fill", tokens: tokens)
-                ForEach(response.citations) { citation in
-                    ArabicContentCard(
-                        label: "\(citation.sourceTitle) — \(citation.scholar)",
-                        badgeText: citation.pageNumber.map { String(format: NSLocalizedString("fatwa_search.page_badge", comment: ""), $0) },
-                        arabic: citation.quotedText,
-                        tokens: tokens
-                    )
-                }
-            }
-
-            askAgainButton
-        }
-    }
-
-    private var askAgainButton: some View {
-        Button {
-            viewModel.reset()
-        } label: {
-            Text("fatwa_search.ask_again")
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color(hexToken: tokens.primaryContainer), in: RoundedRectangle(cornerRadius: 14))
-                .foregroundStyle(Color(hexToken: tokens.primary))
-        }
-        .buttonStyle(.plain)
-        .padding(.top, 4)
     }
 }

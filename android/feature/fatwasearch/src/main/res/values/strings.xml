@@ -24,4 +24,24 @@
     <string name="fatwa_search_error_generic">Something went wrong. Please try again.</string>
     <string name="fatwa_search_unavailable_title">Coming soon, in shaa Allah</string>
     <string name="fatwa_search_unavailable_body">Smart search for fatwas and hadith is on its way.</string>
+    <string name="fatwa_search_summary">Summary of rulings</string>
+    <string name="fatwa_search_evidence">Evidence</string>
+    <string name="fatwa_search_hadith_text">Hadith text</string>
+    <string name="fatwa_search_hadith_grade">Grading</string>
+    <string name="fatwa_search_hadith_source">Source</string>
+    <string name="fatwa_search_hadith_verdicts">Scholars\' verdicts</string>
+    <string name="fatwa_search_available_on">Available on</string>
+    <string name="fatwa_search_resource_book">Books</string>
+    <string name="fatwa_search_resource_video">YouTube</string>
+    <string name="fatwa_search_resource_website">Website</string>
+    <string name="fatwa_search_not_available">Not available</string>
+    <string name="fatwa_search_new_search">New search</string>
+    <string name="fatwa_search_disclaimer">Note: this tool is educational guidance only and does not replace consulting scholars directly on important matters.</string>
+    <string name="fatwa_search_contact_us">Contact us with your suggestions</string>
+    <string name="fatwa_search_ruling_wajib">Obligatory</string>
+    <string name="fatwa_search_ruling_mustahabb">Recommended</string>
+    <string name="fatwa_search_ruling_halal">Permitted</string>
+    <string name="fatwa_search_ruling_mubah">Neutral</string>
+    <string name="fatwa_search_ruling_makruh">Disliked</string>
+    <string name="fatwa_search_ruling_haram">Forbidden</string>
 </resources>

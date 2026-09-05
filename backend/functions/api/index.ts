@@ -19,7 +19,11 @@ import { SupabaseLeaderboardRepo } from "./supabase_leaderboard_repo.ts";
 import { SupabaseSearchHistoryRepo } from "./supabase_search_repo.ts";
 import { SupabaseDeliveryLogRepo, SupabaseNotificationPrefsRepo } from "./supabase_notification_repo.ts";
 import { FcmSender, parseServiceAccount } from "./fcm_sender.ts";
-import { SupabaseEmbeddingCacheRepo, SupabaseFatwaSearchRepo } from "./supabase_fatwa_repo.ts";
+import {
+  SupabaseAnswerCacheRepo,
+  SupabaseEmbeddingCacheRepo,
+  SupabaseFatwaSearchRepo,
+} from "./supabase_fatwa_repo.ts";
 import { ClaudeAnswerProvider, VoyageEmbeddingProvider } from "./ai_search/providers.ts";
 import { CachingEmbeddingProvider } from "./ai_search/embedding_cache.ts";
 import { PRIMARY_APP_ID } from "./context.ts";
@@ -74,6 +78,7 @@ const deps = {
   deliveryLog: new SupabaseDeliveryLogRepo(client),
   pushSender,
   fatwaSearch: new SupabaseFatwaSearchRepo(client),
+  answerCache: new SupabaseAnswerCacheRepo(client),
   embeddingProvider,
   answerProvider,
 };

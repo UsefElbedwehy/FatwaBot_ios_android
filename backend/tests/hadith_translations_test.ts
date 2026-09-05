@@ -1,4 +1,4 @@
-import { assertEquals, assertStringIncludes } from "jsr:@std/assert";
+import { assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { buildMigration, validate } from "../scripts/import_hadith_translations.ts";
 
 Deno.test("accepts a well-formed file", () => {

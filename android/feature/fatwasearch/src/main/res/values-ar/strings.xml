@@ -23,4 +23,24 @@
     <string name="fatwa_search_error_generic">حدث خطأ ما، حاول مرة أخرى.</string>
     <string name="fatwa_search_unavailable_title">قريباً بإذن الله</string>
     <string name="fatwa_search_unavailable_body">البحث الذكي عن الفتاوى والأحاديث قيد الإعداد، وسيصلك قريباً.</string>
+    <string name="fatwa_search_summary">خلاصة الأقوال</string>
+    <string name="fatwa_search_evidence">الدليل</string>
+    <string name="fatwa_search_hadith_text">نص الحديث</string>
+    <string name="fatwa_search_hadith_grade">درجة الحديث</string>
+    <string name="fatwa_search_hadith_source">المصدر</string>
+    <string name="fatwa_search_hadith_verdicts">أقوال العلماء</string>
+    <string name="fatwa_search_available_on">متاح على</string>
+    <string name="fatwa_search_resource_book">الكتب</string>
+    <string name="fatwa_search_resource_video">يوتيوب</string>
+    <string name="fatwa_search_resource_website">الموقع</string>
+    <string name="fatwa_search_not_available">غير متاح</string>
+    <string name="fatwa_search_new_search">بحث جديد</string>
+    <string name="fatwa_search_disclaimer">تنبيه: هذه الأداة استرشادية تعليمية فقط، ولا تُغني عن مراجعة العلماء مباشرةً في المسائل الشرعية المهمة.</string>
+    <string name="fatwa_search_contact_us">تواصل معنا واقتراحاتكم</string>
+    <string name="fatwa_search_ruling_wajib">واجب</string>
+    <string name="fatwa_search_ruling_mustahabb">مستحب</string>
+    <string name="fatwa_search_ruling_halal">حلال</string>
+    <string name="fatwa_search_ruling_mubah">مباح</string>
+    <string name="fatwa_search_ruling_makruh">مكروه</string>
+    <string name="fatwa_search_ruling_haram">حرام</string>
 </resources>

@@ -5,9 +5,43 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.crashlytics)
+    // On the classpath but not applied here — see the conditional apply below.
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.crashlytics) apply false
 }
+
+// Firebase, applied only when its config is present.
+//
+// `google-services.json` is gitignored — it is per-project and belongs to
+// whoever owns the Firebase project, not in this repo. Applying the plugins
+// unconditionally meant `./gradlew build` failed on any checkout without the
+// file, which is every CI run and every fresh clone: "File google-services.json
+// is missing. The Google Services Plugin cannot function without it."
+//
+// Applied from the script body rather than the `plugins {}` block because that
+// block is a restricted scope with no `file()`.
+val firebaseConfig = file("google-services.json")
+if (firebaseConfig.exists()) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+    apply(plugin = libs.plugins.crashlytics.get().pluginId)
+}
+
+// A release build with Firebase silently absent is exactly what nobody notices
+// until they need a crash report that was never sent — so say so loudly.
+//
+// A configuration-time warning rather than a task-level `require`: `./gradlew
+// build` assembles the release variant too, so failing there breaks CI and any
+// fresh clone, and the `doFirst` closure needed to scope it to release tasks
+// captured a script reference the configuration cache cannot serialize. CI
+// writes a placeholder config (see .github/workflows/android.yml) so the plugin
+// path is still exercised there.
+if (!firebaseConfig.exists()) {
+    logger.warn(
+        "google-services.json is missing — Firebase analytics and Crashlytics are NOT in this build. " +
+            "Restore it from the Firebase console before building anything you intend to ship.",
+    )
+}
+
 
 android {
     namespace = "com.fatwabot.app"

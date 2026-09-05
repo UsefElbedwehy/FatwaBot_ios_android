@@ -172,7 +172,17 @@ public enum ContentReminderPlanner {
         for dayOffset in 0..<horizonDays {
             guard let dayStart = calendar.date(byAdding: .day, value: dayOffset, to: today) else { continue }
             let parts = calendar.dateComponents([.year, .month, .day], from: dayStart)
-            let dayKey = UInt64((parts.year ?? 0) * 10_000 + (parts.month ?? 0) * 100 + (parts.day ?? 0))
+            // Split into typed steps rather than one expression. As a single
+            // line — three optional coalescings, three integer literals and a
+            // UInt64 conversion — the type-checker has to consider every
+            // numeric overload of `*` and `+` at once, and gives up: "unable to
+            // type-check this expression in reasonable time". It compiles on a
+            // fast machine and fails on CI, which is the worst way for this to
+            // show up. The arithmetic is unchanged.
+            let year = parts.year ?? 0
+            let month = parts.month ?? 0
+            let day = parts.day ?? 0
+            let dayKey = UInt64(year * 10_000 + month * 100 + day)
 
             for slot in 0..<count {
                 // The seed is the whole determinism story: day + slot in, a fixed

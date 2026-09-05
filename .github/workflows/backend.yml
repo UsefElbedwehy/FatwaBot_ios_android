@@ -24,7 +24,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
-        with: { version: latest }
+        # Pinned, not `latest`. A floating version means the toolchain can change
+        # under a branch that changed nothing — which is exactly how `deno-version:
+        # v2.x` started failing lint on files that predate the rule it enforces.
+        # This is the version the migrations are actually developed against.
+        with: { version: 2.109.1 }
       # Applies every migration + seed against a disposable local stack.
       - run: supabase db start
         working-directory: backend

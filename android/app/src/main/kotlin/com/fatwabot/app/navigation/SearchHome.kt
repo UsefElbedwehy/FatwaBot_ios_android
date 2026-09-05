@@ -62,27 +62,25 @@ import com.fatwabot.core.designsystem.brandScreenBackground
 import com.fatwabot.core.designsystem.neumorphicSurface
 import com.fatwabot.feature.fatwasearch.FatwaSearchMode
 
-/** Search-first Home (client mockup, design/homeDesign.jpeg) — parity with iOS
- * SearchHomeScreen: logo, wordmark, rosette divider, three neumorphic intent
- * cards, an embossed search field, and the manhaj tagline. Cards + search open
- * the AI-search flow (M5) — `onOpen` pushes FatwaSearchScreen for the tapped
- * mode; RootScaffold owns the destination state. */
+/** The Home brand header — mihrab logo, FATWA wordmark, rosette divider, and
+ * the tagline.
+ *
+ * M5.1: this used to be the whole Home screen, with three intent cards that
+ * pushed a separate search page and a search bar that was only a button. The
+ * cards are now selection chips and the bar is a real focusable field, both
+ * living in FatwaSearchScreen — so what is left here is the branding, passed to
+ * that screen as a header slot. It no longer scrolls or paints a background of
+ * its own; the search screen owns both. */
 @Composable
-fun SearchHome(onOpen: (FatwaSearchMode) -> Unit) {
+fun SearchHomeHeader() {
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     val cs = MaterialTheme.colorScheme
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .brandScreenBackground(tokens)
-            .verticalScroll(rememberScrollState())
-            // Horizontal only, matching iOS: the vertical padding pushed the
-            // whole stack ~22dp down from where iOS starts it.
-            .padding(horizontal = 22.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(28.dp))
         Image(
             painter = painterResource(com.fatwabot.core.designsystem.R.drawable.fatwabot_logo),
             contentDescription = null,
@@ -119,60 +117,6 @@ fun SearchHome(onOpen: (FatwaSearchMode) -> Unit) {
             DividerRule(pointsStart = false, color = cs.primary, modifier = Modifier.weight(1f))
         }
 
-        // Cards read fatwa · hadith · question from the start edge (matches the
-        // RTL mockup where fatwa is on the right).
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            IntentCard(R.string.home_card_fatwa, Modifier.weight(1f), { onOpen(FatwaSearchMode.FATWA) }) {
-                // Flipped so the magnifier handle points bottom-left, matching the mockup.
-                Icon(Icons.Filled.Search, null, tint = cs.primary, modifier = Modifier.size(21.dp).graphicsLayer(scaleX = -1f))
-            }
-            IntentCard(R.string.home_card_hadith, Modifier.weight(1f), { onOpen(FatwaSearchMode.HADITH) }) {
-                // Filled closed book, matching iOS's `book.fill`. Was
-                // AutoMirrored.MenuBook — an *open outlined* book that also
-                // flipped horizontally in Arabic, which iOS's never does.
-                Icon(Icons.Filled.Book, null, tint = cs.primary, modifier = Modifier.size(21.dp))
-            }
-            IntentCard(R.string.home_card_question, Modifier.weight(1f), { onOpen(FatwaSearchMode.GENERAL) }) {
-                QuestionBubbleIcon(cs.primary, 23.dp)
-            }
-        }
-
-        Spacer(Modifier.height(30.dp))
-        // Search bar — rounded rect with the maroon magnifier cap pinned to the
-        // RIGHT in both languages, matching iOS (which pins the row LTR for the
-        // same reason: the cap should not swap sides with the app language).
-        val searchShape = RoundedCornerShape(18.dp)
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .neumorphicSurface(cornerRadius = 18.dp, isDark = isSystemInDarkTheme())
-                    .clip(searchShape)
-                    .background(cs.brandCardFill)
-                    .clickable { onOpen(FatwaSearchMode.GENERAL) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.home_search_placeholder),
-                    fontSize = 15.sp,
-                    color = cs.onSurfaceVariant,
-                    modifier = Modifier.weight(1f).padding(horizontal = 18.dp),
-                )
-                Box(
-                    modifier = Modifier.width(60.dp).fillMaxSize().background(cs.primary),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Filled.Search,
-                        contentDescription = null,
-                        tint = cs.onPrimary,
-                        modifier = Modifier.size(17.dp),
-                    )
-                }
-            }
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -189,9 +133,7 @@ fun SearchHome(onOpen: (FatwaSearchMode) -> Unit) {
                 textAlign = TextAlign.Center,
             )
         }
-        // iOS closes with a 40pt spacer; without it the tagline sits flush
-        // against the bottom bar's clearance.
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(20.dp))
     }
 }
 
