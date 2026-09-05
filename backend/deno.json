@@ -1,6 +1,7 @@
 {
   "tasks": {
-    "test": "deno test tests/",
+    "comment_test_perms": "--allow-read only: theme_parity_test reads supabase/seed.sql and the iOS DesignTokens.swift to prove the palettes match. Without it the task fails, which it did on main too — CI just had not been enforcing this check. Deliberately not -A: nothing here should need net or env, and if a test starts to, that should be a visible decision.",
+    "test": "deno test --allow-read tests/",
     "lint": "deno lint functions/ tests/",
     "fmt": "deno fmt --check functions/ tests/"
   },
