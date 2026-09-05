@@ -26,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -37,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,13 +64,21 @@ private fun FatwaSearchMode.icon(): ImageVector = when (this) {
     FatwaSearchMode.GENERAL -> Icons.Filled.QuestionAnswer
 }
 
-/** Answer screen for all three AI-search entry points (docs/features/
- * ai-search-m5.0-spec.md §App wiring) — one screen, mode decides the title,
- * placeholder and idle hint. Citations show the quote + page + book title
- * (v1: no deep-linking to an in-app reader, per spec). Mirror of iOS
- * FatwaSearchScreen. */
+/** The search screen: mode chips, the question field, and the result, all in
+ * one place (docs/features/search-redesign-m5.1.md §Workstream B).
+ *
+ * M5.1 replaced a push-to-a-second-page flow on the client's feedback. Choosing
+ * a mode is now selecting a chip, and tapping the field opens the keyboard
+ * where you already are rather than navigating somewhere first. */
 @Composable
-fun FatwaSearchScreen(viewModel: FatwaSearchViewModel) {
+fun FatwaSearchScreen(
+    viewModel: FatwaSearchViewModel,
+    onContact: () -> Unit = {},
+    /** Optional branding above the chips. Home passes its logo/wordmark header
+     *  through here rather than wrapping this screen, so the whole page scrolls
+     *  as one and the header cannot fight the result list for the scroll. */
+    header: @Composable () -> Unit = {},
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
     val scope = rememberCoroutineScope()
@@ -83,8 +94,10 @@ fun FatwaSearchScreen(viewModel: FatwaSearchViewModel) {
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
+        header()
+        ModeChips(selectedMode = state.mode, onSelect = viewModel::setMode, tokens = tokens)
         QuestionField(
-            mode = viewModel.mode,
+            mode = state.mode,
             question = state.question,
             isLoading = state.phase is FatwaSearchViewModel.Phase.Loading,
             onQuestionChange = viewModel::updateQuestion,
@@ -93,8 +106,8 @@ fun FatwaSearchScreen(viewModel: FatwaSearchViewModel) {
         )
         when (val phase = state.phase) {
             is FatwaSearchViewModel.Phase.Idle -> BrandEmptyState(
-                icon = viewModel.mode.icon(),
-                message = stringResource(viewModel.mode.hintRes()),
+                icon = state.mode.icon(),
+                message = stringResource(state.mode.hintRes()),
                 tokens = tokens,
             )
             is FatwaSearchViewModel.Phase.Loading -> DhikrLoadingView(tokens)
@@ -107,10 +120,12 @@ fun FatwaSearchScreen(viewModel: FatwaSearchViewModel) {
                 onRetry = { scope.launch { viewModel.submit() } },
                 tokens = tokens,
             )
-            is FatwaSearchViewModel.Phase.Result -> ResultView(
+            is FatwaSearchViewModel.Phase.Result -> SearchResultView(
                 response = phase.response,
-                onAskAgain = viewModel::reset,
+                isDark = isSystemInDarkTheme(),
                 tokens = tokens,
+                onAskAgain = viewModel::reset,
+                onContact = onContact,
             )
         }
     }
@@ -202,47 +217,50 @@ private fun ErrorCard(
     }
 }
 
+/** The three modes as selectable chips. Selecting one never navigates — that
+ *  was the client's complaint about the old flow — and فتوى is selected by
+ *  default because it is what most people come here for. */
 @Composable
-private fun ResultView(response: SearchResponse, onAskAgain: () -> Unit, tokens: ColorTokens) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        BrandSectionHeader(
-            title = stringResource(if (response.refused) R.string.fatwa_search_no_answer else R.string.fatwa_search_answer),
-            icon = if (response.refused) Icons.AutoMirrored.Filled.Help else Icons.AutoMirrored.Filled.Chat,
-            tokens = tokens,
-        )
-        BrandCard(tokens = tokens) {
-            // The model answers in Markdown — bold headings, bullet lists. As a
-            // plain Text those arrived on screen as literal `**...**`.
-            MarkdownText(
-                markdown = response.answer,
-                tokens = tokens,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        if (response.citations.isNotEmpty()) {
-            BrandSectionHeader(
-                title = stringResource(R.string.fatwa_search_sources),
-                icon = Icons.AutoMirrored.Filled.MenuBook,
-                tokens = tokens,
-            )
-            response.citations.forEach { citation ->
-                ArabicContentCard(
-                    arabic = citation.quotedText,
-                    tokens = tokens,
-                    label = "${citation.sourceTitle} — ${citation.scholar}",
-                    badgeText = citation.pageNumber?.let { stringResource(R.string.fatwa_search_page_badge, it) },
-                )
+private fun ModeChips(
+    selectedMode: FatwaSearchMode,
+    onSelect: (FatwaSearchMode) -> Unit,
+    tokens: ColorTokens,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FatwaSearchMode.entries.forEach { mode ->
+            val isSelected = mode == selectedMode
+            Surface(
+                color = if (isSelected) tokens.primary else tokens.surfaceElevated,
+                shape = RoundedCornerShape(14.dp),
+                onClick = { onSelect(mode) },
+                // Announced as a selectable, not a button, so a screen reader
+                // says whether it is on — the visual fill is the only other cue.
+                modifier = Modifier.weight(1f).semantics { selected = isSelected },
+            ) {
+                Column(
+                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        mode.icon(),
+                        contentDescription = null,
+                        tint = if (isSelected) tokens.onPrimary else tokens.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        stringResource(mode.titleRes()),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) tokens.onPrimary else tokens.onSurface,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                    )
+                }
             }
-        }
-
-        Button(
-            onClick = onAskAgain,
-            colors = ButtonDefaults.buttonColors(containerColor = tokens.primaryContainer, contentColor = tokens.primary),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.fatwa_search_ask_again), fontWeight = FontWeight.SemiBold)
         }
     }
 }

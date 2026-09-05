@@ -122,8 +122,6 @@ fun RootScaffold(
     // Home's own single-level "push" — mirrors worshipDestination above. Two
     // fields rather than one data class so `rememberSaveable` covers each
     // natively (enum + String), with no custom Saver to write.
-    var homeSearchMode by rememberSaveable { mutableStateOf<FatwaSearchMode?>(null) }
-    var homeSearchQuestion by rememberSaveable { mutableStateOf("") }
     val prayerViewModel: PrayerViewModel = hiltViewModel()
 
     val context = LocalContext.current
@@ -134,8 +132,8 @@ fun RootScaffold(
     }
     // One place that reports "where is the user", rather than an onAppear in
     // every screen — those drift as screens are added and quietly stop firing.
-    LaunchedEffect(selected, worshipDestination, homeSearchMode) {
-        analytics.screenView(screenKey(selected, worshipDestination, homeSearchMode))
+    LaunchedEffect(selected, worshipDestination) {
+        analytics.screenView(screenKey(selected, worshipDestination))
     }
 
     // Route a widget tap to the screen it promised, then clear it so the same
@@ -146,7 +144,6 @@ fun RootScaffold(
         if (link == DeepLink.HOME) {
             selected = AppTab.HOME
             worshipDestination = null
-            homeSearchMode = null
         } else {
             selected = AppTab.WORSHIP
             worshipDestination = link.worshipDestination()
@@ -186,8 +183,9 @@ fun RootScaffold(
     // wants the room (the Tasbeeh tap target, the Qibla compass, a hadith being
     // read). Mirrors iOS `isShowingDetail`. Scaffold reports zero bottom padding
     // when the slot is empty, so hiding it also releases the reserved space.
-    val isShowingDetail = (selected == AppTab.WORSHIP && worshipDestination != null) ||
-        (selected == AppTab.HOME && homeSearchMode != null)
+    // Only Worship pushes now: M5.1 made Home a single screen, so there is no
+    // Home destination to be "in".
+    val isShowingDetail = selected == AppTab.WORSHIP && worshipDestination != null
 
     // System back pops the pushed screen instead of leaving the app. Without
     // this there was no handler at all for a pushed worship destination or the
@@ -195,9 +193,7 @@ fun RootScaffold(
     // pressing back on Prayer or Qibla quit FatwaBot outright. A nested
     // BackHandler (e.g. RemembranceScreen's session) registers later and takes
     // priority, so this only fires once the inner levels are unwound.
-    BackHandler(enabled = isShowingDetail) {
-        if (selected == AppTab.HOME) homeSearchMode = null else worshipDestination = null
-    }
+    BackHandler(enabled = isShowingDetail) { worshipDestination = null }
     // The Scaffold paints the flat app background and each screen paints its
     // own `brandScreenBackground` inside the content slot — as it always did.
     //
@@ -221,12 +217,7 @@ fun RootScaffold(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selected) {
-                AppTab.HOME -> HomeTab(
-                    mode = homeSearchMode,
-                    initialQuestion = homeSearchQuestion,
-                    onOpen = { mode -> homeSearchMode = mode; homeSearchQuestion = "" },
-                    onBack = { homeSearchMode = null },
-                )
+                AppTab.HOME -> HomeTab(onContact = { selected = AppTab.SETTINGS })
                 AppTab.WORSHIP -> WorshipTab(
                     prayerViewModel = prayerViewModel,
                     destination = worshipDestination,
@@ -242,38 +233,30 @@ fun RootScaffold(
     }
 }
 
-/** Home tab: the search-first landing screen, with a single-level "push" to
- * the AI-search flow for the tapped mode — mirrors [WorshipTab]'s
- * null-destination-means-menu pattern. [FatwaSearchViewModel] is a plain
- * class (see its kdoc), so it's `remember`'d per (mode, initialQuestion)
- * rather than obtained via `hiltViewModel()`. */
+/** Home tab: the search screen itself.
+ *
+ * M5.1 removed the push-to-a-second-page step on the client's feedback — modes
+ * are chips on this screen and the field opens the keyboard in place, so there
+ * is no destination to navigate to and no back stack to manage.
+ *
+ * The view model is `remember`'d once for the tab rather than per (mode,
+ * question): mode is state now, so rebuilding on every chip tap would throw
+ * away the result the user is reading. */
 @Composable
-private fun HomeTab(
-    mode: FatwaSearchMode?,
-    initialQuestion: String,
-    onOpen: (FatwaSearchMode) -> Unit,
-    onBack: () -> Unit,
-) {
-    if (mode == null) {
-        SearchHome(onOpen = onOpen)
-        return
-    }
+private fun HomeTab(onContact: () -> Unit) {
     val context = LocalContext.current
     val client = remember {
         EntryPointAccessors
             .fromApplication(context.applicationContext, FatwaSearchEntryPoint::class.java)
             .authenticatedClient()
     }
-    val viewModel = remember(mode, initialQuestion) { FatwaSearchViewModel(client, mode, initialQuestion) }
-    WorshipDetailScaffold(title = stringResource(mode.titleRes()), onBack = onBack) {
-        FatwaSearchScreen(viewModel)
-    }
+    val viewModel = remember { FatwaSearchViewModel(client) }
+    FatwaSearchScreen(viewModel, onContact = onContact) { SearchHomeHeader() }
 }
 
 /** Stable, non-PII screen key for analytics. A pushed worship/home destination
  * wins over the tab, since that's the screen actually on top. */
-private fun screenKey(tab: AppTab, destination: WorshipDestination?, searchMode: FatwaSearchMode?): String = when {
-    tab == AppTab.HOME && searchMode != null -> AnalyticsEvents.SCREEN_FATWA_SEARCH
+private fun screenKey(tab: AppTab, destination: WorshipDestination?): String = when {
     tab == AppTab.WORSHIP && destination != null -> when (destination) {
         WorshipDestination.PRAYER -> AnalyticsEvents.SCREEN_PRAYER
         WorshipDestination.QIBLA -> AnalyticsEvents.SCREEN_QIBLA

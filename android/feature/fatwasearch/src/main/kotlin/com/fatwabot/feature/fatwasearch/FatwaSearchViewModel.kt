@@ -28,16 +28,20 @@ object FatwaSearchFeatureFlags {
  * docs/features/ai-search-m5.0-spec.md §App wiring) — mirror of iOS
  * FatwaSearchViewModel.
  *
- * A plain class rather than a `@HiltViewModel`: `mode`/`initialQuestion` are
- * fixed per ask (like every other per-instance construction in this app —
- * see `AwradCreateSheet`), not something Hilt's zero-arg ViewModel factories
- * are set up to carry. The screen `remember`s one per (mode, initialQuestion)
- * and resolves [AuthenticatedApiClientProtocol] via a Hilt entry point,
- * mirroring `WorshipTab.kt`'s `ConfigServiceEntryPoint` pattern. */
+ * A plain class rather than a `@HiltViewModel`: `initialQuestion` is fixed per
+ * instance (like every other per-instance construction in this app — see
+ * `AwradCreateSheet`), not something Hilt's zero-arg ViewModel factories are
+ * set up to carry. The screen `remember`s one and resolves
+ * [AuthenticatedApiClientProtocol] via a Hilt entry point, mirroring
+ * `WorshipTab.kt`'s `ConfigServiceEntryPoint` pattern.
+ *
+ * `mode` is state, not a constructor argument: M5.1 turned the three modes into
+ * filter chips on one screen, so it changes between asks without rebuilding
+ * anything. */
 class FatwaSearchViewModel(
     private val client: AuthenticatedApiClientProtocol,
-    val mode: FatwaSearchMode,
-    initialQuestion: String,
+    initialQuestion: String = "",
+    initialMode: FatwaSearchMode = FatwaSearchMode.FATWA,
     private val searchEnabled: Boolean = FatwaSearchFeatureFlags.SEARCH_ENABLED,
 ) {
     sealed interface Phase {
@@ -53,14 +57,33 @@ class FatwaSearchViewModel(
         data class Result(val response: SearchResponse) : Phase
     }
 
-    data class UiState(val question: String, val phase: Phase = Phase.Idle)
+    data class UiState(
+        val question: String,
+        val mode: FatwaSearchMode = FatwaSearchMode.FATWA,
+        val phase: Phase = Phase.Idle,
+    )
 
-    private val json = Json { ignoreUnknownKeys = true }
-    private val _state = MutableStateFlow(UiState(question = initialQuestion))
+    private val json = Json {
+        ignoreUnknownKeys = true
+        // Unknown enum values fall back to the property's default instead of
+        // throwing. A ruling value added server-side must never crash an older
+        // client — it should just draw no status dot.
+        coerceInputValues = true
+    }
+    private val _state = MutableStateFlow(UiState(question = initialQuestion, mode = initialMode))
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     fun updateQuestion(text: String) {
         _state.update { it.copy(question = text) }
+    }
+
+    /** Selecting a chip clears any result. A فتوى answer left on screen under a
+     *  حديث chip would read as an answer to the mode now selected, which it is
+     *  not — the modes ask the corpus different questions. */
+    fun setMode(mode: FatwaSearchMode) {
+        _state.update {
+            if (it.mode == mode) it else it.copy(mode = mode, phase = Phase.Idle)
+        }
     }
 
     suspend fun submit() {
@@ -72,7 +95,7 @@ class FatwaSearchViewModel(
         }
         _state.update { it.copy(phase = Phase.Loading) }
         runCatching {
-            val body = json.encodeToString(SearchRequestBody.serializer(), SearchRequestBody(trimmed, mode.wireValue))
+            val body = json.encodeToString(SearchRequestBody.serializer(), SearchRequestBody(trimmed, _state.value.mode.wireValue))
             val raw = client.postRaw("v1/search", body)
             json.decodeFromString(SearchResponse.serializer(), raw)
         }.fold(
@@ -92,8 +115,10 @@ class FatwaSearchViewModel(
         )
     }
 
-    /** Back to a blank ask — used by "ask again" after a result or refusal. */
+    /** Back to a blank ask — «بحث جديد» after a result or refusal. Keeps the
+     *  selected mode: someone who just asked a hadith question is far more
+     *  likely to ask another than to want the chip silently reset. */
     fun reset() {
-        _state.update { UiState(question = "") }
+        _state.update { UiState(question = "", mode = it.mode) }
     }
 }
