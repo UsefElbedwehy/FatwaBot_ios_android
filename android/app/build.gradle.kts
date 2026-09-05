@@ -5,9 +5,39 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.crashlytics)
+    // On the classpath but not applied here — see the conditional apply below.
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.crashlytics) apply false
 }
+
+// Firebase, applied only when its config is present.
+//
+// `google-services.json` is gitignored — it is per-project and belongs to
+// whoever owns the Firebase project, not in this repo. Applying the plugins
+// unconditionally meant `./gradlew build` failed on any checkout without the
+// file, which is every CI run and every fresh clone: "File google-services.json
+// is missing. The Google Services Plugin cannot function without it."
+//
+// Applied from the script body rather than the `plugins {}` block because that
+// block is a restricted scope with no `file()`.
+val firebaseConfig = file("google-services.json")
+if (firebaseConfig.exists()) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+    apply(plugin = libs.plugins.crashlytics.get().pluginId)
+}
+
+// Guard rail for the conditional above: analytics and crash reporting quietly
+// missing from a shipped build is exactly what nobody notices until they need
+// a crash report that was never sent.
+tasks.matching { it.name.startsWith("assemble") && it.name.contains("Release") }.configureEach {
+    doFirst {
+        require(firebaseConfig.exists()) {
+            "google-services.json is missing — a release build must not ship without Firebase. " +
+                "Restore it from the Firebase console before building a release."
+        }
+    }
+}
+
 
 android {
     namespace = "com.fatwabot.app"
