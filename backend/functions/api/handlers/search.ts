@@ -259,7 +259,16 @@ export async function handleSearch(
 
   // Written after the answer is assembled, and a failure here costs the user
   // nothing — they already have their answer.
-  if (deps.answerCache) {
+  //
+  // Refusals are deliberately NOT cached. A refusal is far more often a
+  // transient symptom than a stable fact about the corpus — a truncated
+  // generation, a model hiccup, a retrieval leg that timed out — and caching
+  // one freezes that accident in place for the whole corpus generation. This
+  // was not hypothetical: a truncated response cached "لم نجد" for a question
+  // the corpus answers well, and every later ask served the accident in under
+  // a second. The cost of not caching them is that a genuinely unanswerable
+  // question re-runs, which is the cheaper mistake.
+  if (deps.answerCache && !verified.refused) {
     try {
       await deps.answerCache.put(ctx, hash, mode, answerModelId, responseBody);
     } catch (err) {

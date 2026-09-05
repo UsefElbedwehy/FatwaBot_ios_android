@@ -2,7 +2,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { AppContext } from "./types.ts";
 import type { AnswerLogInput, FatwaSearchRepo, RetrievedChunk } from "./fatwa_types.ts";
 import type { EmbeddingCacheRepo } from "./ai_search/embedding_cache.ts";
-import type { AnswerCacheRepo } from "./ai_search/answer_cache.ts";
+import { type AnswerCacheRepo, RESPONSE_CONTRACT_VERSION } from "./ai_search/answer_cache.ts";
 
 /** Snake-case row shape shared by fatwa.search_vector /
  *  fatwa.search_fts (0042, columns extended in 0048) — each
@@ -156,6 +156,8 @@ export class SupabaseAnswerCacheRepo implements AnswerCacheRepo {
       // The generation filter is the invalidation. An answer generated against
       // an older corpus is a miss, not a hit.
       .eq("corpus_generation", generation)
+      // ...and one stored in an older response shape is a miss too (0049).
+      .eq("contract_version", RESPONSE_CONTRACT_VERSION)
       .maybeSingle();
     if (error) throw error;
     return (data as { response: unknown } | null)?.response ?? null;
@@ -179,8 +181,9 @@ export class SupabaseAnswerCacheRepo implements AnswerCacheRepo {
         model,
         response,
         corpus_generation: generation,
+        contract_version: RESPONSE_CONTRACT_VERSION,
         last_used_at: new Date().toISOString(),
-      }, { onConflict: "app_id,question_hash,mode,model" });
+      }, { onConflict: "app_id,question_hash,mode,model,contract_version" });
     if (error) throw error;
   }
 }

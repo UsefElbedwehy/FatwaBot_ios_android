@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
 import { route } from "../functions/api/router.ts";
 import { InMemoryConfigRepo } from "./in_memory_repo.ts";
 import { InMemoryIdentityRepo } from "./in_memory_identity_repo.ts";
@@ -657,4 +657,27 @@ Deno.test("fabricated evidence blanks the structured fields too, not just the pr
   assertEquals(body.summary, null);
   assertEquals(body.scholar_answers.length, 0);
   assertEquals(body.ruling, "none");
+});
+
+Deno.test("a refusal is never cached — it is more often an accident than a fact", async () => {
+  // Built without seeding — `seed` appends, so there is no way to un-seed the
+  // chunk cachingDeps() adds. Nothing retrievable means the provider refuses.
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+    answerCache: new FakeAnswerCache(),
+  };
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const ask = () => route(post("/v1/search", { question: "سؤال بلا مصدر", mode: "fatwa" }, auth), d);
+
+  const first = await ask();
+  assertEquals((await first.json()).refused, true);
+  const second = await ask();
+
+  // Re-run, not served from cache: a truncated generation or a timed-out
+  // retrieval leg would otherwise freeze a spurious "no answer" in place for
+  // the whole corpus generation.
+  assertNotEquals(second.headers.get("server-timing"), "cache;dur=0");
 });

@@ -348,6 +348,10 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
     // scholar — not one essay. Asking for the parts directly also keeps the
     // answer shorter, which is most of the request's latency.
     "اكتب summary: خلاصة موجزة للأقوال في فقرة واحدة تصلح لتكون رأس البطاقة.",
+    // `answer` duplicates the structured fields for clients that predate them;
+    // keeping it terse stops the response paying for the same words twice, and
+    // generation length is most of the request's latency.
+    "واجعل answer نصاً موجزاً يجمع ما سبق لمن لا يقرأ الحقول المفصّلة، دون إعادة سردٍ مطوّل.",
     "واكتب scholarAnswers[]: عنصراً لكل عالِم ورد قوله في المقاطع، فيه اسمه وقوله، و evidence بدليله إن ذُكر. " +
     "لا تُدرج عالِماً لم يرد له نص في المقاطع، ولا تنسب إلى عالِم قولاً ليس له.",
     // The ruling drives a coloured status dot in the UI, so a guess here is a
@@ -405,7 +409,11 @@ export class ClaudeAnswerProvider implements AnswerProvider {
 
     const response = await this.client.messages.create({
       model: this.id,
-      max_tokens: 2048,
+      // 2048 was enough for one prose answer. The structured contract asks for a
+      // summary, a card per scholar and its evidence *alongside* `answer`, and
+      // 2048 truncated the JSON mid-object — which surfaced as `answer_failed`
+      // from a JSON.parse of a half-written body, with nothing saying why.
+      max_tokens: 4096,
       system: buildSystemPrompt(mode, locale),
       messages: [{ role: "user", content: buildUserPrompt(question, chunks) }],
       output_config: { format: { type: "json_schema", schema: ANSWER_JSON_SCHEMA } },
@@ -413,6 +421,16 @@ export class ClaudeAnswerProvider implements AnswerProvider {
 
     if (response.stop_reason === "refusal") {
       return { answer: "", citations: [], refused: true, model: this.id };
+    }
+
+    // Check before parsing. A truncated body is invalid JSON, so the parse
+    // below would throw something about an unexpected end of input and send a
+    // generic `answer_failed` to the client — true but useless. Say what
+    // actually happened instead.
+    if (response.stop_reason === "max_tokens") {
+      throw new Error(
+        `AnswerProvider ${this.id}: response hit max_tokens, JSON is truncated — raise max_tokens or shorten the prompt`,
+      );
     }
 
     const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");

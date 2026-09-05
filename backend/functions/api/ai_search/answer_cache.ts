@@ -12,11 +12,27 @@
 //     rather than whenever a timer happened to be set for.
 import type { AppContext } from "../types.ts";
 
+/** The version of the response body's *shape*, bumped whenever the contract
+ *  changes. Part of the cache key (0049).
+ *
+ *  The rest of the key covers what changes an answer's content — question,
+ *  mode, model, corpus generation. None of that moves when the response schema
+ *  does, so without this a contract change serves stored bodies in the old
+ *  shape to clients expecting the new one. Observed: the M5.1 structured
+ *  deploy's first request returned the flat pre-M5.1 body in 0.96s.
+ *
+ *  1 = flat { answer, citations, refused, mode }
+ *  2 = M5.1 structured { + summary, ruling, scholar_answers, hadith, resources } */
+export const RESPONSE_CONTRACT_VERSION = 2;
+
 export interface CachedAnswer {
   response: unknown;
   corpusGeneration: number;
 }
 
+/** Implementations key on RESPONSE_CONTRACT_VERSION as well as the arguments
+ *  below; it is a module constant rather than a parameter so a call site cannot
+ *  forget it. */
 export interface AnswerCacheRepo {
   /** The cached response for this key, or null. Implementations must treat a
    *  generation mismatch as a miss — a stale answer is worse than a slow one. */
