@@ -76,13 +76,12 @@ public struct BrandLogoBadge: View {
     }
 
     public var body: some View {
-        ZStack {
-            MihrabArchShape()
-                .fill(Color(hexToken: tokens.primaryContainer))
-            FatwaMark(color: Color(hexToken: tokens.primary))
-                .frame(height: size.height * 0.52)
-        }
-        .frame(width: size.width, height: size.height)
-        .accessibilityHidden(true)
+        // The mark alone, with no arch behind it. The filled arch read as a
+        // second, cruder version of the logo sitting behind the real one — the
+        // client asked for the app logo wherever this shape was being used.
+        FatwaMark(color: Color(hexToken: tokens.primary))
+            .frame(width: size.width * 0.8, height: size.height * 0.8)
+            .frame(width: size.width, height: size.height)
+            .accessibilityHidden(true)
     }
 }

@@ -49,11 +49,6 @@ public struct FatwaSearchScreen<Header: View, BelowField: View>: View {
                 modeChips
                 questionField
                 belowField
-                BrandEmptyState(
-                    systemImage: viewModel.mode.systemImage,
-                    messageKey: viewModel.mode.hintKey,
-                    tokens: tokens
-                )
             }
             .padding(20)
         }

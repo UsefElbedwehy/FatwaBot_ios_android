@@ -70,28 +70,19 @@ fun ArchIconBadge(
     height: Dp = 104.dp,
     tokens: ColorTokens = if (androidx.compose.foundation.isSystemInDarkTheme()) DarkTokens else LightTokens,
 ) {
+    // The app logo, not a filled arch with a glyph inside it. The arch outline
+    // was close enough to the mihrab mark to read as a second, worse version of
+    // the brand — the client asked for the logo wherever this shape was being
+    // used. `icon` is kept in the signature so call sites need not change, and
+    // is deliberately unused: what identifies the app is the mark, not a
+    // per-screen glyph.
     Box(
-        modifier = modifier
-            .size(width, height)
-            .background(tokens.primaryContainer, MihrabArchComposeShape)
-            // 2dp primary outline, as on iOS — the KDoc claimed "filled+stroked"
-            // but no stroke was ever drawn.
-            .drawBehind {
-                drawPath(
-                    path = mihrabArchPath(this.size),
-                    color = tokens.primary,
-                    style = Stroke(width = 2.dp.toPx()),
-                )
-            },
+        modifier = modifier.size(width, height),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = tokens.primary,
-            modifier = Modifier
-                .padding(top = height * 0.12f)
-                .size(width * 0.32f),
+        BrandMark(
+            color = tokens.primary,
+            modifier = Modifier.size(width * 0.8f, height * 0.8f),
         )
     }
 }

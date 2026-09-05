@@ -110,11 +110,6 @@ fun FatwaSearchScreen(
             tokens = tokens,
         )
         belowField()
-        BrandEmptyState(
-            icon = state.mode.icon(),
-            message = stringResource(state.mode.hintRes()),
-            tokens = tokens,
-        )
     }
 }
 
