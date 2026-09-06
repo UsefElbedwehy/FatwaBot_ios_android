@@ -54,7 +54,13 @@ const embeddingProvider = voyageApiKey
     PRIMARY_APP_ID,
   )
   : undefined;
-const answerProvider = anthropicApiKey ? new ClaudeAnswerProvider(anthropicApiKey) : undefined;
+// ANSWER_JSON_MODE=schema forces the API's structured outputs instead of the
+// default prompt-requested JSON — the escape hatch if prompt mode ever starts
+// falling back too often (see AnswerJsonMode). Unset means prompt mode.
+const answerJsonMode = Deno.env.get("ANSWER_JSON_MODE") === "schema" ? "schema" : "prompt";
+const answerProvider = anthropicApiKey
+  ? new ClaudeAnswerProvider(anthropicApiKey, { jsonMode: answerJsonMode })
+  : undefined;
 
 const deps = {
   repo: new SupabaseConfigRepo(client),

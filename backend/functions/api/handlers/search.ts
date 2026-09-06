@@ -335,6 +335,11 @@ export async function handleSearch(
         // How many citations needed repairing (0050) — visible per request,
         // so a drift in the model's copying shows up without a log query.
         `repaired;dur=${verified.repairedCitations}`,
+        // Output tokens, the thing the answer step's time is made of. Named
+        // so a slow answer can be read as "long" or "slow model" at a glance.
+        ...(raw.outputTokens !== undefined ? [`tokens;dur=${raw.outputTokens}`] : []),
+        ...(raw.inputTokens !== undefined ? [`input;dur=${raw.inputTokens}`] : []),
+        ...(raw.firstTokenMs !== undefined ? [`ttft;dur=${raw.firstTokenMs}`] : []),
       ].join(", "),
     },
   );

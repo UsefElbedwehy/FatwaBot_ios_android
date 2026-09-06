@@ -6,6 +6,8 @@ import {
   deriveAnswer,
   DevStubAnswerProvider,
   DevStubEmbeddingProvider,
+  parseAnswerJson,
+  truncateChunkForPrompt,
   VoyageEmbeddingProvider,
 } from "../functions/api/ai_search/providers.ts";
 import type { RetrievedChunk } from "../functions/api/fatwa_types.ts";
@@ -249,6 +251,7 @@ function fakeAnthropicClient(
   handler: (params: Record<string, unknown>) => {
     stop_reason: string;
     content: { type: string; text?: string }[];
+    usage?: { input_tokens: number; output_tokens: number };
   },
 ) {
   const calls: Record<string, unknown>[] = [];
@@ -256,10 +259,23 @@ function fakeAnthropicClient(
     calls,
     client: {
       messages: {
-        // deno-lint-ignore require-await
-        create: async (params: Record<string, unknown>) => {
+        // The provider streams and then takes `finalMessage()`; the fake
+        // emits one text delta and resolves to the handler's message, which
+        // is what the SDK does with the wire's events.
+        stream: (params: Record<string, unknown>) => {
           calls.push(params);
-          return handler(params);
+          const message = handler(params);
+          const listeners: ((text: string) => void)[] = [];
+          return {
+            on: (event: string, fn: (text: string) => void) => {
+              if (event === "text") listeners.push(fn);
+            },
+            // deno-lint-ignore require-await
+            finalMessage: async () => {
+              for (const fn of listeners) fn(message.content[0]?.text ?? "");
+              return message;
+            },
+          };
         },
       },
     },
@@ -302,8 +318,10 @@ Deno.test("ClaudeAnswerProvider parses a structured JSON response and stamps the
       }],
     };
   });
+  // Schema mode explicitly: prompt mode is the default since the speed pass,
+  // and this test pins the structured-outputs request shape.
   // deno-lint-ignore no-explicit-any
-  const provider = new ClaudeAnswerProvider("key", { client: client as any });
+  const provider = new ClaudeAnswerProvider("key", { client: client as any, jsonMode: "schema" });
   const result = await provider.answer("ما معنى الوسط؟", "fatwa", [chunk()], "ar");
 
   assertEquals(calls.length, 1);
@@ -422,4 +440,91 @@ Deno.test("the system prompt asks for short verbatim quotes and no duplicate ans
   assert(prompt.includes("ولا تصحّح أخطاء الطباعة"), "correcting the source is what breaks verification");
   assert(prompt.includes("فاتركه فارغاً"));
   assert(prompt.includes("إلزاميان"), "summary and scholarAnswers are stated as mandatory, positively");
+});
+
+// --- M5.2 speed pass ---
+
+Deno.test("truncateChunkForPrompt cuts at a sentence end, never mid-word, and leaves short chunks alone", () => {
+  assertEquals(truncateChunkForPrompt("قصير.", 100), "قصير.");
+  const long = "الجملة الأولى كاملة هنا. الجملة الثانية كاملة أيضاً؟ الجملة الثالثة تُقطع في منتصفها بلا شك";
+  const cut = truncateChunkForPrompt(long, 60);
+  assert(cut.endsWith("؟"), `cut at the last sentence end before the cap, got: ${cut}`);
+  assert(long.startsWith(cut), "a prefix of the source, so any quote from it verifies");
+  // No sentence end in the second half: fall back to a word boundary.
+  const noStops = "كلمة ".repeat(40).trim();
+  const wordCut = truncateChunkForPrompt(noStops, 50);
+  assert(!wordCut.endsWith("كلم"), "never mid-word");
+  assert(wordCut.length <= 50);
+});
+
+Deno.test("the prompt carries word budgets and forbids a hadith card outside hadith mode", () => {
+  const fatwa = buildSystemPromptForTest("fatwa", "ar");
+  assert(fatwa.includes("خمسين كلمة"));
+  assert(fatwa.includes("سبعين كلمة"));
+  assert(fatwa.includes("لا تملأ الحقل hadith"));
+  const hadith = buildSystemPromptForTest("hadith", "ar");
+  assert(!hadith.includes("لا تملأ الحقل hadith"));
+  assert(hadith.includes("املأ hadith"));
+});
+
+Deno.test("ClaudeAnswerProvider reports the model's output tokens", async () => {
+  const { client } = fakeAnthropicClient(() => ({
+    stop_reason: "end_turn",
+    usage: { input_tokens: 10, output_tokens: 321 },
+    content: [{
+      type: "text",
+      text: JSON.stringify({ refused: false, citations: [], summary: "s", scholarAnswers: [] }),
+    }],
+  }));
+  // deno-lint-ignore no-explicit-any
+  const provider = new ClaudeAnswerProvider("key", { client: client as any });
+  const result = await provider.answer("س", "fatwa", [chunk()], "ar");
+  assertEquals(result.outputTokens, 321);
+  assertEquals(result.inputTokens, 10);
+  assert(typeof result.firstTokenMs === "number", "time to first token is measured");
+});
+
+// --- prompt JSON mode ---
+
+Deno.test("parseAnswerJson strips fences and surrounding prose, and sanitises the enum", () => {
+  const parsed = parseAnswerJson(
+    'هذا الجواب:\n```json\n{"refused":false,"ruling":"forbidden","summary":"س"}\n```\nشكراً',
+  );
+  assertEquals(parsed.summary, "س");
+  assertEquals(parsed.ruling, "none", "an out-of-enum ruling must never colour a dot");
+  assertEquals(parsed.citations, []);
+  assertEquals(parsed.scholarAnswers, []);
+});
+
+Deno.test("prompt mode sends no output_config and puts the schema in the system prompt", async () => {
+  const { calls, client } = fakeAnthropicClient(() => ({
+    stop_reason: "end_turn",
+    content: [{ type: "text", text: '{"refused":false,"citations":[],"summary":"س","scholarAnswers":[]}' }],
+  }));
+  // deno-lint-ignore no-explicit-any
+  const provider = new ClaudeAnswerProvider("key", { client: client as any, jsonMode: "prompt" });
+  const result = await provider.answer("س", "fatwa", [chunk()], "ar");
+  assertEquals(result.summary, "س");
+  assertEquals("output_config" in calls[0], false);
+  assert(
+    (calls[0].system as string).includes('"scholarAnswers"'),
+    "the schema travels in the prompt instead",
+  );
+});
+
+Deno.test("prompt mode falls back to schema mode when the body is not JSON", async () => {
+  let n = 0;
+  const { calls, client } = fakeAnthropicClient(() => {
+    n++;
+    return n === 1 ? { stop_reason: "end_turn", content: [{ type: "text", text: "لا أستطيع" }] } : {
+      stop_reason: "end_turn",
+      content: [{ type: "text", text: '{"refused":true,"citations":[],"summary":"","scholarAnswers":[]}' }],
+    };
+  });
+  // deno-lint-ignore no-explicit-any
+  const provider = new ClaudeAnswerProvider("key", { client: client as any, jsonMode: "prompt" });
+  const result = await provider.answer("س", "fatwa", [chunk()], "ar");
+  assertEquals(result.refused, true);
+  assertEquals(calls.length, 2);
+  assertEquals("output_config" in calls[1], true, "the retry enforces the shape");
 });

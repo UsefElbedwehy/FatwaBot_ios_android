@@ -371,7 +371,10 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
     // Structure. The M5.1 result card is a summary, a status, and one block per
     // scholar — not one essay. Asking for the parts directly also keeps the
     // answer shorter, which is most of the request's latency.
-    "اكتب summary: خلاصة موجزة للأقوال في فقرة واحدة تصلح لتكون رأس البطاقة.",
+    // Hard word budgets. Generation length is most of the request's latency:
+    // measured live, answers ran 900-1,400 output tokens at ~25 s. The card is
+    // read on a phone; nothing in it needs a paragraph.
+    "اكتب summary: خلاصة الأقوال في فقرة واحدة لا تتجاوز خمسين كلمة، تصلح لتكون رأس البطاقة.",
     // `answer` is derived server-side from the structured fields (see
     // `deriveAnswer`), so the model is told to leave it out — every token it
     // would spend there is a token of latency for words the client already has.
@@ -382,7 +385,8 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
     "عند الرفض (refused=true) اجعل summary نصاً فارغاً و scholarAnswers مصفوفة فارغة. " +
     "أما answer فيُبنى تلقائياً من summary و scholarAnswers، فاتركه فارغاً — " +
     "إلا عند الرفض إن كان لديك ما تنبّه إليه، كأقرب لفظ صحيح في وضع الأحاديث.",
-    "واكتب scholarAnswers[]: عنصراً لكل عالِم ورد قوله في المقاطع، فيه اسمه وقوله، و evidence بدليله إن ذُكر. " +
+    "واكتب scholarAnswers[]: عنصراً لكل عالِم ورد قوله في المقاطع، فيه اسمه وقوله في سبعين كلمة على الأكثر، " +
+    "و evidence بدليله إن ذُكر في أربعين كلمة على الأكثر. " +
     "لا تُدرج عالِماً لم يرد له نص في المقاطع، ولا تنسب إلى عالِم قولاً ليس له.",
     // The ruling drives a coloured status dot in the UI, so a guess here is a
     // wrong fatwa shown with confidence. Refusing to classify is always
@@ -394,10 +398,33 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
     // while `ruling` said none — a status the client then could not colour.
     "لكن إن صرّحتَ في summary بحكمٍ واحد فاجعل ruling موافقاً له؛ none لما لم تُصرّح به فقط.",
     mode === "hadith"
-      ? "وفي كل إجابة غير مرفوضة املأ hadith: text بلفظ الحديث، و grade بدرجته، و source بمصدره، و scholarVerdicts بأقوال العلماء فيه."
-      : "",
+      ? "وفي كل إجابة غير مرفوضة املأ hadith: text بلفظ الحديث، و grade بدرجته، و source بمصدره، و scholarVerdicts بأقوال العلماء فيه، كلٌّ في سطر موجز."
+      // The schema allows `hadith` in every mode and the model volunteered a
+      // full takhrij object on fatwa questions that rested on a hadith — the
+      // client hides it outside hadith mode, so those were tokens paid for
+      // nothing.
+      : "لا تملأ الحقل hadith في هذا الوضع؛ اتركه غير موجود.",
     `أجب بلغة: ${locale}.`,
   ].filter((line) => line.length > 0).join("\n");
+}
+
+/** Longest chunk text the model is shown. Chunks are built to 400-700
+ *  estimated tokens (chunking.ts), which for Arabic runs to ~2,800 characters;
+ *  the cap trims the top of that range at a sentence boundary. A citation is
+ *  verified against the *full* chunk, so a quote from the shown part always
+ *  verifies, and nothing the model cannot see can be cited. */
+export const PROMPT_CHUNK_MAX_CHARS = 2000;
+
+/** Cuts at the last sentence end before the cap, or the last whitespace if
+ *  there is no sentence end in the second half — never mid-word, since a
+ *  half word is a word the verifier will not find. Exported for tests. */
+export function truncateChunkForPrompt(text: string, maxChars: number = PROMPT_CHUNK_MAX_CHARS): string {
+  if (text.length <= maxChars) return text;
+  const head = text.slice(0, maxChars);
+  const sentenceEnd = Math.max(head.lastIndexOf("."), head.lastIndexOf("؟"), head.lastIndexOf("!"));
+  if (sentenceEnd >= maxChars / 2) return head.slice(0, sentenceEnd + 1);
+  const space = head.lastIndexOf(" ");
+  return space > 0 ? head.slice(0, space) : head;
 }
 
 function buildUserPrompt(question: string, chunks: RetrievedChunk[]): string {
@@ -409,9 +436,9 @@ function buildUserPrompt(question: string, chunks: RetrievedChunk[]): string {
       : c.pageNumber !== null
       ? `صفحة ${c.pageNumber}`
       : `الدقيقة ${c.videoTimestamp}`;
-    return `[مقطع ${
-      i + 1
-    }] chunkId=${c.chunkId} | العالم: ${scholar} | المصدر: ${c.sourceTitle} (${loc})\n${c.text}`;
+    return `[مقطع ${i + 1}] chunkId=${c.chunkId} | العالم: ${scholar} | المصدر: ${c.sourceTitle} (${loc})\n${
+      truncateChunkForPrompt(c.text)
+    }`;
   }).join("\n\n---\n\n");
   return `السؤال: ${question}\n\nالمقاطع المسترجعة:\n\n${chunkBlocks}`;
 }
@@ -421,13 +448,48 @@ function buildUserPrompt(question: string, chunks: RetrievedChunk[]): string {
  *  official Anthropic SDK (npm: specifier, same pattern as this codebase's
  *  `npm:jose@5` import) with structured outputs so the response is always
  *  valid JSON — no ad-hoc parsing/retry loop needed. */
+/** How the answer's JSON is obtained.
+ *  - `schema`: the API's structured outputs (`output_config.format`) — the
+ *    response is guaranteed to match ANSWER_JSON_SCHEMA.
+ *  - `prompt`: the schema is put in the prompt and the model is asked for
+ *    JSON; the body is parsed here and, if it does not parse, the request is
+ *    retried once in `schema` mode. The default, because constrained decoding
+ *    measured ~40 output tokens/s on this schema against ~93 unconstrained,
+ *    and its grammar setup doubled time-to-first-token (M5.2 speed pass) —
+ *    the answer step was spending half its time enforcing a shape the model
+ *    produces anyway. */
+export type AnswerJsonMode = "schema" | "prompt";
+
+const RULINGS = new Set(["wajib", "mustahabb", "halal", "mubah", "makruh", "haram", "none"]);
+
+/** Pulls the JSON object out of a prompt-mode reply: code fences stripped,
+ *  anything before the first `{` or after the last `}` ignored. Throws when
+ *  what remains is not JSON — the caller falls back to schema mode. Exported
+ *  for tests. */
+export function parseAnswerJson(text: string): Partial<AnswerResult> {
+  const stripped = text.replace(/```(?:json)?/g, "");
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  if (start < 0 || end <= start) throw new Error("no JSON object in answer");
+  const parsed = JSON.parse(stripped.slice(start, end + 1)) as Partial<AnswerResult>;
+  if (!Array.isArray(parsed.citations)) parsed.citations = [];
+  if (!Array.isArray(parsed.scholarAnswers)) parsed.scholarAnswers = [];
+  if (parsed.ruling !== undefined && !RULINGS.has(parsed.ruling)) parsed.ruling = "none";
+  return parsed;
+}
+
 export class ClaudeAnswerProvider implements AnswerProvider {
   readonly id: string;
   private readonly client: Anthropic;
+  private readonly jsonMode: AnswerJsonMode;
 
-  constructor(apiKey: string, deps: { model?: string; client?: Anthropic } = {}) {
+  constructor(apiKey: string, deps: { model?: string; client?: Anthropic; jsonMode?: AnswerJsonMode } = {}) {
     this.id = deps.model ?? "claude-haiku-4-5";
     this.client = deps.client ?? new Anthropic({ apiKey });
+    // Prompt mode by default: measured on production, the same question
+    // answered in 12.0 s instead of 25.3 s, with the same citations and the
+    // schema retry behind it for the body that does not parse.
+    this.jsonMode = deps.jsonMode ?? "prompt";
   }
 
   async answer(
@@ -445,17 +507,56 @@ export class ClaudeAnswerProvider implements AnswerProvider {
       };
     }
 
-    const response = await this.client.messages.create({
+    try {
+      return await this.generate(question, mode, chunks, locale, this.jsonMode);
+    } catch (err) {
+      // Prompt mode's one failure is a body that is not JSON. Schema mode
+      // cannot fail that way, so it is the retry — slower, guaranteed.
+      const unparseable = err instanceof SyntaxError || (err as Error)?.message?.includes("no JSON");
+      if (this.jsonMode === "prompt" && unparseable) {
+        console.warn("answer_prompt_json_unparseable, retrying in schema mode");
+        return await this.generate(question, mode, chunks, locale, "schema");
+      }
+      throw err;
+    }
+  }
+
+  private async generate(
+    question: string,
+    mode: FatwaMode,
+    chunks: RetrievedChunk[],
+    locale: string,
+    jsonMode: AnswerJsonMode,
+  ): Promise<AnswerResult> {
+    // Streamed, then assembled — the wire is the same, the answer is the same
+    // (`finalMessage()` is the full response), but the first delta gives the
+    // one number a latency investigation needs: how long before generation
+    // even starts. A single 25 s figure could not say whether the model was
+    // slow to think or slow to reach.
+    const started = performance.now();
+    let firstTokenMs: number | undefined;
+    const system = jsonMode === "schema"
+      ? buildSystemPrompt(mode, locale)
+      : buildSystemPrompt(mode, locale) + "\n\n" +
+        "أخرج الجواب ككائن JSON واحد فقط، بلا أي نص قبله أو بعده وبلا أسوار كود، مطابقاً لهذا المخطط:\n" +
+        JSON.stringify(ANSWER_JSON_SCHEMA);
+    const stream = this.client.messages.stream({
       model: this.id,
       // 2048 was enough for one prose answer. The structured contract asks for a
       // summary, a card per scholar and its evidence *alongside* `answer`, and
       // 2048 truncated the JSON mid-object — which surfaced as `answer_failed`
       // from a JSON.parse of a half-written body, with nothing saying why.
       max_tokens: 4096,
-      system: buildSystemPrompt(mode, locale),
+      system,
       messages: [{ role: "user", content: buildUserPrompt(question, chunks) }],
-      output_config: { format: { type: "json_schema", schema: ANSWER_JSON_SCHEMA } },
+      ...(jsonMode === "schema"
+        ? { output_config: { format: { type: "json_schema", schema: ANSWER_JSON_SCHEMA } } }
+        : {}),
     });
+    stream.on("text", () => {
+      if (firstTokenMs === undefined) firstTokenMs = Math.round(performance.now() - started);
+    });
+    const response = await stream.finalMessage();
 
     if (response.stop_reason === "refusal") {
       return { answer: "", citations: [], refused: true, model: this.id };
@@ -473,13 +574,18 @@ export class ClaudeAnswerProvider implements AnswerProvider {
 
     const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error(`AnswerProvider ${this.id}: no text block in response`);
-    const parsed = JSON.parse(textBlock.text) as Partial<AnswerResult>;
+    const parsed = jsonMode === "schema"
+      ? JSON.parse(textBlock.text) as Partial<AnswerResult>
+      : parseAnswerJson(textBlock.text);
     return {
       ...parsed,
       answer: deriveAnswer(parsed),
       citations: parsed.citations ?? [],
       refused: parsed.refused ?? false,
       model: this.id,
+      outputTokens: response.usage?.output_tokens,
+      inputTokens: response.usage?.input_tokens,
+      firstTokenMs,
     };
   }
 }

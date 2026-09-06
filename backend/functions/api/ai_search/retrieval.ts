@@ -38,7 +38,10 @@ const DEFAULTS: Required<Omit<RetrievalOptions, "mode">> = {
   vectorTopK: 30,
   ftsTopK: 30,
   hadithTopK: 3,
-  finalTopN: 8,
+  // Six, down from eight (M5.2 speed pass). The answer step is the request's
+  // cost and scales with what the model reads; measured live, the sixth chunk
+  // and beyond had never carried a surviving citation.
+  finalTopN: 6,
   rrfK: 60,
   shatteredPenalty: 0.5,
 };
