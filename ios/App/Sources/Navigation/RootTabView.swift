@@ -297,6 +297,16 @@ struct RootTabView: View {
                     }
                 }
             }
+            // The other direction: «بحث جديد» resets the phase to idle from
+            // *inside* the pushed result page, and the result screen renders
+            // nothing for idle on the promise that the host pops it. This is
+            // that promise. Without it the page stayed pushed — an empty scroll
+            // view over the brand background, with only a title. Android needs
+            // no equivalent: its host derives "showing result" from the phase
+            // directly, so the swap back is automatic there.
+            .onChange(of: fatwaSearchViewModel.phase) { _, phase in
+                if phase == .idle, !homePath.isEmpty { homePath = [] }
+            }
         case .worship:
             NavigationStack(path: $worshipPath) {
                 WorshipTabView(prayerViewModel: prayerViewModel)
