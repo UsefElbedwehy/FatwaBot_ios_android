@@ -1,5 +1,5 @@
-import { assertEquals } from "jsr:@std/assert@1";
-import { verifyCitations } from "../functions/api/ai_search/citation_verify.ts";
+import { assert, assertEquals } from "jsr:@std/assert@1";
+import { hadithFromChunk, repairQuote, verifyCitations } from "../functions/api/ai_search/citation_verify.ts";
 import { normalizeArabic } from "../functions/api/ai_search/text_normalize.ts";
 import { ANSWER_JSON_SCHEMA } from "../functions/api/ai_search/providers.ts";
 import type { AnswerCitation, AnswerResult } from "../functions/api/fatwa_types.ts";
@@ -59,7 +59,7 @@ function answer(over: Partial<AnswerResult> = {}): AnswerResult {
 
 Deno.test("normalizeArabic strips tashkeel but preserves Arabic-Indic digits", () => {
   assertEquals(normalizeArabic("بِسْمِ اللَّهِ"), "بسم الله");
-  assertEquals(normalizeArabic("صفحة ٢٩"), "صفحة ٢٩");
+  assertEquals(normalizeArabic("صفحة ٢٩"), "صفحه ٢٩");
 });
 
 Deno.test("normalizeArabic unifies alef and ya variants", () => {
@@ -194,4 +194,133 @@ Deno.test("a self-refused answer's fabricated citation is dropped and blanks the
   );
   assertEquals(result.citations.length, 0);
   assertEquals(result.droppedCitations.length, 1);
+});
+
+// --- 0050: ة/ه folding and quote repair ---
+
+Deno.test("normalizeArabic folds teh marbuta to heh, matching the database's normalize_ar", () => {
+  // Until this matched 0047, FTS found «اللحيه» for «اللحية» while the verifier
+  // and the cache key did not — one question, two cache rows, two full runs.
+  assertEquals(normalizeArabic("حلق اللحية"), normalizeArabic("حلق اللحيه"));
+});
+
+const OCR_CHUNK =
+  "الجواب: أما صبغ اللحية بالسواد فإنه محرعٌ؛ لأن النبي ﷺ يقول: «غيروا هذا الشيب واجتنبوا السواد» ثبت ذلك في صحيح مسلم.";
+
+Deno.test("repairQuote recovers a quote the model 'corrected' past one OCR error", () => {
+  // The model fixed «محرعٌ» to «محرم» — honest, and fatal to an exact match.
+  const quote = "أما صبغ اللحية بالسواد فإنه محرم؛ لأن النبي ﷺ يقول: «غيروا هذا الشيب واجتنبوا السواد»";
+  const fixed = repairQuote(quote, OCR_CHUNK);
+  assert(fixed !== null);
+  // The repaired quote is the *source's* words — what the user reads is the
+  // text as it exists, glitch included, not the model's version of it. With
+  // word-level tolerance the glitched word itself matches, so the whole quote
+  // comes back rather than only the clean tail after it.
+  assertEquals(fixed, "أما صبغ اللحية بالسواد فإنه محرعٌ؛ لأن النبي ﷺ يقول: «غيروا هذا الشيب واجتنبوا السواد»");
+  assert(normalizeArabic(OCR_CHUNK).includes(normalizeArabic(fixed)), "and it verifies exactly");
+});
+
+Deno.test("repairQuote refuses a fabricated quote that merely shares a short phrase", () => {
+  const fabricated = "قال الشيخ إن صبغ اللحية بالسواد جائز بلا كراهة عند جمهور العلماء المتأخرين والمعاصرين";
+  assertEquals(repairQuote(fabricated, OCR_CHUNK), null, "three shared words are not evidence of copying");
+});
+
+Deno.test("repairQuote refuses a long invented quote wrapped around a short genuine one", () => {
+  const genuine = "لأن النبي ﷺ يقول: «غيروا هذا الشيب واجتنبوا السواد»";
+  const padding = Array(20).fill("كلمة").join(" ");
+  assertEquals(
+    repairQuote(`${padding} ${genuine} ${padding}`, OCR_CHUNK),
+    null,
+    "the run is under half the quote",
+  );
+});
+
+Deno.test("verifyCitations repairs a near-miss citation instead of dropping it, and counts it", () => {
+  const result = verifyCitations(
+    answer({
+      citations: [citation({
+        quotedText: "أما صبغ اللحية بالسواد فإنه محرم؛ لأن النبي ﷺ يقول: «غيروا هذا الشيب واجتنبوا السواد»",
+      })],
+    }),
+    new Map([["chunk-1", OCR_CHUNK]]),
+  );
+  assertEquals(result.refused, false);
+  assertEquals(result.citations.length, 1);
+  assertEquals(result.repairedCitations, 1);
+  assertEquals(result.droppedCitations.length, 0);
+  assert(normalizeArabic(OCR_CHUNK).includes(normalizeArabic(result.citations[0].quotedText)));
+});
+
+Deno.test("verifyCitations still refuses when the only citation cannot be repaired", () => {
+  const result = verifyCitations(
+    answer({ citations: [citation({ quotedText: "نص ملفّق لا يظهر في المصدر إطلاقاً بأي صورة من الصور" })] }),
+    new Map([["chunk-1", OCR_CHUNK]]),
+  );
+  assertEquals(result.refused, true);
+  assertEquals(result.repairedCitations, 0);
+  assertEquals(result.droppedCitations.length, 1);
+});
+
+Deno.test("hadithFromChunk builds the takhrij card from a hadith entry's own lines", () => {
+  const card = hadithFromChunk({
+    chunkId: "h",
+    documentId: "c",
+    sourceId: "c",
+    scholarId: "c",
+    text: "إنما الأعمال بالنيات\n\nالدرجة: Sahih\nالمصدر: صحيح البخاري (رقم 1)",
+    pageNumber: 1,
+    videoTimestamp: null,
+    sourceTitle: "صحيح البخاري",
+    sourceCategory: "hadith",
+    sourceKind: "book",
+    sourceUrl: null,
+    scholarName: { ar: "صحيح البخاري" },
+    score: 1,
+    ocrShattered: false,
+  });
+  assertEquals(card, { text: "إنما الأعمال بالنيات", grade: "Sahih", source: "صحيح البخاري (رقم 1)" });
+});
+
+Deno.test("hadithFromChunk returns null for a fatwa chunk that merely discusses a hadith", () => {
+  const card = hadithFromChunk({
+    chunkId: "f",
+    documentId: "d",
+    sourceId: "s",
+    scholarId: "s",
+    text: "شرح حديث إنما الأعمال بالنيات\n\nالدرجة: صحيح",
+    pageNumber: 4,
+    videoTimestamp: null,
+    sourceTitle: "كتاب",
+    sourceCategory: "الفتاوى واللقاءات",
+    sourceKind: "book",
+    sourceUrl: null,
+    scholarName: { ar: "عالم" },
+    score: 1,
+    ocrShattered: false,
+  });
+  assertEquals(card, null);
+});
+
+Deno.test("repairQuote tolerates one scan error per word — the corpus has one every fifth word", () => {
+  // Real pair from answers_log.dropped_citations: the model read the scan
+  // correctly and wrote what it meant; the scan says خلق, عصي, امر, and «كيه»
+  // where the print has ﷺ.
+  const scan =
+    "فمن خلق لحيته فقد عصي امر النبي كيه في قوله: «وفروا اللحي». ومن خلق لحيته فقد اتبع سبيل المجوس";
+  const quote = "من حلق لحيته فقد عصى أمر النبي ومخالفة الفطرة التي فطر الله الناس عليها";
+  const fixed = repairQuote(quote, scan);
+  assertEquals(fixed, "خلق لحيته فقد عصي امر النبي", "six source words, shown as the scan has them");
+});
+
+Deno.test("repairQuote treats punctuation as invisible for matching but keeps it in the shown run", () => {
+  const scan = "اجاببقوله: حلق اللحيه حرم؛ لانه معصيه لرسول الله كي فان النبي";
+  const fixed = repairQuote("حلق اللحية حرام لأنه معصية لرسول الله وخروج عن هدي الرسل", scan);
+  assertEquals(fixed, "حلق اللحيه حرم؛ لانه معصيه لرسول الله");
+});
+
+Deno.test("repairQuote does not let short function words fuzzy-bridge a run", () => {
+  // من/في and على/عن are an edit apart and mean different things. If they
+  // matched, this pair would share a six-word run; they do not, so the real
+  // shared run is «كل حال بلا شك» — four words, under the floor.
+  assertEquals(repairQuote("من الله على كل حال بلا شك", "في الله عن كل حال بلا شك"), null);
 });

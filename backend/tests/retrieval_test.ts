@@ -1,5 +1,10 @@
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
-import { hybridRetrieve, reciprocalRankFusion } from "../functions/api/ai_search/retrieval.ts";
+import {
+  hybridRetrieve,
+  penalizeShattered,
+  reciprocalRankFusion,
+  stripQuestionFrame,
+} from "../functions/api/ai_search/retrieval.ts";
 import { DevStubEmbeddingProvider } from "../functions/api/ai_search/providers.ts";
 import { InMemoryFatwaSearchRepo, type SeedChunk } from "./in_memory_fatwa_repo.ts";
 import type { AppContext } from "../functions/api/types.ts";
@@ -22,6 +27,7 @@ function retrieved(chunkId: string, score: number, over: Partial<RetrievedChunk>
     sourceUrl: null,
     scholarName: { ar: "عالم" },
     score,
+    ocrShattered: false,
     ...over,
   };
 }
@@ -156,4 +162,99 @@ Deno.test("hybridRetrieve truncates to finalTopN after fusion", async () => {
 
   const results = await hybridRetrieve(CTX, repo, embedder, "سؤال", { finalTopN: 3 });
   assertEquals(results.length, 3);
+});
+
+// --- 0050: question frame, OCR penalty, hadith leg ---
+
+Deno.test("stripQuestionFrame drops the words that frame a question and keeps its subject", () => {
+  // Measured on the corpus: the frame words gated «حلق اللحية» to 34 chunks
+  // out of the 61 that discuss it, because FTS ANDs every token.
+  assertEquals(stripQuestionFrame("ما حكم حلق اللحية؟"), "حلق اللحية؟");
+  assertEquals(stripQuestionFrame("هل يجوز للمحرم لبس الكمامة؟"), "للمحرم لبس الكمامة؟");
+  assertEquals(stripQuestionFrame("ما صحة حديث الجنة تحت أقدام الأمهات"), "الجنة تحت أقدام الأمهات");
+});
+
+Deno.test("stripQuestionFrame falls back to the original when nothing but frame remains", () => {
+  assertEquals(stripQuestionFrame("ما حكم؟"), "ما حكم؟");
+});
+
+Deno.test("the FTS leg gets the stripped question; the vector leg gets the whole one", async () => {
+  const repo = new InMemoryFatwaSearchRepo();
+  const embedder = new DevStubEmbeddingProvider(16);
+  const seen: string[] = [];
+  const fts = repo.ftsSearch.bind(repo);
+  repo.ftsSearch = (ctx, query, n) => {
+    seen.push(query);
+    return fts(ctx, query, n);
+  };
+  const embedded: string[] = [];
+  const embed = embedder.embed.bind(embedder);
+  embedder.embed = (texts) => {
+    embedded.push(...texts);
+    return embed(texts);
+  };
+  repo.seed([seed({ chunkId: "x", text: "حلق اللحية" })]);
+  await hybridRetrieve(CTX, repo, embedder, "ما حكم حلق اللحية؟");
+  assertEquals(seen, ["حلق اللحية؟"]);
+  assertEquals(
+    embedded,
+    ["ما حكم حلق اللحية؟"],
+    "an embedding model wants the frame — it is what makes it a fatwa question",
+  );
+});
+
+Deno.test("penalizeShattered ranks a readable chunk above a wrecked one that scored higher", () => {
+  const ranked = penalizeShattered(
+    [retrieved("wrecked", 0.030, { ocrShattered: true }), retrieved("clean", 0.020)],
+    0.5,
+  );
+  assertEquals(ranked.map((c) => c.chunkId), ["clean", "wrecked"]);
+  assertAlmostEquals(ranked[1].score, 0.015);
+});
+
+Deno.test("a shattered chunk both legs agree on still beats a readable one only one leg found", () => {
+  // 0.5 is calibrated to exactly this: rank-1 in both legs (2/61) halved
+  // equals rank-1 in one leg (1/61). Agreement of both legs at rank 1 plus any
+  // margin wins; the wrecked chunk is penalised, never excluded.
+  const ranked = penalizeShattered(
+    [retrieved("wrecked", 2 / 61 + 1e-6, { ocrShattered: true }), retrieved("clean", 1 / 61)],
+    0.5,
+  );
+  assertEquals(ranked[0].chunkId, "wrecked");
+});
+
+Deno.test("hadith mode adds the hadith leg and puts its hits first; other modes never call it", async () => {
+  const repo = new InMemoryFatwaSearchRepo();
+  const embedder = new DevStubEmbeddingProvider(16);
+  const query = "الجنة تحت أقدام الأمهات";
+  const [q] = await embedder.embed([query]);
+  repo.seed([seed({ chunkId: "commentary", text: `شرح حديث ${query}`, embedding: q })]);
+  repo.seedHadith([{
+    id: "h-1",
+    collectionId: "coll",
+    collectionName: "سنن النسائي",
+    number: 3104,
+    arabicText: "الزم رجلها فثم الجنة — وأما اللفظ «الجنة تحت أقدام الأمهات» فلا أصل له",
+    grading: "لا أصل له بهذا اللفظ",
+  }]);
+  const calls: string[] = [];
+  const hadith = repo.hadithSearch.bind(repo);
+  repo.hadithSearch = (...args) => {
+    calls.push("hadith");
+    return hadith(...args);
+  };
+
+  const inHadithMode = await hybridRetrieve(CTX, repo, embedder, query, { mode: "hadith" });
+  assertEquals(calls, ["hadith"]);
+  assertEquals(inHadithMode[0].chunkId, "h-1", "the matn and its grading lead; commentary follows");
+  assertEquals(inHadithMode[0].sourceCategory, "hadith");
+  assert(
+    inHadithMode[0].text.includes("الدرجة: لا أصل له بهذا اللفظ"),
+    "the grading is part of the quotable text",
+  );
+  assertEquals(inHadithMode[1].chunkId, "commentary");
+
+  const inFatwaMode = await hybridRetrieve(CTX, repo, embedder, query, { mode: "fatwa" });
+  assertEquals(calls, ["hadith"], "fatwa mode issued no hadith search");
+  assertEquals(inFatwaMode.map((c) => c.chunkId), ["commentary"]);
 });

@@ -312,14 +312,30 @@ export const ANSWER_JSON_SCHEMA = {
   // ruling to report, and hadith fields are meaningless outside hadith mode.
   // Requiring them would push the model to invent values to satisfy the schema
   // — the same failure that once forced a page number onto video citations.
-  required: ["answer", "refused", "citations"],
+  //
+  // `answer` is optional since 0050. Both clients render the structured
+  // fields, so a required `answer` made the model write the same words a
+  // second time — and generation length is most of a request's latency. The
+  // provider derives it from summary + scholarAnswers when absent, so a client
+  // built against the flat shape still gets one.
+  //
+  // `summary` and `scholarAnswers` are required in its place. With nothing
+  // but `refused` and `citations` required, the first production run came
+  // back as exactly that — one citation, no summary, no card, an empty screen.
+  // Requiring them does not force invention: a refusal writes "" and [], and
+  // the prompt says so. `hadith` stays optional because its own fields are
+  // required, and a hadith-mode refusal has no grade to give — the handler
+  // builds the card from the cited entry instead when the model leaves it out.
+  required: ["refused", "citations", "summary", "scholarAnswers"],
   additionalProperties: false,
 } as const;
 
 const MODE_INSTRUCTIONS: Record<FatwaMode, string> = {
   fatwa: "وضع «ابحث عن فتوى»: أجب بفتوى واحدة تعتمد فقط على المقاطع المسترجعة أدناه. " +
     "إن أجاب أكثر من عالِم في المقاطع، لخّص أقوالهم دون خلط أو تلفيق.",
-  hadith: "وضع «استخراج الأحاديث»: تحقق من اللفظ الدقيق للحديث من المقاطع المسترجعة فقط. " +
+  hadith:
+    "وضع «استخراج الأحاديث»: المقاطع الأولى قد تكون أحاديث من كتب السنة مع درجتها ومصدرها؛ اعتمد عليها في اللفظ والدرجة، " +
+    "واستعن بما بعدها من كلام العلماء في الشرح والحكم. تحقق من اللفظ الدقيق للحديث من المقاطع المسترجعة فقط. " +
     "إن لم يرد الحديث بهذا اللفظ بالضبط في المقاطع، ضع refused=true. إن وُجد في المقاطع لفظ صحيح مقارب، " +
     "اذكره في الإجابة، ويجب أن تضيف له استشهاداً حقيقياً في citations[] ينسخ لفظه حرفياً من مقطعه — أي ذكر " +
     "لأقرب لفظ دون استشهاد حقيقي يدعمه غير موثوق ولن يُقبل.",
@@ -341,17 +357,31 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
   return [
     "أنت مساعد يجيب حصراً من نصوص مصدرها موثّق أُرفقت لك أدناه (مقاطع من كتب علماء معتمدين).",
     "لا تستخدم أي معرفة خاصة بك ولا أي مصدر خارج هذه المقاطع. إن لم تُجب المقاطع على السؤال، أعد refused=true وإجابة فارغة، ولا تخترع إجابة.",
-    "كل استشهاد في citations[].quotedText يجب أن يكون نصاً حرفياً منسوخاً من المقطع (chunkId) الذي يشير إليه — لا إعادة صياغة.",
+    "كل استشهاد في citations[].quotedText يجب أن يكون نصاً حرفياً منسوخاً من المقطع (chunkId) الذي يشير إليه — لا إعادة صياغة، " +
+    // Short spans. The corpus is OCR'd with roughly one error per line, and a
+    // quote's chance of straddling one grows with every word; a verifier that
+    // cannot find the quote drops the citation. Twenty words is enough to
+    // substantiate a ruling and short enough to usually be clean.
+    "ولا تصحّح أخطاء الطباعة فيه ولو بدت واضحة. اجعل كل استشهاد قصيراً: جملة واحدة لا تتجاوز عشرين كلمة، " +
+    // Output length is most of the request's latency, and the first live runs
+    // produced five or six citations of which the verifier kept one or none.
+    "وبحدٍّ أقصى أربعة استشهادات لأقوى ما يدعم الجواب.",
     "ولكل استشهاد موضعٌ واحد فقط: إن كان المقطع من كتاب فضع pageNumber برقم صفحته، وإن كان من مادة مرئية فضع videoTimestamp بدقيقته. لا تضع الحقلين معاً ولا تخمّن رقماً غير المذكور في المقطع.",
     MODE_INSTRUCTIONS[mode],
     // Structure. The M5.1 result card is a summary, a status, and one block per
     // scholar — not one essay. Asking for the parts directly also keeps the
     // answer shorter, which is most of the request's latency.
     "اكتب summary: خلاصة موجزة للأقوال في فقرة واحدة تصلح لتكون رأس البطاقة.",
-    // `answer` duplicates the structured fields for clients that predate them;
-    // keeping it terse stops the response paying for the same words twice, and
-    // generation length is most of the request's latency.
-    "واجعل answer نصاً موجزاً يجمع ما سبق لمن لا يقرأ الحقول المفصّلة، دون إعادة سردٍ مطوّل.",
+    // `answer` is derived server-side from the structured fields (see
+    // `deriveAnswer`), so the model is told to leave it out — every token it
+    // would spend there is a token of latency for words the client already has.
+    // The one exception is a refusal, where `answer` is the only place a
+    // closest-match note (hadith mode) can go. Stated positively: the first
+    // wording ("do not write answer") produced a response with nothing in it.
+    "الحقلان summary و scholarAnswers إلزاميان في كل إجابة غير مرفوضة، وهما ما يُعرض للمستخدم. " +
+    "عند الرفض (refused=true) اجعل summary نصاً فارغاً و scholarAnswers مصفوفة فارغة. " +
+    "أما answer فيُبنى تلقائياً من summary و scholarAnswers، فاتركه فارغاً — " +
+    "إلا عند الرفض إن كان لديك ما تنبّه إليه، كأقرب لفظ صحيح في وضع الأحاديث.",
     "واكتب scholarAnswers[]: عنصراً لكل عالِم ورد قوله في المقاطع، فيه اسمه وقوله، و evidence بدليله إن ذُكر. " +
     "لا تُدرج عالِماً لم يرد له نص في المقاطع، ولا تنسب إلى عالِم قولاً ليس له.",
     // The ruling drives a coloured status dot in the UI, so a guess here is a
@@ -359,9 +389,12 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
     // available and always safer.
     "وضع ruling بحكم المسألة إن كان بيّناً في المقاطع: wajib أو mustahabb أو halal أو mubah أو makruh أو haram. " +
     "وإن كان السؤال لا حكم له (كتخريج حديث أو بيان لفظ) أو لم يتبيّن الحكم من المقاطع، فضع none. " +
-    "لا تخمّن الحكم أبداً: none أسلم من حكمٍ غير مؤكَّد.",
+    "لا تخمّن الحكم أبداً: none أسلم من حكمٍ غير مؤكَّد. " +
+    // The dot and the words must agree. Live, the summary said «حرام» outright
+    // while `ruling` said none — a status the client then could not colour.
+    "لكن إن صرّحتَ في summary بحكمٍ واحد فاجعل ruling موافقاً له؛ none لما لم تُصرّح به فقط.",
     mode === "hadith"
-      ? "واملأ hadith: text بلفظ الحديث، و grade بدرجته، و source بمصدره، و scholarVerdicts بأقوال العلماء فيه."
+      ? "وفي كل إجابة غير مرفوضة املأ hadith: text بلفظ الحديث، و grade بدرجته، و source بمصدره، و scholarVerdicts بأقوال العلماء فيه."
       : "",
     `أجب بلغة: ${locale}.`,
   ].filter((line) => line.length > 0).join("\n");
@@ -370,7 +403,12 @@ function buildSystemPrompt(mode: FatwaMode, locale: string): string {
 function buildUserPrompt(question: string, chunks: RetrievedChunk[]): string {
   const chunkBlocks = chunks.map((c, i) => {
     const scholar = c.scholarName["ar"] ?? c.scholarName["en"] ?? "";
-    const loc = c.pageNumber !== null ? `صفحة ${c.pageNumber}` : `الدقيقة ${c.videoTimestamp}`;
+    // A hadith entry's locator is its number in the collection, not a page.
+    const loc = c.sourceCategory === "hadith"
+      ? `رقم ${c.pageNumber}`
+      : c.pageNumber !== null
+      ? `صفحة ${c.pageNumber}`
+      : `الدقيقة ${c.videoTimestamp}`;
     return `[مقطع ${
       i + 1
     }] chunkId=${c.chunkId} | العالم: ${scholar} | المصدر: ${c.sourceTitle} (${loc})\n${c.text}`;
@@ -435,7 +473,31 @@ export class ClaudeAnswerProvider implements AnswerProvider {
 
     const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error(`AnswerProvider ${this.id}: no text block in response`);
-    const parsed = JSON.parse(textBlock.text) as AnswerResult;
-    return { ...parsed, model: this.id };
+    const parsed = JSON.parse(textBlock.text) as Partial<AnswerResult>;
+    return {
+      ...parsed,
+      answer: deriveAnswer(parsed),
+      citations: parsed.citations ?? [],
+      refused: parsed.refused ?? false,
+      model: this.id,
+    };
   }
+}
+
+/** The flat `answer` for clients that predate the structured contract, built
+ *  from the structured fields rather than generated alongside them. A model
+ *  that wrote one anyway (a refusal note, or an older prompt) keeps it. */
+export function deriveAnswer(result: Partial<AnswerResult>): string {
+  const written = result.answer?.trim() ?? "";
+  if (written.length > 0) return written;
+  const parts: string[] = [];
+  if (result.summary?.trim()) parts.push(result.summary.trim());
+  for (const a of result.scholarAnswers ?? []) {
+    const body = a.evidence?.trim() ? `${a.answer.trim()}\n${a.evidence.trim()}` : a.answer.trim();
+    parts.push(`**${a.scholar}:** ${body}`);
+  }
+  if (result.hadith) {
+    parts.push(`${result.hadith.text}\n${result.hadith.grade}`);
+  }
+  return parts.join("\n\n");
 }

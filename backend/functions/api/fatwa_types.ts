@@ -26,6 +26,11 @@ export interface RetrievedChunk {
   sourceUrl: string | null;
   scholarName: Record<string, string>;
   score: number;
+  /** True when the chunk carries the OCR-shattering signature (three or more
+   *  consecutive isolated letters — see 0050). Retrieval ranks such a chunk
+   *  below a readable one; nothing downstream refuses it outright, because a
+   *  shattered line at the top of a page does not make the rest unreadable. */
+  ocrShattered: boolean;
 }
 
 export interface AnswerCitation {
@@ -72,14 +77,23 @@ export interface AnswerResult {
   hadith?: HadithVerdict;
 }
 
+/** Why a search refused, for the log. Distinguishes the model declining on
+ *  its own from the verifier blanking an answer whose every citation failed —
+ *  the two look identical to the user and mean opposite things to whoever is
+ *  tuning the pipeline. */
+export type RefusalReason = "model_refused" | "all_citations_dropped" | "no_chunks";
+
 export interface AnswerLogInput {
   userId: string;
   mode: FatwaMode;
   question: string;
   retrievedChunkIds: string[];
   citations: AnswerCitation[];
+  /** Citations the model produced that verification rejected. */
+  droppedCitations: AnswerCitation[];
   answer: string;
   refused: boolean;
+  refusalReason: RefusalReason | null;
   model: string;
 }
 
@@ -90,5 +104,8 @@ export interface AnswerLogInput {
 export interface FatwaSearchRepo {
   vectorSearch(ctx: AppContext, embedding: number[], matchCount: number): Promise<RetrievedChunk[]>;
   ftsSearch(ctx: AppContext, query: string, matchCount: number): Promise<RetrievedChunk[]>;
+  /** Hadith mode's leg: normalised FTS over content.hadith_entries (0050),
+   *  returned in the same shape so nothing downstream needs a second path. */
+  hadithSearch(ctx: AppContext, query: string, matchCount: number): Promise<RetrievedChunk[]>;
   logAnswer(ctx: AppContext, entry: AnswerLogInput): Promise<void>;
 }

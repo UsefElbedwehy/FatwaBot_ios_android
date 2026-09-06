@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertNotEquals } from "jsr:@std/assert@1";
 import { route } from "../functions/api/router.ts";
 import { InMemoryConfigRepo } from "./in_memory_repo.ts";
 import { InMemoryIdentityRepo } from "./in_memory_identity_repo.ts";
@@ -680,4 +680,198 @@ Deno.test("a refusal is never cached — it is more often an accident than a fac
   // retrieval leg would otherwise freeze a spurious "no answer" in place for
   // the whole corpus generation.
   assertNotEquals(second.headers.get("server-timing"), "cache;dur=0");
+});
+
+// --- 0050: the log says why a refusal happened ---
+
+Deno.test("a refusal caused by the verifier is logged as all_citations_dropped, with the dropped citations", async () => {
+  const fabricatingProvider = new FixedAnswerProvider((chunks) => ({
+    answer: "إجابة مبنية على استشهاد ملفّق.",
+    refused: false,
+    citations: [{
+      chunkId: chunks[0].chunkId,
+      scholar: "ابن عثيمين",
+      sourceTitle: chunks[0].sourceTitle,
+      quotedText: "نص ملفّق لا يظهر في المصدر إطلاقاً بأي صورة",
+    }],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: fabricatingProvider,
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  await route(post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "general" }, auth), d);
+
+  const logged = d.fatwaSearch.loggedAnswers[0];
+  assertEquals(logged.refused, true);
+  assertEquals(logged.refusalReason, "all_citations_dropped");
+  assertEquals(logged.droppedCitations.length, 1, "what the model claimed is kept for QA, never shown");
+  assertEquals(logged.citations.length, 0);
+});
+
+Deno.test("a refusal the model chose itself is logged as model_refused", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new FixedAnswerProvider(() => ({
+      answer: "",
+      refused: true,
+      citations: [],
+      model: "fixed-test-stub",
+    })),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  await route(post("/v1/search", { question: "سؤال", mode: "general" }, auth), d);
+  assertEquals(d.fatwaSearch.loggedAnswers[0].refusalReason, "model_refused");
+});
+
+Deno.test("an answered search logs no refusal reason", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  await route(post("/v1/search", { question: "ما معنى الوسط في الدين؟", mode: "general" }, auth), d);
+  assertEquals(d.fatwaSearch.loggedAnswers[0].refusalReason, null);
+  assertEquals(d.fatwaSearch.loggedAnswers[0].droppedCitations.length, 0);
+});
+
+Deno.test("hadith mode answers from the hadith collections, citing the matn and its grading", async () => {
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: new DevStubAnswerProvider(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  d.fatwaSearch.seedHadith([{
+    id: "h-1",
+    collectionId: "coll",
+    collectionName: "سنن النسائي",
+    number: 3104,
+    arabicText: "الجنة تحت أقدام الأمهات",
+    grading: "لا أصل له بهذا اللفظ",
+  }]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const res = await route(
+    post("/v1/search", { question: "ما صحة حديث الجنة تحت أقدام الأمهات", mode: "hadith" }, auth),
+    d,
+  );
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.refused, false);
+  assertEquals(body.citations[0].source_title, "سنن النسائي");
+  assertEquals(body.citations[0].page_number, 3104, "a hadith's locator is its number in the collection");
+  assert(body.citations[0].quoted_text.includes("الدرجة: لا أصل له بهذا اللفظ"));
+});
+
+Deno.test("citation locators come from the retrieved chunk, not from the model", async () => {
+  const forgetfulProvider = new FixedAnswerProvider((chunks) => ({
+    answer: "",
+    summary: "خلاصة",
+    scholarAnswers: [],
+    refused: false,
+    // No pageNumber at all — the model dropped it, as it did for a hadith
+    // entry whose locator the prompt calls «رقم» rather than «صفحة».
+    citations: [{
+      chunkId: chunks[0].chunkId,
+      scholar: "x",
+      sourceTitle: chunks[0].sourceTitle,
+      quotedText: chunks[0].text,
+    }],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: forgetfulProvider,
+  };
+  d.fatwaSearch.seed([seedChunk({ pageNumber: 69 })]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const body = await (await route(post("/v1/search", { question: "س", mode: "fatwa" }, auth), d)).json();
+  assertEquals(body.citations[0].page_number, 69);
+});
+
+Deno.test("hadith mode builds the takhrij card from the cited entry when the model omits it", async () => {
+  const cardlessProvider = new FixedAnswerProvider((chunks) => ({
+    answer: "",
+    summary: "الحديث صحيح.",
+    scholarAnswers: [],
+    refused: false,
+    citations: [{
+      chunkId: chunks[0].chunkId,
+      scholar: "x",
+      sourceTitle: chunks[0].sourceTitle,
+      quotedText: "إنما الأعمال بالنيات",
+    }],
+    model: "fixed-test-stub",
+  }));
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: cardlessProvider,
+  };
+  d.fatwaSearch.seedHadith([{
+    id: "h-1",
+    collectionId: "coll",
+    collectionName: "صحيح البخاري",
+    number: 1,
+    arabicText: "إنما الأعمال بالنيات",
+    grading: "Sahih",
+  }]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const body =
+    await (await route(post("/v1/search", { question: "إنما الأعمال بالنيات", mode: "hadith" }, auth), d))
+      .json();
+  assertEquals(body.hadith, {
+    text: "إنما الأعمال بالنيات",
+    grade: "Sahih",
+    source: "صحيح البخاري (رقم 1)",
+    scholar_verdicts: null,
+  });
+});
+
+Deno.test("a non-refusal with nothing to show is returned but never cached", async () => {
+  let calls = 0;
+  const stoppedShort = new FixedAnswerProvider((chunks) => {
+    calls++;
+    return {
+      answer: "",
+      summary: "",
+      scholarAnswers: [],
+      refused: false,
+      citations: [{
+        chunkId: chunks[0].chunkId,
+        scholar: "x",
+        sourceTitle: chunks[0].sourceTitle,
+        quotedText: chunks[0].text,
+      }],
+      model: "fixed-test-stub",
+    };
+  });
+  const d = {
+    ...baseDeps(),
+    embeddingProvider: new DevStubEmbeddingProvider(4),
+    answerProvider: stoppedShort,
+    answerCache: new FakeAnswerCache(),
+  };
+  d.fatwaSearch.seed([seedChunk()]);
+  const user = await signIn(d);
+  const auth = { authorization: `Bearer ${user.access_token}` };
+  const first = await (await route(post("/v1/search", { question: "س", mode: "fatwa" }, auth), d)).json();
+  assertEquals(first.refused, false);
+  assertEquals(first.citations.length, 1, "what it did find is still handed over");
+  await route(post("/v1/search", { question: "س", mode: "fatwa" }, auth), d);
+  assertEquals(calls, 2, "the second ask re-ran the model rather than replaying the empty body");
 });

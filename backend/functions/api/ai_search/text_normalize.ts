@@ -29,11 +29,21 @@ const ALEF = "ا"; // ا
 const YA_VARIANTS_RE = /[ىئ]/g;
 const YA = "ي"; // ي
 
+// TEH MARBUTA (ة ة) → HEH (ه ه). Matches the database's `fatwa.normalize_ar`
+// (0047), which has folded these since the FTS rework. Until this side did
+// too, the two halves of one search disagreed about what a word was: FTS
+// matched «اللحيه» to «اللحية» while the verifier and the cache key did not —
+// so «حلق اللحيه» and «ما حكم حلق اللحية؟» each paid a full run and stored
+// separate answers. Users type either freely; OCR emits either freely.
+const TEH_MARBUTA_RE = /ة/g;
+const HEH = "ه"; // ه
+
 export function normalizeArabic(text: string): string {
   return text
     .replace(TASHKEEL_RE, "")
     .replace(ALEF_VARIANTS_RE, ALEF)
     .replace(YA_VARIANTS_RE, YA)
+    .replace(TEH_MARBUTA_RE, HEH)
     .replace(/\s+/g, " ")
     .trim();
 }

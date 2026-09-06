@@ -22,8 +22,11 @@ import type { AppContext } from "../types.ts";
  *  deploy's first request returned the flat pre-M5.1 body in 0.96s.
  *
  *  1 = flat { answer, citations, refused, mode }
- *  2 = M5.1 structured { + summary, ruling, scholar_answers, hadith, resources } */
-export const RESPONSE_CONTRACT_VERSION = 2;
+ *  2 = M5.1 structured { + summary, ruling, scholar_answers, hadith, resources }
+ *  3 = 0050: summary/scholar_answers guaranteed on a non-refusal, locators from
+ *      the chunk. Bumped to evict the bodies one broken deploy cached — a
+ *      non-refusal with an empty summary was stored as a valid answer. */
+export const RESPONSE_CONTRACT_VERSION = 3;
 
 export interface CachedAnswer {
   response: unknown;
