@@ -75,6 +75,15 @@ export interface AnswerResult {
   ruling?: Ruling;
   scholarAnswers?: ScholarAnswer[];
   hadith?: HadithVerdict;
+  /** The model's reported output tokens, when the provider knows them. The
+   *  answer step's latency is almost entirely generation, so this is the
+   *  number a speed change has to move. */
+  outputTokens?: number;
+  inputTokens?: number;
+  /** Milliseconds from sending the request to the first generated token. The
+   *  split that matters for speed work: everything before it is connection,
+   *  queueing and prompt processing; everything after is generation. */
+  firstTokenMs?: number;
 }
 
 /** Why a search refused, for the log. Distinguishes the model declining on

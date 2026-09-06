@@ -45,7 +45,7 @@ and `dropped_citations`:
 | Citation locators (page / hadith number / timestamp) taken from the retrieved chunk, not the model | `handlers/search.ts` |
 | Hadith card built from the cited entry when the model omits it, preferring a graded entry | `handlers/search.ts` |
 | An "empty success" (non-refusal with no summary, card or hadith) is returned but never cached; contract version 2 → 3 | `answer_cache.ts`, `handlers/search.ts` |
-| `Server-Timing` gains `repaired;dur=N` — the count of citations that needed repair | `handlers/search.ts` |
+| `Server-Timing` gains `repaired;dur=N` — the count of citations that needed repair — and, from the speed pass, `tokens`, `input` and `ttft` | `handlers/search.ts` |
 
 ### Why repair is still anti-fabrication
 
@@ -82,9 +82,38 @@ Same questions, production, before → after (`refused` / verified citations):
 | ما صحة حديث إنما الأعمال بالنيات (hadith) | refused | card «صحيح - متفق عليه», البخاري رقم 1 |
 | الجنة تحت أقدام الأمهات (hadith) | refused | refused — correctly: that wording is in none of the six books |
 
-Latency is unchanged in shape: `embed` ≈ 100–500 ms, `search` ≈ 300–1300 ms,
-`answer` ≈ 17–34 s on Haiku 4.5 with the structured contract. The answer step
-remains the cost; the next lever there is `finalTopN` 8 → 6 and streaming.
+## Speed pass (same day)
+
+The answer step was 17–34 s. The obvious levers were tried first and
+**did nothing**: `finalTopN` 8 → 6, chunk text capped at 2,000 characters
+(sentence boundary), hard word budgets on the summary and cards, no volunteered
+`hadith` object outside hadith mode. Output fell to ~900 tokens; `answer;dur`
+stayed at 22–31 s. Sequential runs ruled out rate limiting.
+
+Instrumenting the call (streamed via the SDK, `ttft`, `input`, `tokens` added
+to `Server-Timing`) showed why: time-to-first-token was ~2 s on 11k input
+tokens — reach and prompt processing were fine — and generation was running at
+**~40 tokens/s**. The one thing on that path that is not ordinary generation
+is the JSON-schema constrained decoding (`output_config.format`).
+
+A/B on production, same question, cold, one at a time:
+
+| | `answer;dur` | `ttft` | output tok/s | result |
+| --- | --- | --- | --- | --- |
+| structured outputs (schema) | 25.3 s | 2.1 s | ~40 | `haram`, 3 citations |
+| JSON requested in the prompt | **12.0 s** | 0.95 s | ~93 | `haram`, 3 citations |
+
+Prompt-requested JSON is now the default (`AnswerJsonMode`), with the schema in
+the prompt, `parseAnswerJson` sanitising the body (fences, prose, an
+out-of-enum ruling → `none`), and a one-shot retry in schema mode if the body
+does not parse. `ANSWER_JSON_MODE=schema` forces the old path. Whole-request
+time for a cold fatwa question went from ~27 s to ~13 s; a cached repeat is
+still ~1–2 s.
+
+The length levers stay in — they are correct on their own terms and cost
+nothing — but they are not what moved the number. Streaming to the client is
+the next lever: the summary is generated first and could be on screen in
+~2 s.
 
 ## Not done
 
