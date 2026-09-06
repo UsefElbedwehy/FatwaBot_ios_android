@@ -177,6 +177,12 @@ private fun QuestionField(
             enabled = !isLoading,
             placeholder = { Text(stringResource(mode.placeholderRes())) },
             leadingIcon = { Icon(mode.icon(), contentDescription = null, tint = tokens.onSurfaceSecondary) },
+            // Single-line, like iOS. With the submit button gone the keyboard's
+            // search key is the only way to search, and keyboards only show it
+            // for a single-line field — a multi-line one gets a return key that
+            // inserts a newline into the question instead. Seen on the
+            // emulator: Enter added a second line and nothing was submitted.
+            singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
             shape = RoundedCornerShape(14.dp),
