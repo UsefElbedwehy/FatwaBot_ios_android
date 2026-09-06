@@ -276,7 +276,9 @@ struct RootTabView: View {
             NavigationStack(path: $homePath) {
                 FatwaSearchScreen(
                     viewModel: fatwaSearchViewModel,
-                    onSubmitted: { homePath.append(.result) }
+                    onSubmitted: { homePath.append(.result) },
+                    header: { SearchHomeHeader() },
+                    belowField: { SearchHomeTagline() }
                 )
                 .bottomBarClearance()
                 .navigationDestination(for: FatwaSearchDestination.self) { destination in

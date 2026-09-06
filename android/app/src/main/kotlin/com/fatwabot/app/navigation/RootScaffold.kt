@@ -271,7 +271,11 @@ private fun HomeTab(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     if (!showingResult) {
-        FatwaSearchScreen(viewModel) { SearchHomeHeader() }
+        FatwaSearchScreen(
+            viewModel = viewModel,
+            header = { SearchHomeHeader() },
+            belowField = { SearchHomeTagline() },
+        )
         return
     }
     WorshipDetailScaffold(

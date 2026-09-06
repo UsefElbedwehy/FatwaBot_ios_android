@@ -80,6 +80,9 @@ fun FatwaSearchScreen(
     /** Branding above the chips. Home passes its logo/wordmark header through
      *  here rather than wrapping this screen, so the whole page scrolls as one. */
     header: @Composable () -> Unit = {},
+    /** Sits directly under the field, in the space the submit button used to
+     *  occupy — Home puts its tagline here. */
+    belowField: @Composable () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val tokens = if (isSystemInDarkTheme()) DarkTokens else LightTokens
@@ -106,11 +109,7 @@ fun FatwaSearchScreen(
             onSubmit = { scope.launch { viewModel.submit() } },
             tokens = tokens,
         )
-        BrandEmptyState(
-            icon = state.mode.icon(),
-            message = stringResource(state.mode.hintRes()),
-            tokens = tokens,
-        )
+        belowField()
     }
 }
 
@@ -167,6 +166,10 @@ private fun QuestionField(
     onSubmit: () -> Unit,
     tokens: ColorTokens,
 ) {
+    // No submit button: the field already declares `ImeAction.Search`, so the
+    // keyboard's own search key runs the search. A second control doing the
+    // same thing was one more tap target for the same action, and the space it
+    // took is where the tagline belongs.
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TextField(
             value = question,
@@ -185,15 +188,6 @@ private fun QuestionField(
             ),
             modifier = Modifier.fillMaxWidth(),
         )
-        Button(
-            onClick = onSubmit,
-            enabled = !isLoading && question.isNotBlank(),
-            colors = ButtonDefaults.buttonColors(containerColor = tokens.primary, contentColor = tokens.onPrimary),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.fatwa_search_submit), fontWeight = FontWeight.SemiBold)
-        }
     }
 }
 

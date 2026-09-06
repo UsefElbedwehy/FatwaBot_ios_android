@@ -117,11 +117,22 @@ fun SearchHomeHeader() {
             DividerRule(pointsStart = false, color = cs.primary, modifier = Modifier.weight(1f))
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 30.dp, start = 12.dp, end = 12.dp),
-        ) {
+    }
+}
+
+
+/** The tagline, split out of [SearchHomeHeader] so it can sit *below* the
+ *  search field — the space the submit button used to take, and where the
+ *  client asked for it back. */
+@Composable
+fun SearchHomeTagline() {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+    ) {
+
             // `primary` (maroon), not `secondary` (the gold accent) — iOS draws
             // both rosettes in maroon, and the gold one was the odd mark out.
             RosetteMark(size = 15.dp, color = cs.primary)
@@ -132,8 +143,6 @@ fun SearchHomeHeader() {
                 color = cs.primary,
                 textAlign = TextAlign.Center,
             )
-        }
-        Spacer(Modifier.height(20.dp))
     }
 }
 
