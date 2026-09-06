@@ -3,6 +3,7 @@ import {
   ANSWER_JSON_SCHEMA,
   buildSystemPromptForTest,
   ClaudeAnswerProvider,
+  deriveAnswer,
   DevStubAnswerProvider,
   DevStubEmbeddingProvider,
   VoyageEmbeddingProvider,
@@ -24,6 +25,7 @@ function chunk(over: Partial<RetrievedChunk> = {}): RetrievedChunk {
     sourceUrl: null,
     scholarName: { ar: "ابن عثيمين", en: "Ibn Uthaymeen" },
     score: 0.9,
+    ocrShattered: false,
     ...over,
   };
 }
@@ -358,14 +360,18 @@ Deno.test("the answer schema describes the structured card, with nothing forced"
   assert("scholarAnswers" in props);
   assert("hadith" in props);
 
-  // None of them required: a refusal has no ruling, and hadith fields are
-  // meaningless outside hadith mode. Requiring them would push the model to
-  // invent values to satisfy the schema — the same failure that once forced a
-  // page number onto video-sourced citations.
-  assertEquals(required.includes("summary"), false);
+  // `ruling` and `hadith` are not required: a refusal has no ruling, and a
+  // hadith-mode refusal has no grade. Requiring either would push the model
+  // to invent a value to satisfy the schema — the same failure that once
+  // forced a page number onto video-sourced citations.
   assertEquals(required.includes("ruling"), false);
-  assertEquals(required.includes("scholarAnswers"), false);
   assertEquals(required.includes("hadith"), false);
+  // `summary` and `scholarAnswers` ARE required since 0050. They used not to
+  // be, on the same reasoning — and the first production run with `answer`
+  // made optional returned one citation and nothing else. An empty string and
+  // an empty array satisfy them on a refusal, so nothing is forced.
+  assertEquals(required.includes("summary"), true);
+  assertEquals(required.includes("scholarAnswers"), true);
 });
 
 Deno.test("the system prompt tells the model to refuse to classify rather than guess", () => {
@@ -376,4 +382,44 @@ Deno.test("the system prompt tells the model to refuse to classify rather than g
   // Hadith-only instructions must not leak into the other modes.
   assert(!prompt.includes("scholarVerdicts"));
   assert(buildSystemPromptForTest("hadith", "ar").includes("scholarVerdicts"));
+});
+
+// --- 0050: `answer` is derived, not generated ---
+
+Deno.test("the answer schema no longer requires `answer` — it is derived server-side", () => {
+  const required: readonly string[] = ANSWER_JSON_SCHEMA.required;
+  assertEquals(required.includes("answer"), false, "a required answer made the model write the card twice");
+  assertEquals(required.includes("refused"), true);
+  assertEquals(required.includes("citations"), true);
+  // The first production run with only those two required came back as one
+  // citation and nothing to show. Empty values satisfy these on a refusal.
+  assertEquals(required.includes("summary"), true);
+  assertEquals(required.includes("scholarAnswers"), true);
+  assertEquals(required.includes("hadith"), false, "a hadith-mode refusal has no grade to be forced into");
+});
+
+Deno.test("deriveAnswer composes the flat answer from the structured fields", () => {
+  const derived = deriveAnswer({
+    summary: "حلق اللحية محرم.",
+    scholarAnswers: [{ scholar: "ابن عثيمين", answer: "لا يجوز حلقها.", evidence: "أعفوا اللحى." }],
+  });
+  assertEquals(derived, "حلق اللحية محرم.\n\n**ابن عثيمين:** لا يجوز حلقها.\nأعفوا اللحى.");
+});
+
+Deno.test("deriveAnswer keeps an answer the model wrote (a refusal's closest-match note)", () => {
+  assertEquals(
+    deriveAnswer({ answer: "أقرب لفظ صحيح: ...", refused: true, citations: [] }),
+    "أقرب لفظ صحيح: ...",
+  );
+});
+
+Deno.test("the system prompt asks for short verbatim quotes and no duplicate answer", () => {
+  const prompt = buildSystemPromptForTest("fatwa", "ar");
+  assert(
+    prompt.includes("عشرين كلمة"),
+    "a twenty-word cap keeps a quote short enough to usually be OCR-clean",
+  );
+  assert(prompt.includes("ولا تصحّح أخطاء الطباعة"), "correcting the source is what breaks verification");
+  assert(prompt.includes("فاتركه فارغاً"));
+  assert(prompt.includes("إلزاميان"), "summary and scholarAnswers are stated as mandatory, positively");
 });

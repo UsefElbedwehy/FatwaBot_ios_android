@@ -19,6 +19,17 @@ export interface SeedChunk {
   licenseGranted?: boolean;
   sourceActive?: boolean;
   scholarActive?: boolean;
+  ocrShattered?: boolean;
+}
+
+/** A row of content.hadith_entries as content.search_hadith returns it. */
+export interface SeedHadith {
+  id: string;
+  collectionId: string;
+  collectionName: string;
+  number: number;
+  arabicText: string;
+  grading: string;
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {
@@ -64,15 +75,43 @@ function toRetrievedChunk(seed: SeedChunk, score: number): RetrievedChunk {
     sourceUrl: seed.sourceUrl ?? null,
     scholarName: seed.scholarName,
     score,
+    ocrShattered: seed.ocrShattered ?? false,
+  };
+}
+
+/** Mirrors the SQL in 0050: matn, grading, then the collection reference. */
+function hadithToRetrievedChunk(h: SeedHadith, score: number): RetrievedChunk {
+  return {
+    chunkId: h.id,
+    documentId: h.collectionId,
+    sourceId: h.collectionId,
+    scholarId: h.collectionId,
+    text: `${h.arabicText}\n\nالدرجة: ${
+      h.grading || "غير مذكورة"
+    }\nالمصدر: ${h.collectionName} (رقم ${h.number})`,
+    pageNumber: h.number,
+    videoTimestamp: null,
+    sourceTitle: h.collectionName,
+    sourceCategory: "hadith",
+    sourceKind: "book",
+    sourceUrl: null,
+    scholarName: { ar: h.collectionName },
+    score,
+    ocrShattered: false,
   };
 }
 
 export class InMemoryFatwaSearchRepo implements FatwaSearchRepo {
   private chunks: SeedChunk[] = [];
+  private hadiths: SeedHadith[] = [];
   readonly loggedAnswers: (AnswerLogInput & { appId: string })[] = [];
 
   seed(chunks: SeedChunk[]): void {
     this.chunks.push(...chunks);
+  }
+
+  seedHadith(hadiths: SeedHadith[]): void {
+    this.hadiths.push(...hadiths);
   }
 
   private eligible(): SeedChunk[] {
@@ -96,6 +135,15 @@ export class InMemoryFatwaSearchRepo implements FatwaSearchRepo {
       .sort((a, b) => b.score - a.score)
       .slice(0, matchCount);
     return Promise.resolve(ranked.map(({ c, score }) => toRetrievedChunk(c, score)));
+  }
+
+  hadithSearch(_ctx: AppContext, query: string, matchCount: number): Promise<RetrievedChunk[]> {
+    const ranked = this.hadiths
+      .map((h) => ({ h, score: ftsScore(query, h.arabicText) }))
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, matchCount);
+    return Promise.resolve(ranked.map(({ h, score }) => hadithToRetrievedChunk(h, score)));
   }
 
   logAnswer(ctx: AppContext, entry: AnswerLogInput): Promise<void> {

@@ -21,6 +21,7 @@ interface SearchRow {
   source_url: string | null;
   scholar_name: Record<string, string>;
   score: number;
+  ocr_shattered: boolean;
 }
 
 function toRetrievedChunk(row: SearchRow): RetrievedChunk {
@@ -38,6 +39,7 @@ function toRetrievedChunk(row: SearchRow): RetrievedChunk {
     sourceUrl: row.source_url,
     scholarName: row.scholar_name,
     score: row.score,
+    ocrShattered: row.ocr_shattered,
   };
 }
 
@@ -64,6 +66,16 @@ export class SupabaseFatwaSearchRepo implements FatwaSearchRepo {
     return ((data ?? []) as SearchRow[]).map(toRetrievedChunk);
   }
 
+  async hadithSearch(ctx: AppContext, query: string, matchCount: number): Promise<RetrievedChunk[]> {
+    const { data, error } = await this.db.schema("content").rpc("search_hadith", {
+      p_app_id: ctx.appId,
+      p_query: query,
+      p_match_count: matchCount,
+    });
+    if (error) throw error;
+    return ((data ?? []) as SearchRow[]).map(toRetrievedChunk);
+  }
+
   async logAnswer(ctx: AppContext, entry: AnswerLogInput): Promise<void> {
     const { error } = await this.db.schema("fatwa").from("answers_log").insert({
       app_id: ctx.appId,
@@ -72,8 +84,10 @@ export class SupabaseFatwaSearchRepo implements FatwaSearchRepo {
       question: entry.question,
       retrieved_chunk_ids: entry.retrievedChunkIds,
       citations: entry.citations,
+      dropped_citations: entry.droppedCitations,
       answer: entry.answer,
       refused: entry.refused,
+      refusal_reason: entry.refusalReason,
       model: entry.model,
     });
     if (error) throw error;

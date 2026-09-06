@@ -9,13 +9,13 @@ import { verifyAccessToken } from "../auth/jwt.ts";
 import { apiError, json } from "../http.ts";
 import { resolveRequired } from "../locale_resolve.ts";
 import type { AppContext } from "../types.ts";
-import type { FatwaMode, FatwaSearchRepo, RetrievedChunk } from "../fatwa_types.ts";
+import type { FatwaMode, FatwaSearchRepo, RefusalReason, RetrievedChunk } from "../fatwa_types.ts";
 import { UpstreamError } from "../ai_search/providers.ts";
 import type { AnswerProvider, EmbeddingProvider } from "../ai_search/providers.ts";
 import { hybridRetrieve, RetrievalError } from "../ai_search/retrieval.ts";
 import type { AnswerCacheRepo } from "../ai_search/answer_cache.ts";
 import { questionHash } from "../ai_search/embedding_cache.ts";
-import { verifyCitations } from "../ai_search/citation_verify.ts";
+import { hadithFromChunk, verifyCitations } from "../ai_search/citation_verify.ts";
 import type { SearchHistoryRepo, SearchSource } from "../search_types.ts";
 
 export interface SearchDeps {
@@ -153,7 +153,7 @@ export async function handleSearch(
   let answerMs = 0;
   let chunks;
   try {
-    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, {}, timings);
+    chunks = await hybridRetrieve(ctx, deps.fatwaSearch, deps.embeddingProvider, question, { mode }, timings);
   } catch (err) {
     console.error("search_retrieval_failed", err instanceof Error ? err.stack ?? err.message : err);
     const stage = err instanceof RetrievalError ? err.stage : "unknown";
@@ -191,8 +191,36 @@ export async function handleSearch(
     return apiError(502, "answer_failed", "Could not generate an answer");
   }
 
+  const chunkById = new Map(chunks.map((c) => [c.chunkId, c]));
   const chunkTextById = new Map(chunks.map((c) => [c.chunkId, c.text]));
   const verified = verifyCitations(raw, chunkTextById);
+
+  // Hadith mode: the card is built from the cited entry when the model left
+  // it out. The entry's own matn, grading and collection are data, not
+  // generation — there is nothing to verify and nothing to invent.
+  // Among several cited entries, the graded one wins: الأربعون النووية
+  // carries no grading in this dataset, صحيح البخاري does, and the first
+  // live run picked the Nawawi entry and showed «غير مذكورة» for a hadith
+  // that is متفق عليه.
+  if (mode === "hadith" && !verified.refused && !verified.hadith) {
+    const cards = verified.citations
+      .map((c) => chunkById.get(c.chunkId))
+      .map((chunk) => (chunk ? hadithFromChunk(chunk) : null))
+      .filter((card): card is NonNullable<typeof card> => card !== null);
+    verified.hadith = cards.find((card) => card.grade !== "غير مذكورة") ?? cards[0];
+  }
+
+  // Which of the three things that can end in «لم نجد» actually happened. The
+  // log used to keep only the surviving citations, so a model that declined on
+  // its own and a verifier that threw out every citation were the same row —
+  // and 31 of the first 59 searches were that row.
+  const refusalReason: RefusalReason | null = !verified.refused
+    ? null
+    : chunks.length === 0
+    ? "no_chunks"
+    : raw.refused
+    ? "model_refused"
+    : "all_citations_dropped";
 
   // A refusal still carries useful text sometimes — hadith mode is asked to
   // name the closest authentic wording even while refusing the exact quote.
@@ -214,8 +242,10 @@ export async function handleSearch(
       question,
       retrievedChunkIds: chunks.map((c) => c.chunkId),
       citations: verified.citations,
+      droppedCitations: verified.droppedCitations,
       answer,
       refused: verified.refused,
+      refusalReason,
       model: verified.model,
     });
     await deps.searchHistory.record(ctx, userId, MODE_TO_HISTORY_SOURCE[mode], question, ctx.locale);
@@ -245,14 +275,21 @@ export async function handleSearch(
       }
       : null,
     resources: deriveResources(verified.citations, chunks),
-    citations: verified.citations.map((c) => ({
-      chunk_id: c.chunkId,
-      scholar: c.scholar,
-      source_title: c.sourceTitle,
-      page_number: c.pageNumber ?? null,
-      video_timestamp: c.videoTimestamp ?? null,
-      quoted_text: c.quotedText,
-    })),
+    // Locators come from the retrieved chunk, not the model: the chunk *is*
+    // the page (or the hadith number, or the timestamp), and the model has
+    // both omitted them and guessed them. Every citation here has already
+    // verified against that chunk, so the lookup cannot miss.
+    citations: verified.citations.map((c) => {
+      const chunk = chunkById.get(c.chunkId);
+      return {
+        chunk_id: c.chunkId,
+        scholar: c.scholar,
+        source_title: c.sourceTitle,
+        page_number: chunk?.pageNumber ?? c.pageNumber ?? null,
+        video_timestamp: chunk?.videoTimestamp ?? c.videoTimestamp ?? null,
+        quoted_text: c.quotedText,
+      };
+    }),
     refused: verified.refused,
     mode,
   };
@@ -268,7 +305,16 @@ export async function handleSearch(
   // the corpus answers well, and every later ask served the accident in under
   // a second. The cost of not caching them is that a genuinely unanswerable
   // question re-runs, which is the cheaper mistake.
-  if (deps.answerCache && !verified.refused) {
+  //
+  // Nor is an empty success — a non-refusal with no summary, no card and no
+  // hadith. That is a model that stopped short, not an answer, and one deploy
+  // cached exactly such bodies and served them for a day. It is still returned
+  // (the citations in it are real), but it is not remembered.
+  const emptySuccess = !verified.refused && !responseBody.summary &&
+    responseBody.scholar_answers.length === 0 &&
+    responseBody.hadith === null;
+  if (emptySuccess) console.warn("search_empty_success", mode, question.slice(0, 80));
+  if (deps.answerCache && !verified.refused && !emptySuccess) {
     try {
       await deps.answerCache.put(ctx, hash, mode, answerModelId, responseBody);
     } catch (err) {
@@ -286,6 +332,9 @@ export async function handleSearch(
         `embed;dur=${timings.embedMs ?? 0}`,
         `search;dur=${timings.searchMs ?? 0}`,
         `answer;dur=${answerMs}`,
+        // How many citations needed repairing (0050) — visible per request,
+        // so a drift in the model's copying shows up without a log query.
+        `repaired;dur=${verified.repairedCitations}`,
       ].join(", "),
     },
   );
